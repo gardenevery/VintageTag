@@ -1,4 +1,4 @@
-package com.gardenevery.tag;
+package com.gardenevery.vintagetag;
 
 public enum TagType {
     ITEM("item"),

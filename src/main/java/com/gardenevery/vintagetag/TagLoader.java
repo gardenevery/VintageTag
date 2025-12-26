@@ -1,4 +1,4 @@
-package com.gardenevery.tag;
+package com.gardenevery.vintagetag;
 
 import java.io.File;
 import java.io.IOException;

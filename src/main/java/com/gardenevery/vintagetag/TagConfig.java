@@ -1,12 +1,10 @@
-package com.gardenevery.tag;
+package com.gardenevery.vintagetag;
 
 import net.minecraftforge.common.config.Config;
 import net.minecraftforge.common.config.ConfigManager;
 import net.minecraftforge.fml.client.event.ConfigChangedEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-
-import com.gardenevery.vintagetag.Tags;
 
 @Config(modid = Tags.MOD_ID)
 @Config.LangKey("tag.config.title")

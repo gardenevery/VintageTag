@@ -1,4 +1,4 @@
-package com.gardenevery.tag;
+package com.gardenevery.vintagetag;
 
 import net.minecraft.block.Block;
 import net.minecraftforge.fluids.Fluid;
