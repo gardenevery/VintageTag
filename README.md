@@ -5,7 +5,7 @@ VintageTag is a lightweight and extensible tag system mod for Minecraft Forge (p
 ## Features
 
 - **Flexible Tag Structure:**
-    - Supports creating and loading tags for items, blocks, and fluids via both configuration files and resource packs/mod JARs.
+    - Supports creating and loading tags for items, blocks, and fluids via both configuration files and mod JARs.
     - Directory convention:
         - `config/tags/item/`, `config/tags/block/`, `config/tags/fluid/`
         - Tags can use uppercase, numbers, and custom namespaces (e.g., `item/Abc_1.json` -> tag "Abc_1").
