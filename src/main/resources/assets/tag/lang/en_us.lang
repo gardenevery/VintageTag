@@ -1,0 +1,22 @@
+tag.command.nopermission=§cYou do not have permission to use this command.
+tag.command.statistics.title=§6=== Tag Statistics ===
+tag.command.statistics.items=§aItem Tags: §f%s §7Entries: §f%s (§f%s §7unique items)
+tag.command.statistics.fluids=§bFluid Tags: §f%s §7Entries: §f%s (§f%s §7unique fluids)
+tag.command.statistics.blocks=§eBlock Tags: §f%s §7Entries: §f%s (§f%s §7unique blocks)
+tag.command.statistics.total=§6Total Tags: §f%s §7Total Entries: §f%s (§f%s §7unique elements)
+tag.command.help.title=§6=== Tag Command Help ===
+tag.command.help.info=§b/tag info §7- Display tag statistics (requires permission level 1)
+tag.command.help.reload=§b/tag reload §7- Reload tag (requires permission level 2)
+tag.command.reload.success=§aReloaded tag
+
+tag.tooltip.hold_shift=Hold Shift to show tags
+
+tag.config.title=§6Tag Mod Configuration
+tag.config.ore_sync=Sync Ore Dictionary Entries
+tag.config.ore_sync.tooltip=Enable Ore Dictionary synchronization feature.
+tag.config.enable_mod_scanner=Load Tags from Mods
+tag.config.enable_mod_scanner.tooltip=Enable loading tags from within mods.
+tag.config.enable_config_scanner=Load Tags from Config
+tag.config.enable_config_scanner.tooltip=Enable loading tags from config folder.
+tag.config.enable_tooltip=Enable Tag Tooltips
+tag.config.enable_tooltip.tooltip=Enable the tag tooltip display feature.
