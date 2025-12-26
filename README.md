@@ -57,8 +57,8 @@ VintageTag is a lightweight and extensible tag system mod for Minecraft Forge (p
     ```json
     {
       "values": [
-        "minecraft:iron_ingot",
-        "minecraft:gold_ingot"
+        { "id": "minecraft:iron_ingot" },
+        { "id": "minecraft:gold_ingot" }
       ]
     }
     ```
