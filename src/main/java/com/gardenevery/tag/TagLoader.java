@@ -89,7 +89,7 @@ import org.apache.logging.log4j.Logger;
 //  ]
 //}
 @SuppressWarnings("all")
-final class TagLoader {
+public final class TagLoader {
 
     enum Operation {
         ADD,

@@ -11,7 +11,7 @@ import net.minecraftforge.oredict.OreDictionary;
 
 import javax.annotation.Nullable;
 
-final class OreSync {
+public final class OreSync {
 
     private static final Logger LOGGER = LogManager.getLogger("OreSync");
 
