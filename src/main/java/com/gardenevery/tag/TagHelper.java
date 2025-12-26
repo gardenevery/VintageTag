@@ -150,7 +150,7 @@ public final class TagHelper {
     /**
      * Check if an item has the specified tag
      */
-    public static boolean hasTag(@Nullable ItemStack stack, @Nullable String tagName) {
+    public static boolean hasTag(@Nullable String tagName, @Nullable ItemStack stack) {
         if (tagInvalid(tagName) || stack == null || stack.isEmpty()) {
             return false;
         }
@@ -162,7 +162,7 @@ public final class TagHelper {
     /**
      * Check if a fluid has the specified tag
      */
-    public static boolean hasTag(@Nullable FluidStack stack, @Nullable String tagName) {
+    public static boolean hasTag(@Nullable String tagName, @Nullable FluidStack stack) {
         if (tagInvalid(tagName) || stack == null || stack.getFluid() == null) {
             return false;
         }
@@ -172,7 +172,7 @@ public final class TagHelper {
     /**
      * Check if a block has the specified tag
      */
-    public static boolean hasTag(@Nullable Block block, @Nullable String tagName) {
+    public static boolean hasTag(@Nullable String tagName, @Nullable Block block) {
         if (tagInvalid(tagName) || block == null) {
             return false;
         }
@@ -182,7 +182,7 @@ public final class TagHelper {
     /**
      * Check if a block state has the specified tag
      */
-    public static boolean hasTag(@Nullable IBlockState blockState, @Nullable String tagName) {
+    public static boolean hasTag(@Nullable String tagName, @Nullable IBlockState blockState) {
         if (tagInvalid(tagName) || blockState == null) {
             return false;
         }
@@ -192,7 +192,7 @@ public final class TagHelper {
     /**
      * Check if a tileentity has the specified tag
      */
-    public static boolean hasTag(@Nullable TileEntity blockEntity, @Nullable String tagName) {
+    public static boolean hasTag(@Nullable String tagName, @Nullable TileEntity blockEntity) {
         if (tagInvalid(tagName) || blockEntity == null) {
             return false;
         }
@@ -202,7 +202,7 @@ public final class TagHelper {
     /**
      * Check if an item has any of the specified tags
      */
-    public static boolean hasAnyTags(@Nullable ItemStack stack, @Nullable Set<String> tagNames) {
+    public static boolean hasAnyTags(@Nullable Set<String> tagNames, @Nullable ItemStack stack) {
         if (tagInvalid(tagNames) || stack == null || stack.isEmpty()) {
             return false;
         }
@@ -214,7 +214,7 @@ public final class TagHelper {
     /**
      * Check if a fluid has any of the specified tags
      */
-    public static boolean hasAnyTags(@Nullable FluidStack stack, @Nullable Set<String> tagNames) {
+    public static boolean hasAnyTags(@Nullable Set<String> tagNames, @Nullable FluidStack stack) {
         if (tagInvalid(tagNames) || stack == null ||stack.getFluid() == null) {
             return false;
         }
@@ -224,7 +224,7 @@ public final class TagHelper {
     /**
      * Check if a block has any of the specified tags
      */
-    public static boolean hasAnyTags(@Nullable Block block, @Nullable Set<String> tagNames) {
+    public static boolean hasAnyTags(@Nullable Set<String> tagNames, @Nullable Block block) {
         if (tagInvalid(tagNames) || block == null) {
             return false;
         }
@@ -234,7 +234,7 @@ public final class TagHelper {
     /**
      * Check if a blockState has any of the specified tags
      */
-    public static boolean hasAnyTags(@Nullable IBlockState blockState, @Nullable Set<String> tagNames) {
+    public static boolean hasAnyTags(@Nullable Set<String> tagNames, @Nullable IBlockState blockState) {
         if (tagInvalid(tagNames) || blockState == null) {
             return false;
         }
@@ -244,7 +244,7 @@ public final class TagHelper {
     /**
      * Check if a tileentity has any of the specified tags
      */
-    public static boolean hasAnyTags(@Nullable TileEntity blockEntity, @Nullable Set<String> tagNames) {
+    public static boolean hasAnyTags(@Nullable Set<String> tagNames, @Nullable TileEntity blockEntity) {
         if (tagInvalid(tagNames) || blockEntity == null) {
             return false;
         }
