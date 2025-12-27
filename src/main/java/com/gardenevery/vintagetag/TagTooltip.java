@@ -23,7 +23,7 @@ public class TagTooltip {
 
     private static long lastKeyboardCheck = 0;
     private static boolean shiftDown = false;
-    private static final long KEY_CHECK_INTERVAL = 50;
+    private static final long KEY_CHECK_INTERVAL = 100;
 
     @SubscribeEvent
     public void onItemTooltip(ItemTooltipEvent event) {

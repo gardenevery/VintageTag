@@ -9,8 +9,6 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.oredict.OreDictionary;
 
-import javax.annotation.Nullable;
-
 public final class OreSync {
 
     private static final Logger LOGGER = LogManager.getLogger("OreSync");
@@ -44,7 +42,6 @@ public final class OreSync {
                     }
                 } catch (Exception e) {
                     failedEntries++;
-                    LOGGER.debug("Sync failed: {} - {}", oreName, oreStack.getDisplayName(), e);
                 }
             }
         }
@@ -73,8 +70,8 @@ public final class OreSync {
         return synced;
     }
 
-    private static void createTag(@Nullable String tagName, @Nullable ItemStack stack) {
-        if (tagName == null || tagName.isEmpty() || stack == null || stack == ItemStack.EMPTY) {
+    private static void createTag(String tagName, ItemStack stack) {
+        if (tagName == null || tagName.isEmpty() || stack == null || stack.isEmpty()) {
             return;
         }
 

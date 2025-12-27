@@ -445,14 +445,14 @@ public final class TagLoader {
     private static void applyItemTag(String tagName, Operation operation, Set<ItemStack> stacks) {
         switch (operation) {
             case ADD -> {
-                Set<ItemKey> keys = toKeys(stacks);
+                Set<ItemKey> keys = ItemKey.toKeys(stacks);
                 if (!keys.isEmpty()) {
                     TagManager.ITEM.createTag(tagName, keys);
                 }
             }
             case REPLACE -> {
                 TagManager.ITEM.remove(tagName);
-                Set<ItemKey> keys = toKeys(stacks);
+                Set<ItemKey> keys = ItemKey.toKeys(stacks);
                 if (!keys.isEmpty()) {
                     TagManager.ITEM.createTag(tagName, keys);
                 }
@@ -490,15 +490,6 @@ public final class TagLoader {
                 }
             }
         }
-    }
-
-    private static Set<ItemKey> toKeys(Set<ItemStack> stacks) {
-        Set<ItemKey> keys = new HashSet<>();
-        for (var stack : stacks) {
-            var key = ItemKey.toKey(stack);
-            keys.add(key);
-        }
-        return keys;
     }
 
     @Nonnull

@@ -14,16 +14,23 @@ final class Tag<T> {
     private final Object2ReferenceOpenHashMap<String, ObjectOpenHashSet<T>> tagToKeys = new Object2ReferenceOpenHashMap<>();
     private final Object2ReferenceOpenHashMap<T, ObjectOpenHashSet<String>> keyToTags = new Object2ReferenceOpenHashMap<>();
 
-    @Nonnull
     public Set<String> getTag(@Nonnull T key) {
         var tags = keyToTags.get(key);
-        return tags == null ? Collections.emptySet() : Collections.unmodifiableSet(tags);
+
+        if (tags == null || tags.isEmpty()) {
+            return Collections.emptySet();
+        }
+        return Collections.unmodifiableSet(tags);
     }
 
     @Nonnull
     public Set<T> getKey(@Nonnull String tagName) {
         var keys = tagToKeys.get(tagName);
-        return keys == null ? Collections.emptySet() : Collections.unmodifiableSet(keys);
+
+        if (keys == null || keys.isEmpty()) {
+            return Collections.emptySet();
+        }
+        return Collections.unmodifiableSet(keys);
     }
 
     @Nonnull
@@ -36,12 +43,12 @@ final class Tag<T> {
         return keyToTags.isEmpty() ? Collections.emptySet() : Collections.unmodifiableSet(keyToTags.keySet());
     }
 
-    public boolean hasTag(@Nonnull T key, @Nonnull String tagName) {
+    public boolean hasTag(@Nonnull String tagName, @Nonnull T key) {
         var tags = keyToTags.get(key);
         return tags != null && tags.contains(tagName);
     }
 
-    public boolean hasAnyTag(@Nonnull T key, @Nonnull Set<String> tagNames) {
+    public boolean hasAnyTag(@Nonnull Set<String> tagNames, @Nonnull T key) {
         var tags = keyToTags.get(key);
         return tags != null && tagNames.stream().anyMatch(tags::contains);
     }
@@ -52,13 +59,8 @@ final class Tag<T> {
     }
 
     public void createTag(@Nonnull String tagName, @Nonnull Set<T> keys) {
-        if (keys.isEmpty()) {
-            return;
-        }
-
         var keySet = tagToKeys.computeIfAbsent(tagName, k -> new ObjectOpenHashSet<>());
         keySet.addAll(keys);
-
         keys.forEach(key -> keyToTags.computeIfAbsent(key, k -> new ObjectOpenHashSet<>()).add(tagName));
     }
 

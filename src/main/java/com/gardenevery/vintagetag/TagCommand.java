@@ -68,7 +68,7 @@ public class TagCommand extends CommandBase {
     private void showHelp(ICommandSender sender) {
         sender.sendMessage(new TextComponentTranslation("tag.command.help.title"));
 
-        for (RegisteredCommand cmd : registry.getCommands()) {
+        for (var cmd : registry.getCommands()) {
             hasPermission(sender, cmd.level);
             var description = new TextComponentTranslation(cmd.getDescription());
             sender.sendMessage(description);
@@ -78,19 +78,19 @@ public class TagCommand extends CommandBase {
     private void executeInfo(MinecraftServer server, ICommandSender sender, String[] args) {
         sender.sendMessage(new TextComponentTranslation("tag.command.statistics.title"));
 
-        Object[][] types = {
-                {"tag.command.statistics.items", TagType.ITEM},
-                {"tag.command.statistics.fluids", TagType.FLUID},
-                {"tag.command.statistics.blocks", TagType.BLOCK}
-        };
+        Map<String, TagType> types = new HashMap<>();
+        types.put("tag.command.statistics.items", TagType.ITEM);
+        types.put("tag.command.statistics.fluids", TagType.FLUID);
+        types.put("tag.command.statistics.blocks", TagType.BLOCK);
 
-        for (var typeInfo : types) {
-            var key = (String) typeInfo[0];
-            var type = (TagType) typeInfo[1];
-            sender.sendMessage(new TextComponentTranslation(key,
-                    TagHelper.tagCount(type), TagHelper.associations(type), TagHelper.keyCount(type)
-            ));
-        }
+        types.forEach((key, type) ->
+                sender.sendMessage(new TextComponentTranslation(
+                        key,
+                        TagHelper.tagCount(type),
+                        TagHelper.associations(type),
+                        TagHelper.keyCount(type)
+                ))
+        );
 
         sender.sendMessage(new TextComponentTranslation("tag.command.statistics.total",
                 TagHelper.tagCount(), TagHelper.associations(), TagHelper.keyCount()
@@ -98,7 +98,9 @@ public class TagCommand extends CommandBase {
     }
 
     private void executeReload(MinecraftServer server, ICommandSender sender, String[] args) {
-        TagHelper.cleanAllTag();
+        TagManager.ITEM.clean();
+        TagManager.FLUID.clean();
+        TagManager.BLOCK.clean();
 
         if (TagConfig.enableOreSync) {
             OreSync.oreDictionarySync();

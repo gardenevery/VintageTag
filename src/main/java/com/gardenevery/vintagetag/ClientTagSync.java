@@ -47,7 +47,9 @@ public final class ClientTagSync {
             }
 
             if (message.syncType == TagSync.SyncType.FULL) {
-                TagHelper.cleanAllTag();
+                TagManager.ITEM.clean();
+                TagManager.FLUID.clean();
+                TagManager.BLOCK.clean();
 
                 for (Map.Entry<String, List<TagSync.ItemEntry>> entry : message.tagData.itemTags.entrySet()) {
                     Set<ItemKey> keys = new HashSet<>();

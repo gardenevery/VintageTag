@@ -156,7 +156,7 @@ public final class TagHelper {
         }
 
         var key = ItemKey.toKey(stack);
-        return TagManager.ITEM.hasTag(key, tagName);
+        return TagManager.ITEM.hasTag(tagName, key);
     }
 
     /**
@@ -166,7 +166,7 @@ public final class TagHelper {
         if (tagInvalid(tagName) || stack == null || stack.getFluid() == null) {
             return false;
         }
-        return TagManager.FLUID.hasTag(stack.getFluid(), tagName);
+        return TagManager.FLUID.hasTag(tagName, stack.getFluid());
     }
 
     /**
@@ -176,7 +176,7 @@ public final class TagHelper {
         if (tagInvalid(tagName) || block == null) {
             return false;
         }
-        return TagManager.BLOCK.hasTag(block, tagName);
+        return TagManager.BLOCK.hasTag(tagName, block);
     }
 
     /**
@@ -186,7 +186,7 @@ public final class TagHelper {
         if (tagInvalid(tagName) || blockState == null) {
             return false;
         }
-        return TagManager.BLOCK.hasTag(blockState.getBlock(), tagName);
+        return TagManager.BLOCK.hasTag(tagName, blockState.getBlock());
     }
 
     /**
@@ -196,7 +196,7 @@ public final class TagHelper {
         if (tagInvalid(tagName) || blockEntity == null) {
             return false;
         }
-        return TagManager.BLOCK.hasTag(getBlock(blockEntity), tagName);
+        return TagManager.BLOCK.hasTag(tagName, getBlock(blockEntity));
     }
 
     /**
@@ -208,7 +208,7 @@ public final class TagHelper {
         }
 
         var key = ItemKey.toKey(stack);
-        return TagManager.ITEM.hasAnyTag(key, tagNames);
+        return TagManager.ITEM.hasAnyTag(tagNames, key);
     }
 
     /**
@@ -218,7 +218,7 @@ public final class TagHelper {
         if (tagInvalid(tagNames) || stack == null ||stack.getFluid() == null) {
             return false;
         }
-        return TagManager.FLUID.hasAnyTag(stack.getFluid(), tagNames);
+        return TagManager.FLUID.hasAnyTag(tagNames, stack.getFluid());
     }
 
     /**
@@ -228,7 +228,7 @@ public final class TagHelper {
         if (tagInvalid(tagNames) || block == null) {
             return false;
         }
-        return TagManager.BLOCK.hasAnyTag(block, tagNames);
+        return TagManager.BLOCK.hasAnyTag(tagNames, block);
     }
 
     /**
@@ -238,7 +238,7 @@ public final class TagHelper {
         if (tagInvalid(tagNames) || blockState == null) {
             return false;
         }
-        return TagManager.BLOCK.hasAnyTag(blockState.getBlock(), tagNames);
+        return TagManager.BLOCK.hasAnyTag(tagNames, blockState.getBlock());
     }
 
     /**
@@ -248,7 +248,7 @@ public final class TagHelper {
         if (tagInvalid(tagNames) || blockEntity == null) {
             return false;
         }
-        return TagManager.BLOCK.hasAnyTag(getBlock(blockEntity), tagNames);
+        return TagManager.BLOCK.hasAnyTag(tagNames, getBlock(blockEntity));
     }
 
     /**
@@ -383,36 +383,6 @@ public final class TagHelper {
      */
     public static int keyCount() {
         return TagManager.ITEM.getKeyCount() + TagManager.FLUID.getKeyCount() + TagManager.BLOCK.getKeyCount();
-    }
-
-    /**
-     * Clean the tag system (remove all item tags)
-     */
-    public static void cleanItemTag() {
-        TagManager.ITEM.clean();
-    }
-
-    /**
-     * Clean the tag system (remove all fluid tags)
-     */
-    public static void cleanFluidTag() {
-        TagManager.FLUID.clean();
-    }
-
-    /**
-     * Clean the tag system (remove all block tags)
-     */
-    public static void cleanBlockTag() {
-        TagManager.BLOCK.clean();
-    }
-
-    /**
-     * Clean the tag system (remove all tags)
-     */
-    public static void cleanAllTag() {
-        TagManager.ITEM.clean();
-        TagManager.FLUID.clean();
-        TagManager.BLOCK.clean();
     }
 
     private static Block getBlock(@Nonnull TileEntity blockEntity) {
