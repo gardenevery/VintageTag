@@ -14,6 +14,7 @@ final class Tag<T> {
     private final Object2ReferenceOpenHashMap<String, ObjectOpenHashSet<T>> tagToKeys = new Object2ReferenceOpenHashMap<>();
     private final Object2ReferenceOpenHashMap<T, ObjectOpenHashSet<String>> keyToTags = new Object2ReferenceOpenHashMap<>();
 
+    @Nonnull
     public Set<String> getTag(@Nonnull T key) {
         var tags = keyToTags.get(key);
 

@@ -25,7 +25,7 @@ public final class OreSync {
                 continue;
             }
 
-            List<ItemStack> ores = OreDictionary.getOres(oreName);
+            List<ItemStack> ores = OreDictionary.getOres(oreName, false);
             for (var oreStack : ores) {
                 if (oreStack.isEmpty()) {
                     failedEntries++;
@@ -37,7 +37,7 @@ public final class OreSync {
                         int synced = syncWildcardEntry(oreStack.getItem(), oreName);
                         totalEntries += synced;
                     } else {
-                        createTag(oreName, oreStack.copy());
+                        createTag(oreName, oreStack);
                         totalEntries++;
                     }
                 } catch (Exception e) {
