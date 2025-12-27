@@ -1,6 +1,6 @@
 # VintageTag
 
-VintageTag is a lightweight and extensible tag system mod for Minecraft Forge (primarily for 1.12.2), bringing robust "tag" functionality inspired by Minecraft 1.13+'s official tag system to older game versions.
+VintageTag is a lightweight tag system mod (primarily compatible with 1.12.2) that brings functionality similar to the official tag system of Minecraft 1.13+ to older game versions.
 
 ## Features
 
