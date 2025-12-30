@@ -70,4 +70,4 @@ VintageTag is a lightweight tag system mod (primarily compatible with 1.12.2) th
 
 ## License
 
-LGPLv3 License — see [LICENSE](LICENSE).
+MIT License — see [LICENSE](LICENSE).
