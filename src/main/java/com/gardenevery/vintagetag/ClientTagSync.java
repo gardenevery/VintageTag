@@ -19,9 +19,7 @@ import net.minecraftforge.fml.common.registry.ForgeRegistries;
 import net.minecraftforge.fml.common.network.NetworkRegistry;
 
 @SideOnly(Side.CLIENT)
-public final class ClientTagSync {
-
-    private ClientTagSync() {}
+final class ClientTagSync {
 
     @SideOnly(Side.CLIENT)
     public static void registerClient() {

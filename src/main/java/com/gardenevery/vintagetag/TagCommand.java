@@ -98,6 +98,8 @@ public class TagCommand extends CommandBase {
     }
 
     private void executeReload(MinecraftServer server, ICommandSender sender, String[] args) {
+        long startTime = System.currentTimeMillis();
+
         TagManager.ITEM.clean();
         TagManager.FLUID.clean();
         TagManager.BLOCK.clean();
@@ -115,7 +117,15 @@ public class TagCommand extends CommandBase {
         }
 
         TagSync.sync();
-        sender.sendMessage(new TextComponentTranslation("tag.command.reload.success"));
+
+        if (TagConfig.enableSyncToOreDict) {
+            OreSync.syncToOreDictionary();
+        }
+
+        long endTime = System.currentTimeMillis();
+        long duration = endTime - startTime;
+
+        sender.sendMessage(new TextComponentTranslation("tag.command.reload.success.time", duration, duration / 1000.0));
     }
 
     private boolean hasPermission(ICommandSender sender, int level) {
@@ -142,7 +152,7 @@ public class TagCommand extends CommandBase {
             }
 
             if (!hasPermission(sender, cmd.level)) {
-                sender.sendMessage(new TextComponentTranslation("tag.command.nopermission"));
+                sender.sendMessage(new TextComponentTranslation("tag.command.no_permission"));
                 return;
             }
             cmd.execute(server, sender, Arrays.copyOfRange(args, 1, args.length));

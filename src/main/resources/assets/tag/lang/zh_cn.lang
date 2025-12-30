@@ -1,22 +1,30 @@
-tag.command.nopermission=§c没有权限使用此命令。
-tag.command.statistics.title=§6=== 标签统计 ===
-tag.command.statistics.items=§a物品标签：§f%s §7关联数：§f%s （§f%s§7个不重复物品）
-tag.command.statistics.fluids=§b流体标签：§f%s §7关联数：§f%s （§f%s§7个不重复流体）
-tag.command.statistics.blocks=§e方块标签：§f%s §7关联数：§f%s （§f%s§7个不重复方块）
-tag.command.statistics.total=§6总标签数：§f%s §7总关联数：§f%s （§f%s§7个不重复元素）
-tag.command.help.title=§6=== Tag 命令帮助 ===
-tag.command.help.info=§b/tag info §7- 显示标签统计信息 （需要权限等级 1）
-tag.command.help.reload=§b/tag reload §7- 重载标签 （需要权限等级 2）
-tag.command.reload.success=§a标签已重载
+# 命令
+tag.command.no_permission=§c没有权限使用此命令。
 
+tag.command.statistics.title=§6=== §f标签统计 §6===
+tag.command.statistics.items=§a物品标签：%s    关联数：%s
+tag.command.statistics.fluids=§b流体标签：%s    关联数：%s
+tag.command.statistics.blocks=§e方块标签：%s    关联数：%s
+tag.command.statistics.total=§6总标签：%s    总关联：%s
+
+tag.command.help.title=§6=== Tag 命令帮助 ===
+tag.command.help.info=§b/tag info §f- §f显示标签统计信息 （§e需要权限等级 1§f）
+tag.command.help.reload=§b/tag reload §f- §f重载标签 （§e需要权限等级 2§f）
+
+tag.command.reload.success.time=§a标签重载成功，用时§e%1$sms§a（§e%2$.2f秒§a）
+
+# 提示
 tag.tooltip.hold_shift=按住 Shift 显示标签
 
+# 设置
 tag.config.title=§6Tag Mod 配置
-tag.config.ore_sync=同步矿物词典条目
-tag.config.ore_sync.tooltip=是否启用矿物词典同步功能
-tag.config.enable_mod_scanner=加载mod中的标签
-tag.config.enable_mod_scanner.tooltip=是否启用加载Mod中的标签功能
-tag.config.enable_config_scanner=加载config中的标签
-tag.config.enable_config_scanner.tooltip=是否启用加载config中的标签功能
+tag.config.ore_sync=同步矿物词典到物品标签
+tag.config.ore_sync.tooltip=是否将矿物词典条目同步到标签
+tag.config.enable_mod_scanner=加载Mod中的标签
+tag.config.enable_mod_scanner.tooltip=是否加载Mod中的标签
+tag.config.enable_config_scanner=加载Config中的标签
+tag.config.enable_config_scanner.tooltip=是否加载Config中的标签
 tag.config.enable_tooltip=开启标签提示
-tag.config.enable_tooltip=是否启用标签提示功能
+tag.config.enable_tooltip.tooltip=是否启用标签提示功能
+tag.config.enable_sync_to_oredict=添加物品标签到矿物词典
+tag.config.enable_sync_to_oredict.tooltip=是否将物品标签添加到矿物词典

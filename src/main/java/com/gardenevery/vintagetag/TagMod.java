@@ -40,6 +40,10 @@ public class TagMod {
         if (TagConfig.enableConfigScanner) {
             TagLoader.scanConfigTags();
         }
+
+        if (TagConfig.enableSyncToOreDict) {
+            OreSync.syncToOreDictionary();
+        }
     }
 
     @Mod.EventHandler

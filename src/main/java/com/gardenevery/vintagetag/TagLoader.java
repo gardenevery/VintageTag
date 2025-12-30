@@ -89,18 +89,19 @@ import org.apache.logging.log4j.Logger;
 //  ]
 //}
 @SuppressWarnings("all")
-public final class TagLoader {
+final class TagLoader {
 
     enum Operation {
         ADD,
         REPLACE
     }
 
-    private static final Logger LOGGER = LogManager.getLogger("TagLoader");
     private static final Gson GSON = new Gson();
     private static final Pattern VALID_FILENAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]+\\.json$", Pattern.CASE_INSENSITIVE);
+    private static final Logger LOGGER = LogManager.getLogger("VintageTag");
 
     private static final String CONFIG = "config";
+    private static final String DATA_TAGS_PREFIX = "data/tags/";
     private static final String ITEM_DIR = "tags/item/";
     private static final String FLUID_DIR = "tags/fluid/";
     private static final String BLOCK_DIR = "tags/block/";
@@ -108,6 +109,7 @@ public final class TagLoader {
     private static final String VALUES = "values";
     private static final String ID = "id";
     private static final String METADATA = "metadata";
+    private static final String JAR = ".jar";
     private static final String JSON = ".json";
     private static final String COLON = ":";
     private static final String SLASH = "/";
@@ -122,37 +124,16 @@ public final class TagLoader {
                 continue;
             }
 
-            if (source.isFile() && source.getName().endsWith(".jar")) {
+            if (source.isFile() && source.getName().endsWith(JAR)) {
                 scanJarTags(source, modId);
             }
         }
     }
 
     public static void scanConfigTags() {
-        scanConfigItemTag(new File(CONFIG, ITEM_DIR));
-        scanConfigFluidTag(new File(CONFIG, FLUID_DIR));
-        scanConfigBlockTag(new File(CONFIG, BLOCK_DIR));
-    }
-
-    private static void scanConfigItemTag(File directory) {
-        if (!isValidDirectory(directory)) {
-            return;
-        }
-        scanConfigTagDirectory(directory, TagType.ITEM);
-    }
-
-    private static void scanConfigFluidTag(File directory) {
-        if (!isValidDirectory(directory)) {
-            return;
-        }
-        scanConfigTagDirectory(directory, TagType.FLUID);
-    }
-
-    private static void scanConfigBlockTag(File directory) {
-        if (!isValidDirectory(directory)) {
-            return;
-        }
-        scanConfigTagDirectory(directory, TagType.BLOCK);
+        scanConfigTagDirectory(new File(CONFIG, ITEM_DIR), TagType.ITEM);
+        scanConfigTagDirectory(new File(CONFIG, FLUID_DIR), TagType.FLUID);
+        scanConfigTagDirectory(new File(CONFIG, BLOCK_DIR), TagType.BLOCK);
     }
 
     private static void scanConfigTagDirectory(File directory, TagType tagType) {
@@ -226,8 +207,8 @@ public final class TagLoader {
                 var entry = entries.nextElement();
                 var entryName = entry.getName();
 
-                if (entryName.startsWith("data/tags/") && entryName.endsWith(".json")) {
-                    var parts = entryName.split("/");
+                if (entryName.startsWith(DATA_TAGS_PREFIX) && entryName.endsWith(JSON)) {
+                    var parts = entryName.split(SLASH);
                     if (parts.length >= 4) {
                         var typeStr = parts[2];
                         var type = TagType.getType(typeStr);
@@ -501,13 +482,13 @@ public final class TagLoader {
             var subPath = new StringBuilder();
             for (int i = 4; i < parts.length - 1; i++) {
                 if (subPath.length() > 0) {
-                    subPath.append("/");
+                    subPath.append(SLASH);
                 }
                 subPath.append(parts[i]);
             }
 
             if (subPath.length() > 0) {
-                tagName = namespace + COLON + subPath + "/" + tagName;
+                tagName = namespace + COLON + subPath + SLASH + tagName;
             } else {
                 tagName = namespace + COLON + tagName;
             }

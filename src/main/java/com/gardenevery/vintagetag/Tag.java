@@ -1,6 +1,7 @@
 package com.gardenevery.vintagetag;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 import javax.annotation.Nonnull;
 
@@ -21,7 +22,7 @@ final class Tag<T> {
         if (tags == null || tags.isEmpty()) {
             return Collections.emptySet();
         }
-        return Collections.unmodifiableSet(tags);
+        return new HashSet<>(tags);
     }
 
     @Nonnull
@@ -31,17 +32,17 @@ final class Tag<T> {
         if (keys == null || keys.isEmpty()) {
             return Collections.emptySet();
         }
-        return Collections.unmodifiableSet(keys);
+        return new HashSet<>(keys);
     }
 
     @Nonnull
     public Set<String> getAllTag() {
-        return tagToKeys.isEmpty() ? Collections.emptySet() : Collections.unmodifiableSet(tagToKeys.keySet());
+        return tagToKeys.isEmpty() ? Collections.emptySet() : new HashSet<>(tagToKeys.keySet());
     }
 
     @Nonnull
     public Set<T> getAllKey() {
-        return keyToTags.isEmpty() ? Collections.emptySet() : Collections.unmodifiableSet(keyToTags.keySet());
+        return keyToTags.isEmpty() ? Collections.emptySet() : new HashSet<>(keyToTags.keySet());
     }
 
     public boolean hasTag(@Nonnull String tagName, @Nonnull T key) {

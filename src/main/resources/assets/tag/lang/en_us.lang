@@ -1,22 +1,30 @@
-tag.command.nopermission=§cYou do not have permission to use this command.
-tag.command.statistics.title=§6=== Tag Statistics ===
-tag.command.statistics.items=§aItem Tags: §f%s §7Entries: §f%s (§f%s §7unique items)
-tag.command.statistics.fluids=§bFluid Tags: §f%s §7Entries: §f%s (§f%s §7unique fluids)
-tag.command.statistics.blocks=§eBlock Tags: §f%s §7Entries: §f%s (§f%s §7unique blocks)
-tag.command.statistics.total=§6Total Tags: §f%s §7Total Entries: §f%s (§f%s §7unique elements)
+# Command
+tag.command.no_permission=§cYou do not have permission to use this command.
+
+tag.command.statistics.title=§6=== §fTag Statistics §6===
+tag.command.statistics.items=§aItem Tags: %s    Associations: %s
+tag.command.statistics.fluids=§bFluid Tags: %s    Associations: %s
+tag.command.statistics.blocks=§eBlock Tags: %s    Associations: %s
+tag.command.statistics.total=§6Total: %s    Associations: %s
+
 tag.command.help.title=§6=== Tag Command Help ===
-tag.command.help.info=§b/tag info §7- Display tag statistics (requires permission level 1)
-tag.command.help.reload=§b/tag reload §7- Reload tag (requires permission level 2)
-tag.command.reload.success=§aReloaded tag
+tag.command.help.info=§b/tag info §f- §fShow tag statistics (§eRequires permission level 1§f)
+tag.command.help.reload=§b/tag reload §f- §fReload all tags (§eRequires permission level 2§f)
 
-tag.tooltip.hold_shift=Hold Shift to show tags
+tag.command.reload.success.time=§aTags reloaded successfully in §e%1$sms§a（§e%2$.2f seconds§a）
 
+# Tooltip
+tag.tooltip.hold_shift=Hold §eSHIFT§7 for tags.
+
+# Config
 tag.config.title=§6Tag Mod Configuration
-tag.config.ore_sync=Sync Ore Dictionary Entries
-tag.config.ore_sync.tooltip=Enable Ore Dictionary synchronization feature.
-tag.config.enable_mod_scanner=Load Tags from Mods
-tag.config.enable_mod_scanner.tooltip=Enable loading tags from within mods.
-tag.config.enable_config_scanner=Load Tags from Config
-tag.config.enable_config_scanner.tooltip=Enable loading tags from config folder.
+tag.config.ore_sync=OreDict to Tag Sync
+tag.config.ore_sync.tooltip=Synchronize Forge Ore Dictionary entries to item tags and refresh recipes.
+tag.config.enable_mod_scanner=Enable Mod Tag Scanner
+tag.config.enable_mod_scanner.tooltip=Load tag definitions (.json) from mod JAR files.
+tag.config.enable_config_scanner=Enable Config Tag Scanner
+tag.config.enable_config_scanner.tooltip=Load tag definitions (.json) from the config/tags folder.
 tag.config.enable_tooltip=Enable Tag Tooltips
-tag.config.enable_tooltip.tooltip=Enable the tag tooltip display feature.
+tag.config.enable_tooltip.tooltip=Show tags in item tooltips when Shift is held.
+tag.config.enable_sync_to_oredict=Sync Item Tags to Ore Dictionary
+tag.config.enable_sync_to_oredict.tooltip=Add item tags as entries in the Forge Ore Dictionary.

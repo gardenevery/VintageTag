@@ -109,45 +109,6 @@ public final class TagHelper {
     }
 
     /**
-     * Get all items in the tag system (items that have at least one tag)
-     */
-    public static Set<ItemStack> allItemElement() {
-        Set<ItemKey> keys = TagManager.ITEM.getAllKey();
-        if (keys.isEmpty()) {
-            return Collections.emptySet();
-        }
-
-        Set<ItemStack> result = new ObjectOpenHashSet<>();
-        for (var key : keys) {
-            result.add(key.toElement());
-        }
-        return Collections.unmodifiableSet(result);
-    }
-
-    /**
-     * Get all fluids in the tag system (fluids that have at least one tag)
-     */
-    public static Set<FluidStack> allFluidElement() {
-        Set<Fluid> fluids = TagManager.FLUID.getAllKey();
-        if (fluids.isEmpty()) {
-            return Collections.emptySet();
-        }
-
-        Set<FluidStack> result = new ObjectOpenHashSet<>();
-        for (var fluid : fluids) {
-            result.add(new FluidStack(fluid, 1000));
-        }
-        return Collections.unmodifiableSet(result);
-    }
-
-    /**
-     * Get all blocks in the tag system (blocks that have at least one tag)
-     */
-    public static Set<Block> allBlockElement() {
-        return TagManager.BLOCK.getAllKey();
-    }
-
-    /**
      * Check if an item has the specified tag
      */
     public static boolean hasTag(@Nullable String tagName, @Nullable ItemStack stack) {

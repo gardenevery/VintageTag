@@ -13,6 +13,7 @@ import com.github.bsideup.jabel.Desugar;
 import io.netty.buffer.ByteBuf;
 
 import net.minecraft.block.Block;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidRegistry;
@@ -24,13 +25,10 @@ import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
 import net.minecraftforge.fml.common.network.simpleimpl.SimpleNetworkWrapper;
 import net.minecraftforge.fml.relauncher.Side;
 
-public final class TagSync {
+final class TagSync {
 
     public static SimpleNetworkWrapper NETWORK;
-
-    private static final int MAX_TAG_COUNT = 50000;
-    private static final int MAX_ENTRY_COUNT = 50000;
-    private static final int MAX_STRING_LENGTH = 65536;
+    private static final int MAX_PACKET_SIZE = 2 * 1024 * 1024; // 2MB
 
     public enum SyncType {
         NONE,
@@ -120,8 +118,8 @@ public final class TagSync {
     public static class EventHandler {
         @SubscribeEvent
         public void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
-            if (event.player instanceof net.minecraft.entity.player.EntityPlayerMP) {
-                TagSync.sync((net.minecraft.entity.player.EntityPlayerMP) event.player);
+            if (event.player instanceof EntityPlayerMP) {
+                TagSync.sync((EntityPlayerMP) event.player);
             }
         }
     }
@@ -139,6 +137,11 @@ public final class TagSync {
 
         @Override
         public void fromBytes(ByteBuf buf) {
+            int totalSize = buf.readableBytes();
+            if (totalSize > MAX_PACKET_SIZE) {
+                throw new IllegalArgumentException("Packet too large: " + totalSize + " bytes, max allowed: " + MAX_PACKET_SIZE);
+            }
+
             int st = buf.readUnsignedByte();
             if (st < 0 || st >= SyncType.values().length) {
                 syncType = SyncType.NONE;
@@ -147,7 +150,7 @@ public final class TagSync {
             }
 
             int itemTagCount = buf.readInt();
-            if (itemTagCount < 0 || itemTagCount > MAX_TAG_COUNT) {
+            if (itemTagCount < 0) {
                 throw new IllegalArgumentException("Invalid itemTagCount: " + itemTagCount);
             }
             tagData = new TagData();
@@ -155,7 +158,7 @@ public final class TagSync {
             for (int i = 0; i < itemTagCount; i++) {
                 var tagName = readString(buf);
                 int entryCount = buf.readInt();
-                if (entryCount < 0 || entryCount > MAX_ENTRY_COUNT) {
+                if (entryCount < 0) {
                     throw new IllegalArgumentException("Invalid item entry count: " + entryCount);
                 }
                 List<ItemEntry> entries = new ArrayList<>(entryCount);
@@ -168,14 +171,14 @@ public final class TagSync {
             }
 
             int fluidTagCount = buf.readInt();
-            if (fluidTagCount < 0 || fluidTagCount > MAX_TAG_COUNT) {
+            if (fluidTagCount < 0) {
                 throw new IllegalArgumentException("Invalid fluidTagCount: " + fluidTagCount);
             }
             tagData.fluidTags = new HashMap<>(fluidTagCount);
             for (int i = 0; i < fluidTagCount; i++) {
                 var tagName = readString(buf);
                 int fluidCount = buf.readInt();
-                if (fluidCount < 0 || fluidCount > MAX_ENTRY_COUNT) {
+                if (fluidCount < 0) {
                     throw new IllegalArgumentException("Invalid fluid count: " + fluidCount);
                 }
                 List<String> fluids = new ArrayList<>(fluidCount);
@@ -186,14 +189,14 @@ public final class TagSync {
             }
 
             int blockTagCount = buf.readInt();
-            if (blockTagCount < 0 || blockTagCount > MAX_TAG_COUNT) {
+            if (blockTagCount < 0) {
                 throw new IllegalArgumentException("Invalid blockTagCount: " + blockTagCount);
             }
             tagData.blockTags = new HashMap<>(blockTagCount);
             for (int i = 0; i < blockTagCount; i++) {
                 var tagName = readString(buf);
                 int blockCount = buf.readInt();
-                if (blockCount < 0 || blockCount > MAX_ENTRY_COUNT) {
+                if (blockCount < 0) {
                     throw new IllegalArgumentException("Invalid block count: " + blockCount);
                 }
                 List<String> blocks = new ArrayList<>(blockCount);
@@ -206,42 +209,59 @@ public final class TagSync {
 
         @Override
         public void toBytes(ByteBuf buf) {
-            buf.writeByte(syncType.ordinal());
+            var tempBuf = buf.alloc().buffer();
+            try {
+                tempBuf.writeByte(syncType.ordinal());
 
-            buf.writeInt(tagData.itemTags.size());
-            for (Map.Entry<String, List<ItemEntry>> entry : tagData.itemTags.entrySet()) {
-                writeString(buf, entry.getKey());
-                buf.writeInt(entry.getValue().size());
-                for (var itemEntry : entry.getValue()) {
-                    writeString(buf, itemEntry.itemId);
-                    buf.writeInt(itemEntry.metadata);
+                tempBuf.writeInt(tagData.itemTags.size());
+                for (Map.Entry<String, List<ItemEntry>> entry : tagData.itemTags.entrySet()) {
+                    writeString(tempBuf, entry.getKey());
+                    tempBuf.writeInt(entry.getValue().size());
+                    for (var itemEntry : entry.getValue()) {
+                        writeString(tempBuf, itemEntry.itemId);
+                        tempBuf.writeInt(itemEntry.metadata);
+                    }
                 }
-            }
 
-            buf.writeInt(tagData.fluidTags.size());
-            for (Map.Entry<String, List<String>> entry : tagData.fluidTags.entrySet()) {
-                writeString(buf, entry.getKey());
-                buf.writeInt(entry.getValue().size());
-                for (var fluidName : entry.getValue()) {
-                    writeString(buf, fluidName);
+                tempBuf.writeInt(tagData.fluidTags.size());
+                for (Map.Entry<String, List<String>> entry : tagData.fluidTags.entrySet()) {
+                    writeString(tempBuf, entry.getKey());
+                    tempBuf.writeInt(entry.getValue().size());
+                    for (var fluidName : entry.getValue()) {
+                        writeString(tempBuf, fluidName);
+                    }
                 }
-            }
 
-            buf.writeInt(tagData.blockTags.size());
-            for (Map.Entry<String, List<String>> entry : tagData.blockTags.entrySet()) {
-                writeString(buf, entry.getKey());
-                buf.writeInt(entry.getValue().size());
-                for (var blockName : entry.getValue()) {
-                    writeString(buf, blockName);
+                tempBuf.writeInt(tagData.blockTags.size());
+                for (Map.Entry<String, List<String>> entry : tagData.blockTags.entrySet()) {
+                    writeString(tempBuf, entry.getKey());
+                    tempBuf.writeInt(entry.getValue().size());
+                    for (var blockName : entry.getValue()) {
+                        writeString(tempBuf, blockName);
+                    }
                 }
+
+                int totalSize = tempBuf.readableBytes();
+                if (totalSize > MAX_PACKET_SIZE) {
+                    throw new IllegalStateException("Tag sync packet too large: " + totalSize + " bytes, max allowed: " + MAX_PACKET_SIZE);
+                }
+
+                buf.writeBytes(tempBuf);
+            } finally {
+                tempBuf.release();
             }
         }
 
         private String readString(ByteBuf buf) {
             int length = buf.readInt();
-            if (length < 0 || length > MAX_STRING_LENGTH) {
-                throw new IllegalArgumentException("Invalid string length: " + length);
+            if (length < 0) {
+                throw new IllegalArgumentException("Negative string length: " + length);
             }
+
+            if (buf.readableBytes() < length) {
+                throw new IllegalArgumentException("Not enough bytes for string: need " + length + ", have " + buf.readableBytes());
+            }
+
             byte[] bytes = new byte[length];
             buf.readBytes(bytes);
             return new String(bytes, StandardCharsets.UTF_8);
