@@ -75,7 +75,7 @@ final class TagSync {
         var data = new TagData();
 
         data.itemTags = new HashMap<>();
-        for (var tagName : TagManager.ITEM.getAllTag()) {
+        for (var tagName : TagManager.ITEM.getAllTags()) {
             Set<ItemKey> keys = TagManager.ITEM.getKey(tagName);
             List<ItemEntry> entries = new ArrayList<>();
             for (var key : keys) {
@@ -88,7 +88,7 @@ final class TagSync {
         }
 
         data.fluidTags = new HashMap<>();
-        for (var tagName : TagManager.FLUID.getAllTag()) {
+        for (var tagName : TagManager.FLUID.getAllTags()) {
             Set<Fluid> fluids = TagManager.FLUID.getKey(tagName);
             List<String> fluidNames = new ArrayList<>();
             for (var fluid : fluids) {
@@ -101,7 +101,7 @@ final class TagSync {
         }
 
         data.blockTags = new HashMap<>();
-        for (var tagName : TagManager.BLOCK.getAllTag()) {
+        for (var tagName : TagManager.BLOCK.getAllTags()) {
             Set<Block> blocks = TagManager.BLOCK.getKey(tagName);
             List<String> blockNames = new ArrayList<>();
             for (var block : blocks) {

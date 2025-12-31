@@ -36,13 +36,8 @@ final class Tag<T> {
     }
 
     @Nonnull
-    public Set<String> getAllTag() {
+    public Set<String> getAllTags() {
         return tagToKeys.isEmpty() ? Collections.emptySet() : new HashSet<>(tagToKeys.keySet());
-    }
-
-    @Nonnull
-    public Set<T> getAllKey() {
-        return keyToTags.isEmpty() ? Collections.emptySet() : new HashSet<>(keyToTags.keySet());
     }
 
     public boolean hasTag(@Nonnull String tagName, @Nonnull T key) {
@@ -55,12 +50,12 @@ final class Tag<T> {
         return tags != null && tagNames.stream().anyMatch(tags::contains);
     }
 
-    public void createTag(@Nonnull String tagName, @Nonnull T key) {
+    public void create(@Nonnull String tagName, @Nonnull T key) {
         tagToKeys.computeIfAbsent(tagName, k -> new ObjectOpenHashSet<>()).add(key);
         keyToTags.computeIfAbsent(key, k -> new ObjectOpenHashSet<>()).add(tagName);
     }
 
-    public void createTag(@Nonnull String tagName, @Nonnull Set<T> keys) {
+    public void create(@Nonnull String tagName, @Nonnull Set<T> keys) {
         var keySet = tagToKeys.computeIfAbsent(tagName, k -> new ObjectOpenHashSet<>());
         keySet.addAll(keys);
         keys.forEach(key -> keyToTags.computeIfAbsent(key, k -> new ObjectOpenHashSet<>()).add(tagName));

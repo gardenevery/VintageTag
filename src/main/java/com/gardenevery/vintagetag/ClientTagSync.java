@@ -63,7 +63,7 @@ final class ClientTagSync {
                         }
                     }
                     if (!keys.isEmpty()) {
-                        TagManager.ITEM.createTag(entry.getKey(), keys);
+                        TagManager.ITEM.create(entry.getKey(), keys);
                     }
                 }
 
@@ -76,7 +76,7 @@ final class ClientTagSync {
                         }
                     }
                     if (!fluids.isEmpty()) {
-                        TagManager.FLUID.createTag(entry.getKey(), fluids);
+                        TagManager.FLUID.create(entry.getKey(), fluids);
                     }
                 }
 
@@ -94,7 +94,7 @@ final class ClientTagSync {
                         }
                     }
                     if (!blocks.isEmpty()) {
-                        TagManager.BLOCK.createTag(entry.getKey(), blocks);
+                        TagManager.BLOCK.create(entry.getKey(), blocks);
                     }
                 }
             }

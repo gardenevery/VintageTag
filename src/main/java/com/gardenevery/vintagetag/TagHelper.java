@@ -58,9 +58,9 @@ public final class TagHelper {
      */
     public static Set<String> allTags(@Nonnull TagType type) {
         return switch (type) {
-            case ITEM -> TagManager.ITEM.getAllTag();
-            case FLUID -> TagManager.FLUID.getAllTag();
-            case BLOCK -> TagManager.BLOCK.getAllTag();
+            case ITEM -> TagManager.ITEM.getAllTags();
+            case FLUID -> TagManager.FLUID.getAllTags();
+            case BLOCK -> TagManager.BLOCK.getAllTags();
         };
     }
 

@@ -38,7 +38,7 @@ final class OreSync {
                         int synced = syncWildcardEntry(oreStack.getItem(), oreName);
                         totalEntries += synced;
                     } else {
-                        createTag(oreName, oreStack);
+                        create(oreName, oreStack);
                         totalEntries++;
                     }
                 } catch (Exception e) {
@@ -55,7 +55,7 @@ final class OreSync {
             try {
                 var specificStack = new ItemStack(item, 1, meta);
                 if (!specificStack.isEmpty() && specificStack.getItem() == item) {
-                    createTag(tagName, specificStack);
+                    create(tagName, specificStack);
                     synced++;
                 }
             } catch (Exception e) {
@@ -65,7 +65,7 @@ final class OreSync {
 
         if (synced == 0) {
             var wildcardStack = new ItemStack(item, 1, OreDictionary.WILDCARD_VALUE);
-            createTag(tagName, wildcardStack);
+            create(tagName, wildcardStack);
             synced = 1;
         }
         return synced;
@@ -77,7 +77,7 @@ final class OreSync {
         int tags = 0;
         int items = 0;
 
-        for (var tagName : TagManager.ITEM.getAllTag()) {
+        for (var tagName : TagManager.ITEM.getAllTags()) {
             if (tagName == null || tagName.isEmpty()) {
                 continue;
             }
@@ -106,12 +106,12 @@ final class OreSync {
         LOGGER.info("=== Sync completed: {} tags, {} items ===", tags, items);
     }
 
-    private static void createTag(String tagName, ItemStack stack) {
+    private static void create(String tagName, ItemStack stack) {
         if (tagName == null || tagName.isEmpty() || stack == null || stack.isEmpty()) {
             return;
         }
 
         var key = ItemKey.toKey(stack);
-        TagManager.ITEM.createTag(tagName, key);
+        TagManager.ITEM.create(tagName, key);
     }
 }

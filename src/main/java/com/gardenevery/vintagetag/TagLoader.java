@@ -8,11 +8,9 @@ import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.Deque;
-import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
-import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import javax.annotation.Nonnull;
 
@@ -27,6 +25,8 @@ import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
+
+import it.unimi.dsi.fastutil.objects.Object2ReferenceOpenHashMap;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
@@ -99,6 +99,8 @@ final class TagLoader {
     private static final Gson GSON = new Gson();
     private static final Pattern VALID_FILENAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]+\\.json$", Pattern.CASE_INSENSITIVE);
     private static final Logger LOGGER = LogManager.getLogger("VintageTag");
+    private static final Object2ReferenceOpenHashMap<File, String> CACHED_TAG_JARS = new Object2ReferenceOpenHashMap<>();
+    private static boolean TAG_JAR_SCAN_DONE = false;
 
     private static final String CONFIG = "config";
     private static final String DATA_TAGS_PREFIX = "data/tags/";
@@ -116,17 +118,25 @@ final class TagLoader {
     private static final String STRING_EMPTY = "";
 
     public static void scanModTags() {
-        for (var mod : Loader.instance().getModList()) {
-            var source = mod.getSource();
-            var modId = mod.getModId();
+        if (!TAG_JAR_SCAN_DONE) {
+            for (var mod : Loader.instance().getModList()) {
+                var source = mod.getSource();
+                var modId = mod.getModId();
 
-            if (source == null) {
-                continue;
+                if (source == null) {
+                    continue;
+                }
+                if (source.isFile() && source.getName().endsWith(JAR)) {
+                    if (jarHasTagsDir(source)) {
+                        CACHED_TAG_JARS.put(source, modId);
+                    }
+                }
             }
+            TAG_JAR_SCAN_DONE = true;
+        }
 
-            if (source.isFile() && source.getName().endsWith(JAR)) {
-                scanJarTags(source, modId);
-            }
+        for (var entry : CACHED_TAG_JARS.entrySet()) {
+            scanJarTags(entry.getKey(), entry.getValue());
         }
     }
 
@@ -134,6 +144,22 @@ final class TagLoader {
         scanConfigTagDirectory(new File(CONFIG, ITEM_DIR), TagType.ITEM);
         scanConfigTagDirectory(new File(CONFIG, FLUID_DIR), TagType.FLUID);
         scanConfigTagDirectory(new File(CONFIG, BLOCK_DIR), TagType.BLOCK);
+    }
+
+    private static boolean jarHasTagsDir(File jarFile) {
+        try (var zip = new ZipFile(jarFile)) {
+            var entries = zip.entries();
+            while (entries.hasMoreElements()) {
+                var entry = entries.nextElement();
+                var entryName = entry.getName();
+                if (entryName.equals(DATA_TAGS_PREFIX) || entryName.startsWith(DATA_TAGS_PREFIX) && entry.isDirectory()) {
+                    return true;
+                }
+            }
+        } catch (Exception ignored) {
+            //
+        }
+        return false;
     }
 
     private static void scanConfigTagDirectory(File directory, TagType tagType) {
@@ -201,7 +227,7 @@ final class TagLoader {
 
     private static void scanJarTags(File jarFile, String modId) {
         try (var zip = new ZipFile(jarFile)) {
-            Enumeration<? extends ZipEntry> entries = zip.entries();
+            var entries = zip.entries();
 
             while (entries.hasMoreElements()) {
                 var entry = entries.nextElement();
@@ -428,14 +454,14 @@ final class TagLoader {
             case ADD -> {
                 Set<ItemKey> keys = ItemKey.toKeys(stacks);
                 if (!keys.isEmpty()) {
-                    TagManager.ITEM.createTag(tagName, keys);
+                    TagManager.ITEM.create(tagName, keys);
                 }
             }
             case REPLACE -> {
                 TagManager.ITEM.remove(tagName);
                 Set<ItemKey> keys = ItemKey.toKeys(stacks);
                 if (!keys.isEmpty()) {
-                    TagManager.ITEM.createTag(tagName, keys);
+                    TagManager.ITEM.create(tagName, keys);
                 }
             }
         }
@@ -445,13 +471,13 @@ final class TagLoader {
         switch (operation) {
             case ADD -> {
                 if (fluids != null && !fluids.isEmpty()) {
-                    TagManager.FLUID.createTag(tagName, fluids);
+                    TagManager.FLUID.create(tagName, fluids);
                 }
             }
             case REPLACE -> {
                 TagManager.FLUID.remove(tagName);
                 if (fluids != null && !fluids.isEmpty()) {
-                    TagManager.FLUID.createTag(tagName, fluids);
+                    TagManager.FLUID.create(tagName, fluids);
                 }
             }
         }
@@ -461,13 +487,13 @@ final class TagLoader {
         switch (operation) {
             case ADD -> {
                 if (blocks != null && !blocks.isEmpty()) {
-                    TagManager.BLOCK.createTag(tagName, blocks);
+                    TagManager.BLOCK.create(tagName, blocks);
                 }
             }
             case REPLACE -> {
                 TagManager.BLOCK.remove(tagName);
                 if (blocks != null && !blocks.isEmpty()) {
-                    TagManager.BLOCK.createTag(tagName, blocks);
+                    TagManager.BLOCK.create(tagName, blocks);
                 }
             }
         }

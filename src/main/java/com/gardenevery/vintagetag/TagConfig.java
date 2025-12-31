@@ -24,7 +24,7 @@ public class TagConfig {
     public static boolean enableTooltip = true;
 
     @Config.LangKey("tag.config.enable_sync_to_oredict")
-    public static boolean enableSyncToOreDict = true;
+    public static boolean enableSyncToOreDict = false;
 
     @Mod.EventBusSubscriber(modid = Tags.MOD_ID)
     private static class EventHandler {
