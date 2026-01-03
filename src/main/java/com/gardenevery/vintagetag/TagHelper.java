@@ -22,35 +22,35 @@ public final class TagHelper {
      * Get all tags associated with an item
      */
     public static Set<String> tags(@Nullable ItemStack stack) {
-        return (stack == null || stack.isEmpty()) ? Collections.emptySet() : TagManager.ITEM.getTag(ItemKey.toKey(stack));
+        return (stack == null || stack.isEmpty()) ? Collections.emptySet() : TagManager.ITEM.getTags(ItemKey.toKey(stack));
     }
 
     /**
      * Get all tags associated with a fluid
      */
     public static Set<String> tags(@Nullable FluidStack stack) {
-        return (stack == null || stack.getFluid() == null) ? Collections.emptySet() : TagManager.FLUID.getTag(stack.getFluid());
+        return (stack == null || stack.getFluid() == null) ? Collections.emptySet() : TagManager.FLUID.getTags(stack.getFluid());
     }
 
     /**
      * Get all tags associated with a block
      */
     public static Set<String> tags(@Nullable Block block) {
-        return block == null ? Collections.emptySet() : TagManager.BLOCK.getTag(block);
+        return block == null ? Collections.emptySet() : TagManager.BLOCK.getTags(block);
     }
 
     /**
      * Get all tags associated with a block state
      */
     public static Set<String> tags(@Nullable IBlockState blockState) {
-        return blockState == null ? Collections.emptySet() : TagManager.BLOCK.getTag(blockState.getBlock());
+        return blockState == null ? Collections.emptySet() : TagManager.BLOCK.getTags(blockState.getBlock());
     }
 
     /**
      * Get all tags associated with a tileentity
      */
     public static Set<String> tags(@Nullable TileEntity blockEntity) {
-        return blockEntity == null ? Collections.emptySet() : TagManager.BLOCK.getTag(getBlock(blockEntity));
+        return blockEntity == null ? Collections.emptySet() : TagManager.BLOCK.getTags(getBlock(blockEntity));
     }
 
     /**
@@ -58,9 +58,9 @@ public final class TagHelper {
      */
     public static Set<String> allTags(@Nonnull TagType type) {
         return switch (type) {
-            case ITEM -> TagManager.ITEM.getAllTags();
-            case FLUID -> TagManager.FLUID.getAllTags();
-            case BLOCK -> TagManager.BLOCK.getAllTags();
+            case ITEM -> TagManager.ITEM.allTags();
+            case FLUID -> TagManager.FLUID.allTags();
+            case BLOCK -> TagManager.BLOCK.allTags();
         };
     }
 
@@ -72,7 +72,7 @@ public final class TagHelper {
             return Collections.emptySet();
         }
 
-        Set<ItemKey> keys = TagManager.ITEM.getKey(tagName);
+        Set<ItemKey> keys = TagManager.ITEM.getKeys(tagName);
         Set<ItemStack> result = new ObjectOpenHashSet<>();
 
         for (var key : keys) {
@@ -89,7 +89,7 @@ public final class TagHelper {
             return Collections.emptySet();
         }
 
-        Set<Fluid> fluids = TagManager.FLUID.getKey(tagName);
+        Set<Fluid> fluids = TagManager.FLUID.getKeys(tagName);
         Set<FluidStack> result = new ObjectOpenHashSet<>();
 
         for (var fluid : fluids) {
@@ -105,7 +105,7 @@ public final class TagHelper {
         if (tagInvalid(tagName)) {
             return Collections.emptySet();
         }
-        return TagManager.BLOCK.getKey(tagName);
+        return TagManager.BLOCK.getKeys(tagName);
     }
 
     /**
@@ -221,9 +221,9 @@ public final class TagHelper {
         }
 
         return switch (type) {
-            case ITEM -> TagManager.ITEM.doesTagExist(tagName);
-            case FLUID -> TagManager.FLUID.doesTagExist(tagName);
-            case BLOCK -> TagManager.BLOCK.doesTagExist(tagName);
+            case ITEM -> TagManager.ITEM.exists(tagName);
+            case FLUID -> TagManager.FLUID.exists(tagName);
+            case BLOCK -> TagManager.BLOCK.exists(tagName);
         };
     }
 
@@ -234,7 +234,7 @@ public final class TagHelper {
         if (tagInvalid(tagName)) {
             return false;
         }
-        return TagManager.ITEM.doesTagExist(tagName) || TagManager.FLUID.doesTagExist(tagName) || TagManager.BLOCK.doesTagExist(tagName);
+        return TagManager.ITEM.exists(tagName) || TagManager.FLUID.exists(tagName) || TagManager.BLOCK.exists(tagName);
     }
 
     /**
@@ -295,9 +295,9 @@ public final class TagHelper {
      */
     public static int tagCount(@Nonnull TagType type) {
         return switch (type) {
-            case ITEM -> TagManager.ITEM.getTagCount();
-            case FLUID -> TagManager.FLUID.getTagCount();
-            case BLOCK -> TagManager.BLOCK.getTagCount();
+            case ITEM -> TagManager.ITEM.tagCount();
+            case FLUID -> TagManager.FLUID.tagCount();
+            case BLOCK -> TagManager.BLOCK.tagCount();
         };
     }
 
@@ -305,7 +305,7 @@ public final class TagHelper {
      * Get the total number of tags across all types
      */
     public static int tagCount() {
-        return TagManager.ITEM.getTagCount() + TagManager.FLUID.getTagCount() + TagManager.BLOCK.getTagCount();
+        return TagManager.ITEM.tagCount() + TagManager.FLUID.tagCount() + TagManager.BLOCK.tagCount();
     }
 
     /**
@@ -314,9 +314,9 @@ public final class TagHelper {
      */
     public static int associations(@Nonnull TagType type) {
         return switch (type) {
-            case ITEM -> TagManager.ITEM.getAssociations();
-            case FLUID -> TagManager.FLUID.getAssociations();
-            case BLOCK -> TagManager.BLOCK.getAssociations();
+            case ITEM -> TagManager.ITEM.associationCount();
+            case FLUID -> TagManager.FLUID.associationCount();
+            case BLOCK -> TagManager.BLOCK.associationCount();
         };
     }
 
@@ -324,7 +324,7 @@ public final class TagHelper {
      * Get the total number of associations across all types
      */
     public static int associations() {
-        return TagManager.ITEM.getAssociations() + TagManager.FLUID.getAssociations() + TagManager.BLOCK.getAssociations();
+        return TagManager.ITEM.associationCount() + TagManager.FLUID.associationCount() + TagManager.BLOCK.associationCount();
     }
 
     /**
@@ -333,9 +333,9 @@ public final class TagHelper {
      */
     public static int keyCount(@Nonnull TagType type) {
         return switch (type) {
-            case ITEM -> TagManager.ITEM.getKeyCount();
-            case FLUID -> TagManager.FLUID.getKeyCount();
-            case BLOCK -> TagManager.BLOCK.getKeyCount();
+            case ITEM -> TagManager.ITEM.keyCount();
+            case FLUID -> TagManager.FLUID.keyCount();
+            case BLOCK -> TagManager.BLOCK.keyCount();
         };
     }
 
@@ -343,7 +343,7 @@ public final class TagHelper {
      * Get the total number of unique keys across all types
      */
     public static int keyCount() {
-        return TagManager.ITEM.getKeyCount() + TagManager.FLUID.getKeyCount() + TagManager.BLOCK.getKeyCount();
+        return TagManager.ITEM.keyCount() + TagManager.FLUID.keyCount() + TagManager.BLOCK.keyCount();
     }
 
     private static Block getBlock(@Nonnull TileEntity blockEntity) {

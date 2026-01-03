@@ -18,6 +18,11 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
 import net.minecraftforge.fml.common.network.NetworkRegistry;
 
+import com.gardenevery.vintagetag.TagSync.TagDataSyncMessage;
+import com.gardenevery.vintagetag.TagSync.ItemEntry;
+import com.gardenevery.vintagetag.TagSync.ServerSyncMessage;
+import com.gardenevery.vintagetag.TagSync.SyncType;
+
 @SideOnly(Side.CLIENT)
 final class ClientTagSync {
 
@@ -26,30 +31,32 @@ final class ClientTagSync {
         if (TagSync.NETWORK == null) {
             TagSync.NETWORK = NetworkRegistry.INSTANCE.newSimpleChannel("TagSync");
         }
-        TagSync.NETWORK.registerMessage(ClientSyncHandler.class, TagSync.ClientSyncMessage.class, 0, Side.CLIENT);
+        TagSync.NETWORK.registerMessage(TagDataSyncHandler.class, TagDataSyncMessage.class, 0, Side.CLIENT);
+        TagSync.NETWORK.registerMessage(ServerSyncHandler.class, ServerSyncMessage.class, 1, Side.CLIENT);
+//        TagSync.NETWORK.registerMessage(ClientSyncHandler.class, ClientSyncMessage.class, 1, Side.SERVER);
     }
 
     @SideOnly(Side.CLIENT)
-    public static class ClientSyncHandler implements IMessageHandler<TagSync.ClientSyncMessage, IMessage> {
+    public static class TagDataSyncHandler implements IMessageHandler<TagDataSyncMessage, IMessage> {
         @Override
         @SideOnly(Side.CLIENT)
-        public IMessage onMessage(TagSync.ClientSyncMessage message, MessageContext ctx) {
+        public IMessage onMessage(TagDataSyncMessage message, MessageContext ctx) {
             Minecraft.getMinecraft().addScheduledTask(() -> processClientSync(message));
             return null;
         }
 
         @SideOnly(Side.CLIENT)
-        private void processClientSync(TagSync.ClientSyncMessage message) {
+        private void processClientSync(TagDataSyncMessage message) {
             if (message == null || message.tagData == null) {
                 return;
             }
 
-            if (message.syncType == TagSync.SyncType.FULL) {
-                TagManager.ITEM.clean();
-                TagManager.FLUID.clean();
-                TagManager.BLOCK.clean();
+            if (message.syncType == SyncType.FULL) {
+                TagManager.ITEM.clear();
+                TagManager.FLUID.clear();
+                TagManager.BLOCK.clear();
 
-                for (Map.Entry<String, List<TagSync.ItemEntry>> entry : message.tagData.itemTags.entrySet()) {
+                for (Map.Entry<String, List<ItemEntry>> entry : message.tagData.itemTags.entrySet()) {
                     Set<ItemKey> keys = new HashSet<>();
                     for (var itemEntry : entry.getValue()) {
                         try {
@@ -98,6 +105,21 @@ final class ClientTagSync {
                     }
                 }
             }
+        }
+    }
+
+    @SideOnly(Side.CLIENT)
+    public static class ServerSyncHandler implements IMessageHandler<ServerSyncMessage, IMessage> {
+        @Override
+        @SideOnly(Side.CLIENT)
+        public IMessage onMessage(ServerSyncMessage message, MessageContext ctx) {
+            Minecraft.getMinecraft().addScheduledTask(this::processOreDictionarySync);
+            return null;
+        }
+
+        @SideOnly(Side.CLIENT)
+        private void processOreDictionarySync() {
+            OreSync.syncToOreDictionary();
         }
     }
 }

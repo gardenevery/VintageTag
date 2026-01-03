@@ -7,19 +7,15 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.oredict.OreDictionary;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 final class OreSync {
 
-    private static final Logger LOGGER = LogManager.getLogger("VintageTag");
-
     public static void oreDictionarySync() {
+
         var oreNames = OreDictionary.getOreNames();
         int totalEntries = 0;
         int failedEntries = 0;
-        LOGGER.info("=== Starting sync from OreDictionary to Tags ===");
-        LOGGER.info("Found {} OreDictionary categories", oreNames.length);
+        TagLog.info("=== Starting sync from OreDictionary to Tags ===");
+        TagLog.info("Found {} OreDictionary categories", oreNames.length);
 
         for (var oreName : oreNames) {
             if (oreName == null || oreName.isEmpty()) {
@@ -46,7 +42,7 @@ final class OreSync {
                 }
             }
         }
-        LOGGER.info("=== Sync completed: {} successful, {} failed ===", totalEntries, failedEntries);
+        TagLog.info("=== Sync completed: {} successful, {} failed ===", totalEntries, failedEntries);
     }
 
     private static int syncWildcardEntry(Item item, String tagName) {
@@ -72,17 +68,17 @@ final class OreSync {
     }
 
     public static void syncToOreDictionary() {
-        LOGGER.info("=== Starting sync from Tags to OreDictionary ===");
+        TagLog.info("=== Starting sync from Tags to OreDictionary ===");
 
         int tags = 0;
         int items = 0;
 
-        for (var tagName : TagManager.ITEM.getAllTags()) {
+        for (var tagName : TagManager.ITEM.allTags()) {
             if (tagName == null || tagName.isEmpty()) {
                 continue;
             }
 
-            Set<ItemKey> itemKeys = TagManager.ITEM.getKey(tagName);
+            Set<ItemKey> itemKeys = TagManager.ITEM.getKeys(tagName);
             if (itemKeys.isEmpty()) {
                 continue;
             }
@@ -103,7 +99,7 @@ final class OreSync {
         }
 
         OreDictionary.rebakeMap();
-        LOGGER.info("=== Sync completed: {} tags, {} items ===", tags, items);
+        TagLog.info("=== Sync completed: {} tags, {} items ===", tags, items);
     }
 
     private static void create(String tagName, ItemStack stack) {

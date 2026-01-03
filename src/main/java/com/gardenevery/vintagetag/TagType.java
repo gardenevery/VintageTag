@@ -7,15 +7,7 @@ public enum TagType {
     FLUID("fluid"),
     BLOCK("block");
 
-    private final String name;
-
-    TagType(String name) {
-        this.name = name;
-    }
-
-    public String getName() {
-        return name;
-    }
+    TagType(String name) {}
 
     @Nullable
     public static TagType getType(String name) {

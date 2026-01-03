@@ -21,15 +21,15 @@ public class TagCommand extends CommandBase {
 
     public final CommandRegistry registry = new CommandRegistry();
 
-    public static final int LEVEL0 = 0;
-    public static final int LEVEL1 = 1;
-    public static final int LEVEL2 = 2;
-    public static final int LEVEL3 = 3;
-    public static final int LEVEL4 = 4;
+    public static final int ALL = 0;
+    public static final int MODERATOR = 1;
+    public static final int GAMEMASTER = 2;
+    public static final int ADMIN = 3;
+    public static final int OWNER = 4;
 
     public TagCommand() {
-        registry.register("info", LEVEL1, this::executeInfo);
-        registry.register("reload", LEVEL2, this::executeReload);
+        registry.register("info", MODERATOR, this::executeInfo);
+        registry.register("reload", GAMEMASTER, this::executeReload);
     }
 
     @Nonnull
@@ -65,7 +65,7 @@ public class TagCommand extends CommandBase {
         return true;
     }
 
-    private void showHelp(ICommandSender sender) {
+    public void showHelp(ICommandSender sender) {
         sender.sendMessage(new TextComponentTranslation("tag.command.help.title"));
 
         for (var cmd : registry.getCommands()) {
@@ -75,7 +75,7 @@ public class TagCommand extends CommandBase {
         }
     }
 
-    private void executeInfo(MinecraftServer server, ICommandSender sender, String[] args) {
+    public void executeInfo(MinecraftServer server, ICommandSender sender, String[] args) {
         sender.sendMessage(new TextComponentTranslation("tag.command.statistics.title"));
 
         Map<String, TagType> types = new HashMap<>();
@@ -97,12 +97,12 @@ public class TagCommand extends CommandBase {
         ));
     }
 
-    private void executeReload(MinecraftServer server, ICommandSender sender, String[] args) {
+    public void executeReload(MinecraftServer server, ICommandSender sender, String[] args) {
         long startTime = System.currentTimeMillis();
 
-        TagManager.ITEM.clean();
-        TagManager.FLUID.clean();
-        TagManager.BLOCK.clean();
+        TagManager.ITEM.clear();
+        TagManager.FLUID.clear();
+        TagManager.BLOCK.clear();
 
         if (TagConfig.enableOreSync) {
             OreSync.oreDictionarySync();
@@ -116,10 +116,11 @@ public class TagCommand extends CommandBase {
             TagLoader.scanConfigTags();
         }
 
-        TagSync.sync();
+        TagSync.sync(null);
 
         if (TagConfig.enableSyncToOreDict) {
             OreSync.syncToOreDictionary();
+            TagSync.syncOreDictionary(null);
         }
 
         long endTime = System.currentTimeMillis();
@@ -128,7 +129,7 @@ public class TagCommand extends CommandBase {
         sender.sendMessage(new TextComponentTranslation("tag.command.reload.success.time", duration, duration / 1000.0));
     }
 
-    private boolean hasPermission(ICommandSender sender, int level) {
+    public boolean hasPermission(ICommandSender sender, int level) {
         return sender.canUseCommand(level, "tag");
     }
 

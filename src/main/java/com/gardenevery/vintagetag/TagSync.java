@@ -28,7 +28,7 @@ import net.minecraftforge.fml.relauncher.Side;
 final class TagSync {
 
     public static SimpleNetworkWrapper NETWORK;
-    private static final int MAX_PACKET_SIZE = 2 * 1024 * 1024; // 2MB
+    private static final int MAX_PACKET_SIZE = 2 * 1024 * 1024;
 
     public enum SyncType {
         NONE,
@@ -39,28 +39,39 @@ final class TagSync {
     public static void register() {
         NETWORK = NetworkRegistry.INSTANCE.newSimpleChannel("TagSync");
         MinecraftForge.EVENT_BUS.register(new EventHandler());
+
         NETWORK.registerMessage(
                 (message, ctx) -> null,
-                ClientSyncMessage.class,
+                TagDataSyncMessage.class,
                 0,
                 Side.CLIENT
         );
+
+        NETWORK.registerMessage(
+                (message, ctx) -> null,
+                ServerSyncMessage.class,
+                1,
+                Side.CLIENT
+        );
+
+//        NETWORK.registerMessage(
+//                (message, ctx) -> null,
+//                ClientSyncMessage.class,
+//                1,
+//                Side.SERVER
+//        );
     }
 
-    public static void sync() {
-        sync(null);
-    }
-
-    public static void sync(@Nullable net.minecraft.entity.player.EntityPlayerMP player) {
+    public static void sync(@Nullable EntityPlayerMP player) {
         if (FMLCommonHandler.instance().getMinecraftServerInstance() == null) {
             return;
         }
 
         var tagData = collectTagData();
-        var message = new ClientSyncMessage(SyncType.FULL, tagData);
+        var message = new TagDataSyncMessage(SyncType.FULL, tagData);
 
         if (player == null) {
-            for (net.minecraft.entity.player.EntityPlayerMP onlinePlayer : FMLCommonHandler.instance()
+            for (EntityPlayerMP onlinePlayer : FMLCommonHandler.instance()
                     .getMinecraftServerInstance()
                     .getPlayerList()
                     .getPlayers()) {
@@ -75,8 +86,8 @@ final class TagSync {
         var data = new TagData();
 
         data.itemTags = new HashMap<>();
-        for (var tagName : TagManager.ITEM.getAllTags()) {
-            Set<ItemKey> keys = TagManager.ITEM.getKey(tagName);
+        for (var tagName : TagManager.ITEM.allTags()) {
+            Set<ItemKey> keys = TagManager.ITEM.getKeys(tagName);
             List<ItemEntry> entries = new ArrayList<>();
             for (var key : keys) {
                 var registryName = key.item().getRegistryName();
@@ -88,8 +99,8 @@ final class TagSync {
         }
 
         data.fluidTags = new HashMap<>();
-        for (var tagName : TagManager.FLUID.getAllTags()) {
-            Set<Fluid> fluids = TagManager.FLUID.getKey(tagName);
+        for (var tagName : TagManager.FLUID.allTags()) {
+            Set<Fluid> fluids = TagManager.FLUID.getKeys(tagName);
             List<String> fluidNames = new ArrayList<>();
             for (var fluid : fluids) {
                 var fluidName = FluidRegistry.getFluidName(fluid);
@@ -101,8 +112,8 @@ final class TagSync {
         }
 
         data.blockTags = new HashMap<>();
-        for (var tagName : TagManager.BLOCK.getAllTags()) {
-            Set<Block> blocks = TagManager.BLOCK.getKey(tagName);
+        for (var tagName : TagManager.BLOCK.allTags()) {
+            Set<Block> blocks = TagManager.BLOCK.getKeys(tagName);
             List<String> blockNames = new ArrayList<>();
             for (var block : blocks) {
                 var registryName = block.getRegistryName();
@@ -115,22 +126,45 @@ final class TagSync {
         return data;
     }
 
+    public static void syncOreDictionary(@Nullable EntityPlayerMP player) {
+        if (FMLCommonHandler.instance().getMinecraftServerInstance() == null) {
+            return;
+        }
+
+        var message = new ServerSyncMessage();
+
+        if (player == null) {
+            for (var onlinePlayer : FMLCommonHandler.instance()
+                    .getMinecraftServerInstance()
+                    .getPlayerList()
+                    .getPlayers()) {
+                NETWORK.sendTo(message, onlinePlayer);
+            }
+        } else {
+            NETWORK.sendTo(message, player);
+        }
+    }
+
     public static class EventHandler {
         @SubscribeEvent
         public void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
-            if (event.player instanceof EntityPlayerMP) {
-                TagSync.sync((EntityPlayerMP) event.player);
+            if (event.player instanceof EntityPlayerMP entityPlayerMP) {
+                TagSync.sync(entityPlayerMP);
+
+                if (TagConfig.enableSyncToOreDict) {
+                    TagSync.syncOreDictionary(entityPlayerMP);
+                }
             }
         }
     }
 
-    public static class ClientSyncMessage implements IMessage {
+    public static class TagDataSyncMessage implements IMessage {
         public SyncType syncType;
         public TagData tagData;
 
-        public ClientSyncMessage() {}
+        public TagDataSyncMessage() {}
 
-        public ClientSyncMessage(SyncType syncType, TagData tagData) {
+        public TagDataSyncMessage(SyncType syncType, TagData tagData) {
             this.syncType = syncType;
             this.tagData = tagData;
         }
@@ -139,7 +173,7 @@ final class TagSync {
         public void fromBytes(ByteBuf buf) {
             int totalSize = buf.readableBytes();
             if (totalSize > MAX_PACKET_SIZE) {
-                throw new IllegalArgumentException("Packet too large: " + totalSize + " bytes, max allowed: " + MAX_PACKET_SIZE);
+                TagLog.error("Packet too large: {} bytes, max allowed: " + MAX_PACKET_SIZE, totalSize);
             }
 
             int st = buf.readUnsignedByte();
@@ -151,7 +185,7 @@ final class TagSync {
 
             int itemTagCount = buf.readInt();
             if (itemTagCount < 0) {
-                throw new IllegalArgumentException("Invalid itemTagCount: " + itemTagCount);
+                TagLog.error("Invalid itemTagCount: {}", itemTagCount);
             }
             tagData = new TagData();
             tagData.itemTags = new HashMap<>(itemTagCount);
@@ -159,7 +193,7 @@ final class TagSync {
                 var tagName = readString(buf);
                 int entryCount = buf.readInt();
                 if (entryCount < 0) {
-                    throw new IllegalArgumentException("Invalid item entry count: " + entryCount);
+                    TagLog.error("Invalid item entry count: {}", entryCount);
                 }
                 List<ItemEntry> entries = new ArrayList<>(entryCount);
                 for (int j = 0; j < entryCount; j++) {
@@ -172,14 +206,14 @@ final class TagSync {
 
             int fluidTagCount = buf.readInt();
             if (fluidTagCount < 0) {
-                throw new IllegalArgumentException("Invalid fluidTagCount: " + fluidTagCount);
+                TagLog.error("Invalid fluidTagCount: {}", fluidTagCount);
             }
             tagData.fluidTags = new HashMap<>(fluidTagCount);
             for (int i = 0; i < fluidTagCount; i++) {
                 var tagName = readString(buf);
                 int fluidCount = buf.readInt();
                 if (fluidCount < 0) {
-                    throw new IllegalArgumentException("Invalid fluid count: " + fluidCount);
+                    TagLog.error("Invalid fluid count: {}", fluidCount);
                 }
                 List<String> fluids = new ArrayList<>(fluidCount);
                 for (int j = 0; j < fluidCount; j++) {
@@ -190,14 +224,14 @@ final class TagSync {
 
             int blockTagCount = buf.readInt();
             if (blockTagCount < 0) {
-                throw new IllegalArgumentException("Invalid blockTagCount: " + blockTagCount);
+                TagLog.error("Invalid blockTagCount: {}", blockTagCount);
             }
             tagData.blockTags = new HashMap<>(blockTagCount);
             for (int i = 0; i < blockTagCount; i++) {
                 var tagName = readString(buf);
                 int blockCount = buf.readInt();
                 if (blockCount < 0) {
-                    throw new IllegalArgumentException("Invalid block count: " + blockCount);
+                    TagLog.error("Invalid block count: {}", blockCount);
                 }
                 List<String> blocks = new ArrayList<>(blockCount);
                 for (int j = 0; j < blockCount; j++) {
@@ -243,7 +277,7 @@ final class TagSync {
 
                 int totalSize = tempBuf.readableBytes();
                 if (totalSize > MAX_PACKET_SIZE) {
-                    throw new IllegalStateException("Tag sync packet too large: " + totalSize + " bytes, max allowed: " + MAX_PACKET_SIZE);
+                    TagLog.error("Tag sync packet too large: {} bytes, max allowed: " + MAX_PACKET_SIZE, totalSize);
                 }
 
                 buf.writeBytes(tempBuf);
@@ -255,11 +289,11 @@ final class TagSync {
         private String readString(ByteBuf buf) {
             int length = buf.readInt();
             if (length < 0) {
-                throw new IllegalArgumentException("Negative string length: " + length);
+                TagLog.error("Negative string length: {}", length);
             }
 
             if (buf.readableBytes() < length) {
-                throw new IllegalArgumentException("Not enough bytes for string: need " + length + ", have " + buf.readableBytes());
+                TagLog.error("Not enough bytes for string: need {}, have {}", length, buf.readableBytes());
             }
 
             byte[] bytes = new byte[length];
@@ -276,6 +310,16 @@ final class TagSync {
             buf.writeInt(bytes.length);
             buf.writeBytes(bytes);
         }
+    }
+
+    public static class ServerSyncMessage implements IMessage {
+        public ServerSyncMessage() {}
+
+        @Override
+        public void fromBytes(ByteBuf buf) {}
+
+        @Override
+        public void toBytes(ByteBuf buf) {}
     }
 
     public static class TagData {

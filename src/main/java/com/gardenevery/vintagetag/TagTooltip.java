@@ -32,21 +32,22 @@ public class TagTooltip {
             return;
         }
 
-        updateShiftState();
         List<String> tooltip = event.getToolTip();
 
-        if (!shiftDown) {
+        if (!isShiftPressed()) {
             tooltip.add(TextFormatting.GRAY + I18n.format("tag.tooltip.hold_shift"));
             return;
         }
         addTagsToTooltip(stack, tooltip);
     }
 
-    private static void updateShiftState() {
-        if (System.currentTimeMillis() - lastKeyboardCheck > KEY_CHECK_INTERVAL) {
+    private static boolean isShiftPressed() {
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - lastKeyboardCheck > KEY_CHECK_INTERVAL) {
             shiftDown = Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT);
-            lastKeyboardCheck = System.currentTimeMillis();
+            lastKeyboardCheck = currentTime;
         }
+        return shiftDown;
     }
 
     private static void addTagsToTooltip(ItemStack stack, List<String> tooltip) {

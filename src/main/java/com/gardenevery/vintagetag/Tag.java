@@ -10,34 +10,29 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 final class Tag<T> {
 
-    Tag() {}
-
     private final Object2ReferenceOpenHashMap<String, ObjectOpenHashSet<T>> tagToKeys = new Object2ReferenceOpenHashMap<>();
     private final Object2ReferenceOpenHashMap<T, ObjectOpenHashSet<String>> keyToTags = new Object2ReferenceOpenHashMap<>();
 
     @Nonnull
-    public Set<String> getTag(@Nonnull T key) {
+    public Set<String> getTags(@Nonnull T key) {
         var tags = keyToTags.get(key);
-
-        if (tags == null || tags.isEmpty()) {
-            return Collections.emptySet();
-        }
-        return new HashSet<>(tags);
+        return tags == null || tags.isEmpty() ? Collections.emptySet() : new HashSet<>(tags);
     }
 
     @Nonnull
-    public Set<T> getKey(@Nonnull String tagName) {
+    public Set<T> getKeys(@Nonnull String tagName) {
         var keys = tagToKeys.get(tagName);
-
-        if (keys == null || keys.isEmpty()) {
-            return Collections.emptySet();
-        }
-        return new HashSet<>(keys);
+        return keys == null || keys.isEmpty() ? Collections.emptySet() : new HashSet<>(keys);
     }
 
     @Nonnull
-    public Set<String> getAllTags() {
+    public Set<String> allTags() {
         return tagToKeys.isEmpty() ? Collections.emptySet() : new HashSet<>(tagToKeys.keySet());
+    }
+
+    @Nonnull
+    public Set<T> allKeys() {
+        return keyToTags.isEmpty() ? Collections.emptySet() : new HashSet<>(keyToTags.keySet());
     }
 
     public boolean hasTag(@Nonnull String tagName, @Nonnull T key) {
@@ -78,12 +73,31 @@ final class Tag<T> {
         });
     }
 
-    public void clean() {
-        tagToKeys.clear();
-        keyToTags.clear();
+    public int tagCount() {
+        return tagToKeys.size();
     }
 
-    public boolean doesTagExist(@Nonnull String tagName) {
+    public int keyCount() {
+        return keyToTags.size();
+    }
+
+    public int associationCount() {
+        return tagToKeys.values().stream()
+                .mapToInt(Set::size)
+                .sum();
+    }
+
+    public int getTagKeyCount(@Nonnull String tagName) {
+        var keys = tagToKeys.get(tagName);
+        return keys == null ? 0 : keys.size();
+    }
+
+    public int getKeyTagCount(@Nonnull T key) {
+        var tags = keyToTags.get(key);
+        return tags == null ? 0 : tags.size();
+    }
+
+    public boolean exists(@Nonnull String tagName) {
         return tagToKeys.containsKey(tagName);
     }
 
@@ -91,17 +105,8 @@ final class Tag<T> {
         return keyToTags.containsKey(key);
     }
 
-    public int getTagCount() {
-        return tagToKeys.size();
-    }
-
-    public int getKeyCount() {
-        return keyToTags.size();
-    }
-
-    public int getAssociations() {
-        return tagToKeys.values().stream()
-                .mapToInt(Set::size)
-                .sum();
+    public void clear() {
+        tagToKeys.clear();
+        keyToTags.clear();
     }
 }

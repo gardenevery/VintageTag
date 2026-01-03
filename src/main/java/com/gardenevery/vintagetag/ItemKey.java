@@ -12,7 +12,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 
 @Desugar
-record ItemKey(@Nonnull Item item, int metadata) {
+record ItemKey(Item item, int metadata) {
     @Nonnull
     public static ItemKey toKey(@Nonnull ItemStack stack) {
         int metadata = 0;

@@ -29,8 +29,6 @@ import net.minecraftforge.fml.common.registry.ForgeRegistries;
 import it.unimi.dsi.fastutil.objects.Object2ReferenceOpenHashMap;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 /**
  * Custom Tag Loader
@@ -98,7 +96,6 @@ final class TagLoader {
 
     private static final Gson GSON = new Gson();
     private static final Pattern VALID_FILENAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]+\\.json$", Pattern.CASE_INSENSITIVE);
-    private static final Logger LOGGER = LogManager.getLogger("VintageTag");
     private static final Object2ReferenceOpenHashMap<File, String> CACHED_TAG_JARS = new Object2ReferenceOpenHashMap<>();
     private static boolean TAG_JAR_SCAN_DONE = false;
 
@@ -251,7 +248,7 @@ final class TagLoader {
                                 try (var stream = zip.getInputStream(entry)) {
                                     processTagStream(stream, modId, tagName, type);
                                 } catch (IOException e) {
-                                    LOGGER.info("Failed to read tag entry from JAR: {}", entryName, e);
+                                    TagLog.info("Failed to read tag entry from JAR: {}", entryName, e);
                                 }
                             }
                         }
@@ -259,7 +256,7 @@ final class TagLoader {
                 }
             }
         } catch (IOException e) {
-            LOGGER.info("Failed to scan JAR file for tags: {}", jarFile.getName(), e);
+            TagLog.info("Failed to scan JAR file for tags: {}", jarFile.getName(), e);
         }
     }
 
@@ -271,7 +268,7 @@ final class TagLoader {
             }
             processTagJson(jsonObject, tagName, type);
         } catch (Exception e) {
-            LOGGER.info("Failed to process {} tag file: {}", type, file.getAbsolutePath(), e);
+            TagLog.info("Failed to process {} tag file: {}", type, file.getAbsolutePath(), e);
         }
     }
 
@@ -286,9 +283,9 @@ final class TagLoader {
 
             processTagJson(jsonObject, tagName, type);
         } catch (IOException e) {
-            LOGGER.info("Failed to read stream for tag {} from mod {}: {}", tagName, modId, e.getMessage());
+            TagLog.info("Failed to read stream for tag {} from mod {}: {}", tagName, modId, e.getMessage());
         } catch (Exception e) {
-            LOGGER.info("Failed to process tag stream for {}:{}", modId, tagName, e);
+            TagLog.info("Failed to process tag stream for {}:{}", modId, tagName, e);
         }
     }
 
@@ -298,7 +295,7 @@ final class TagLoader {
         }
 
         if (!jsonObject.has(VALUES) || !jsonObject.get(VALUES).isJsonArray()) {
-            LOGGER.info("Invalid JSON for tag {}: missing or invalid 'values' array", tagName);
+            TagLog.info("Invalid JSON for tag {}: missing or invalid 'values' array", tagName);
             return;
         }
 
@@ -336,7 +333,7 @@ final class TagLoader {
             var json = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
             return GSON.fromJson(json, JsonObject.class);
         } catch (Exception e) {
-            LOGGER.info("Failed to parse JSON file: {}", file.getAbsolutePath(), e);
+            TagLog.info("Failed to parse JSON file: {}", file.getAbsolutePath(), e);
             return null;
         }
     }
@@ -398,7 +395,7 @@ final class TagLoader {
             try {
                 result.add(new ResourceLocation(str));
             } catch (Exception e) {
-                LOGGER.info("Invalid resource location: {}", str, e);
+                TagLog.info("Invalid resource location: {}", str, e);
             }
         }
         return result;
