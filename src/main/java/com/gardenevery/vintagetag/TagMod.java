@@ -14,6 +14,7 @@ public class TagMod {
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
         TagSync.register();
+        TagLoader.scanModDirs();
         if (event.getSide() == Side.CLIENT) {
             ClientTagSync.registerClient();
         }

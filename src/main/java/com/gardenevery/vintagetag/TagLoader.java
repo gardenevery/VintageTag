@@ -13,10 +13,13 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.zip.ZipFile;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import com.github.bsideup.jabel.Desugar;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+
+import it.unimi.dsi.fastutil.objects.Object2ReferenceOpenHashMap;
 
 import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
@@ -25,8 +28,6 @@ import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
-
-import it.unimi.dsi.fastutil.objects.Object2ReferenceOpenHashMap;
 
 import org.apache.commons.io.IOUtils;
 
@@ -89,6 +90,28 @@ import org.apache.commons.io.IOUtils;
 @SuppressWarnings("all")
 final class TagLoader {
 
+    enum TagType {
+        ITEM("item"),
+        FLUID("fluid"),
+        BLOCK("block");
+
+        private final String name;
+
+        TagType(String name) {
+            this.name = name;
+        }
+
+        @Nullable
+        static TagType getType(String name) {
+            return switch (name) {
+                case "item" -> ITEM;
+                case "fluid" -> FLUID;
+                case "block" -> BLOCK;
+                default -> null;
+            };
+        }
+    }
+
     enum Operation {
         ADD,
         REPLACE
@@ -97,7 +120,6 @@ final class TagLoader {
     private static final Gson GSON = new Gson();
     private static final Pattern VALID_FILENAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]+\\.json$", Pattern.CASE_INSENSITIVE);
     private static final Object2ReferenceOpenHashMap<File, String> CACHED_TAG_JARS = new Object2ReferenceOpenHashMap<>();
-    private static boolean TAG_JAR_SCAN_DONE = false;
 
     private static final String CONFIG = "config";
     private static final String DATA_TAGS_PREFIX = "data/tags/";
@@ -114,24 +136,23 @@ final class TagLoader {
     private static final String SLASH = "/";
     private static final String STRING_EMPTY = "";
 
-    public static void scanModTags() {
-        if (!TAG_JAR_SCAN_DONE) {
-            for (var mod : Loader.instance().getModList()) {
-                var source = mod.getSource();
-                var modId = mod.getModId();
+    public static void scanModDirs() {
+        for (var mod : Loader.instance().getModList()) {
+            var source = mod.getSource();
+            var modId = mod.getModId();
 
-                if (source == null) {
-                    continue;
-                }
-                if (source.isFile() && source.getName().endsWith(JAR)) {
-                    if (jarHasTagsDir(source)) {
-                        CACHED_TAG_JARS.put(source, modId);
-                    }
+            if (source == null) {
+                continue;
+            }
+            if (source.isFile() && source.getName().endsWith(JAR)) {
+                if (jarHasTagsDir(source)) {
+                    CACHED_TAG_JARS.put(source, modId);
                 }
             }
-            TAG_JAR_SCAN_DONE = true;
         }
+    }
 
+    public static void scanModTags() {
         for (var entry : CACHED_TAG_JARS.entrySet()) {
             scanJarTags(entry.getKey(), entry.getValue());
         }
@@ -451,14 +472,14 @@ final class TagLoader {
             case ADD -> {
                 Set<ItemKey> keys = ItemKey.toKeys(stacks);
                 if (!keys.isEmpty()) {
-                    TagManager.ITEM.create(tagName, keys);
+                    TagManager.ITEM.create(keys, tagName);
                 }
             }
             case REPLACE -> {
                 TagManager.ITEM.remove(tagName);
                 Set<ItemKey> keys = ItemKey.toKeys(stacks);
                 if (!keys.isEmpty()) {
-                    TagManager.ITEM.create(tagName, keys);
+                    TagManager.ITEM.create(keys, tagName);
                 }
             }
         }
@@ -468,13 +489,13 @@ final class TagLoader {
         switch (operation) {
             case ADD -> {
                 if (fluids != null && !fluids.isEmpty()) {
-                    TagManager.FLUID.create(tagName, fluids);
+                    TagManager.FLUID.create(fluids, tagName);
                 }
             }
             case REPLACE -> {
                 TagManager.FLUID.remove(tagName);
                 if (fluids != null && !fluids.isEmpty()) {
-                    TagManager.FLUID.create(tagName, fluids);
+                    TagManager.FLUID.create(fluids, tagName);
                 }
             }
         }
@@ -484,13 +505,13 @@ final class TagLoader {
         switch (operation) {
             case ADD -> {
                 if (blocks != null && !blocks.isEmpty()) {
-                    TagManager.BLOCK.create(tagName, blocks);
+                    TagManager.BLOCK.create(blocks, tagName);
                 }
             }
             case REPLACE -> {
                 TagManager.BLOCK.remove(tagName);
                 if (blocks != null && !blocks.isEmpty()) {
-                    TagManager.BLOCK.create(tagName, blocks);
+                    TagManager.BLOCK.create(blocks, tagName);
                 }
             }
         }

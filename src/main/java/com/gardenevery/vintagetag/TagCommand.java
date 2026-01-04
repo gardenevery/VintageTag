@@ -21,15 +21,9 @@ public class TagCommand extends CommandBase {
 
     public final CommandRegistry registry = new CommandRegistry();
 
-    public static final int ALL = 0;
-    public static final int MODERATOR = 1;
-    public static final int GAMEMASTER = 2;
-    public static final int ADMIN = 3;
-    public static final int OWNER = 4;
-
     public TagCommand() {
-        registry.register("info", MODERATOR, this::executeInfo);
-        registry.register("reload", GAMEMASTER, this::executeReload);
+        registry.register("info", 1, this::executeInfo);
+        registry.register("reload", 2, this::executeReload);
     }
 
     @Nonnull
@@ -78,23 +72,29 @@ public class TagCommand extends CommandBase {
     public void executeInfo(MinecraftServer server, ICommandSender sender, String[] args) {
         sender.sendMessage(new TextComponentTranslation("tag.command.statistics.title"));
 
-        Map<String, TagType> types = new HashMap<>();
-        types.put("tag.command.statistics.items", TagType.ITEM);
-        types.put("tag.command.statistics.fluids", TagType.FLUID);
-        types.put("tag.command.statistics.blocks", TagType.BLOCK);
-
-        types.forEach((key, type) ->
-                sender.sendMessage(new TextComponentTranslation(
-                        key,
-                        TagHelper.tagCount(type),
-                        TagHelper.associations(type),
-                        TagHelper.keyCount(type)
-                ))
-        );
-
-        sender.sendMessage(new TextComponentTranslation("tag.command.statistics.total",
-                TagHelper.tagCount(), TagHelper.associations(), TagHelper.keyCount()
+        sender.sendMessage(new TextComponentTranslation("tag.command.statistics.items",
+                TagHelper.itemTagCount(),
+                TagHelper.itemAssociationCount(),
+                TagHelper.itemKeyCount()
         ));
+
+        sender.sendMessage(new TextComponentTranslation("tag.command.statistics.fluids",
+                TagHelper.fluidTagCount(),
+                TagHelper.fluidAssociationCount(),
+                TagHelper.fluidKeyCount()
+        ));
+
+        sender.sendMessage(new TextComponentTranslation("tag.command.statistics.blocks",
+                TagHelper.blockTagCount(),
+                TagHelper.blockAssociationCount(),
+                TagHelper.blockKeyCount()
+        ));
+
+        int totalTags = TagHelper.itemTagCount() + TagHelper.fluidTagCount() + TagHelper.blockTagCount();
+        int totalAssociations = TagHelper.itemAssociationCount() + TagHelper.fluidAssociationCount() + TagHelper.blockAssociationCount();
+        int totalKeys = TagHelper.itemKeyCount() + TagHelper.fluidKeyCount() + TagHelper.blockKeyCount();
+
+        sender.sendMessage(new TextComponentTranslation("tag.command.statistics.total", totalTags, totalAssociations, totalKeys));
     }
 
     public void executeReload(MinecraftServer server, ICommandSender sender, String[] args) {

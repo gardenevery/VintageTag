@@ -1,7 +1,10 @@
 package com.gardenevery.vintagetag;
 
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import javax.annotation.Nonnull;
 
@@ -35,22 +38,42 @@ final class Tag<T> {
         return keyToTags.isEmpty() ? Collections.emptySet() : new HashSet<>(keyToTags.keySet());
     }
 
-    public boolean hasTag(@Nonnull String tagName, @Nonnull T key) {
+    @Nonnull
+    public Map<String, Set<T>> getAllEntries() {
+        if (tagToKeys.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Map<String, Set<T>> result = new HashMap<>(tagToKeys.size());
+        for (var entry : tagToKeys.object2ReferenceEntrySet()) {
+            var tag = entry.getKey();
+            ObjectOpenHashSet<T> keys = entry.getValue();
+            if (keys != null && !keys.isEmpty()) {
+                result.put(tag, new HashSet<>(keys));
+            }
+        }
+        return result;
+    }
+
+    public boolean hasTag(@Nonnull T key, @Nonnull String tagName) {
         var tags = keyToTags.get(key);
         return tags != null && tags.contains(tagName);
     }
 
-    public boolean hasAnyTag(@Nonnull Set<String> tagNames, @Nonnull T key) {
+    public boolean hasAnyTag(@Nonnull T key, @Nonnull String... tagNames) {
         var tags = keyToTags.get(key);
-        return tags != null && tagNames.stream().anyMatch(tags::contains);
+        if (tags == null || tagNames.length == 0) {
+            return false;
+        }
+        return Arrays.stream(tagNames).anyMatch(tags::contains);
     }
 
-    public void create(@Nonnull String tagName, @Nonnull T key) {
+    public void create(@Nonnull T key, @Nonnull String tagName) {
         tagToKeys.computeIfAbsent(tagName, k -> new ObjectOpenHashSet<>()).add(key);
         keyToTags.computeIfAbsent(key, k -> new ObjectOpenHashSet<>()).add(tagName);
     }
 
-    public void create(@Nonnull String tagName, @Nonnull Set<T> keys) {
+    public void create(@Nonnull Set<T> keys, @Nonnull String tagName) {
         var keySet = tagToKeys.computeIfAbsent(tagName, k -> new ObjectOpenHashSet<>());
         keySet.addAll(keys);
         keys.forEach(key -> keyToTags.computeIfAbsent(key, k -> new ObjectOpenHashSet<>()).add(tagName));
@@ -87,22 +110,8 @@ final class Tag<T> {
                 .sum();
     }
 
-    public int getTagKeyCount(@Nonnull String tagName) {
-        var keys = tagToKeys.get(tagName);
-        return keys == null ? 0 : keys.size();
-    }
-
-    public int getKeyTagCount(@Nonnull T key) {
-        var tags = keyToTags.get(key);
-        return tags == null ? 0 : tags.size();
-    }
-
     public boolean exists(@Nonnull String tagName) {
         return tagToKeys.containsKey(tagName);
-    }
-
-    public boolean containsKey(@Nonnull T key) {
-        return keyToTags.containsKey(key);
     }
 
     public void clear() {

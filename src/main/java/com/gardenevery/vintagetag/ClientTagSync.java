@@ -1,9 +1,12 @@
 package com.gardenevery.vintagetag;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import com.gardenevery.vintagetag.TagSync.ClientSyncMessage;
+import com.gardenevery.vintagetag.TagSync.TagDataSyncMessage;
+import com.gardenevery.vintagetag.TagSync.ServerSyncMessage;
+import com.gardenevery.vintagetag.TagSync.SyncType;
+
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectSet;
 
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
@@ -18,11 +21,6 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
 import net.minecraftforge.fml.common.network.NetworkRegistry;
 
-import com.gardenevery.vintagetag.TagSync.TagDataSyncMessage;
-import com.gardenevery.vintagetag.TagSync.ItemEntry;
-import com.gardenevery.vintagetag.TagSync.ServerSyncMessage;
-import com.gardenevery.vintagetag.TagSync.SyncType;
-
 @SideOnly(Side.CLIENT)
 final class ClientTagSync {
 
@@ -31,9 +29,10 @@ final class ClientTagSync {
         if (TagSync.NETWORK == null) {
             TagSync.NETWORK = NetworkRegistry.INSTANCE.newSimpleChannel("TagSync");
         }
+
         TagSync.NETWORK.registerMessage(TagDataSyncHandler.class, TagDataSyncMessage.class, 0, Side.CLIENT);
         TagSync.NETWORK.registerMessage(ServerSyncHandler.class, ServerSyncMessage.class, 1, Side.CLIENT);
-//        TagSync.NETWORK.registerMessage(ClientSyncHandler.class, ClientSyncMessage.class, 1, Side.SERVER);
+        TagSync.NETWORK.registerMessage(ClientSyncHandler.class, ClientSyncMessage.class, 2, Side.SERVER);
     }
 
     @SideOnly(Side.CLIENT)
@@ -56,8 +55,8 @@ final class ClientTagSync {
                 TagManager.FLUID.clear();
                 TagManager.BLOCK.clear();
 
-                for (Map.Entry<String, List<ItemEntry>> entry : message.tagData.itemTags.entrySet()) {
-                    Set<ItemKey> keys = new HashSet<>();
+                for (var entry : message.tagData.itemTags.object2ObjectEntrySet()) {
+                    ObjectSet<ItemKey> keys = new ObjectOpenHashSet<>(entry.getValue().size());
                     for (var itemEntry : entry.getValue()) {
                         try {
                             var location = new ResourceLocation(itemEntry.itemId());
@@ -70,12 +69,12 @@ final class ClientTagSync {
                         }
                     }
                     if (!keys.isEmpty()) {
-                        TagManager.ITEM.create(entry.getKey(), keys);
+                        TagManager.ITEM.create(keys, entry.getKey());
                     }
                 }
 
-                for (Map.Entry<String, List<String>> entry : message.tagData.fluidTags.entrySet()) {
-                    Set<Fluid> fluids = new HashSet<>();
+                for (var entry : message.tagData.fluidTags.object2ObjectEntrySet()) {
+                    ObjectSet<Fluid> fluids = new ObjectOpenHashSet<>(entry.getValue().size());
                     for (var fluidName : entry.getValue()) {
                         var fluid = FluidRegistry.getFluid(fluidName);
                         if (fluid != null) {
@@ -83,12 +82,12 @@ final class ClientTagSync {
                         }
                     }
                     if (!fluids.isEmpty()) {
-                        TagManager.FLUID.create(entry.getKey(), fluids);
+                        TagManager.FLUID.create(fluids, entry.getKey());
                     }
                 }
 
-                for (Map.Entry<String, List<String>> entry : message.tagData.blockTags.entrySet()) {
-                    Set<Block> blocks = new HashSet<>();
+                for (var entry : message.tagData.blockTags.object2ObjectEntrySet()) {
+                    ObjectSet<Block> blocks = new ObjectOpenHashSet<>(entry.getValue().size());
                     for (var blockName : entry.getValue()) {
                         try {
                             var location = new ResourceLocation(blockName);
@@ -101,7 +100,7 @@ final class ClientTagSync {
                         }
                     }
                     if (!blocks.isEmpty()) {
-                        TagManager.BLOCK.create(entry.getKey(), blocks);
+                        TagManager.BLOCK.create(blocks, entry.getKey());
                     }
                 }
             }
@@ -121,5 +120,17 @@ final class ClientTagSync {
         private void processOreDictionarySync() {
             OreSync.syncToOreDictionary();
         }
+    }
+
+    @SideOnly(Side.CLIENT)
+    public static class ClientSyncHandler implements IMessageHandler<ClientSyncMessage, IMessage> {
+        @Override
+        @SideOnly(Side.CLIENT)
+        public IMessage onMessage(ClientSyncMessage message, MessageContext ctx) {
+            return null;
+        }
+
+        @SideOnly(Side.CLIENT)
+        private void processOreDictionarySync() {}
     }
 }

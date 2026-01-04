@@ -108,6 +108,6 @@ final class OreSync {
         }
 
         var key = ItemKey.toKey(stack);
-        TagManager.ITEM.create(tagName, key);
+        TagManager.ITEM.create(key, tagName);
     }
 }

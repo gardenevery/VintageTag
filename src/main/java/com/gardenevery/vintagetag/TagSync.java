@@ -1,16 +1,15 @@
 package com.gardenevery.vintagetag;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import javax.annotation.Nullable;
 
 import com.github.bsideup.jabel.Desugar;
 
 import io.netty.buffer.ByteBuf;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -54,12 +53,12 @@ final class TagSync {
                 Side.CLIENT
         );
 
-//        NETWORK.registerMessage(
-//                (message, ctx) -> null,
-//                ClientSyncMessage.class,
-//                1,
-//                Side.SERVER
-//        );
+        NETWORK.registerMessage(
+                (message, ctx) -> null,
+                ClientSyncMessage.class,
+                2,
+                Side.SERVER
+        );
     }
 
     public static void sync(@Nullable EntityPlayerMP player) {
@@ -71,7 +70,7 @@ final class TagSync {
         var message = new TagDataSyncMessage(SyncType.FULL, tagData);
 
         if (player == null) {
-            for (EntityPlayerMP onlinePlayer : FMLCommonHandler.instance()
+            for (var onlinePlayer : FMLCommonHandler.instance()
                     .getMinecraftServerInstance()
                     .getPlayerList()
                     .getPlayers()) {
@@ -85,10 +84,11 @@ final class TagSync {
     private static TagData collectTagData() {
         var data = new TagData();
 
-        data.itemTags = new HashMap<>();
+        data.itemTags = new Object2ObjectOpenHashMap<>();
         for (var tagName : TagManager.ITEM.allTags()) {
             Set<ItemKey> keys = TagManager.ITEM.getKeys(tagName);
-            List<ItemEntry> entries = new ArrayList<>();
+            ObjectArrayList<ItemEntry> entries = new ObjectArrayList<>(keys.size());
+
             for (var key : keys) {
                 var registryName = key.item().getRegistryName();
                 if (registryName != null) {
@@ -98,10 +98,11 @@ final class TagSync {
             data.itemTags.put(tagName, entries);
         }
 
-        data.fluidTags = new HashMap<>();
+        data.fluidTags = new Object2ObjectOpenHashMap<>();
         for (var tagName : TagManager.FLUID.allTags()) {
             Set<Fluid> fluids = TagManager.FLUID.getKeys(tagName);
-            List<String> fluidNames = new ArrayList<>();
+            ObjectArrayList<String> fluidNames = new ObjectArrayList<>(fluids.size());
+
             for (var fluid : fluids) {
                 var fluidName = FluidRegistry.getFluidName(fluid);
                 if (fluidName != null) {
@@ -111,10 +112,11 @@ final class TagSync {
             data.fluidTags.put(tagName, fluidNames);
         }
 
-        data.blockTags = new HashMap<>();
+        data.blockTags = new Object2ObjectOpenHashMap<>();
         for (var tagName : TagManager.BLOCK.allTags()) {
             Set<Block> blocks = TagManager.BLOCK.getKeys(tagName);
-            List<String> blockNames = new ArrayList<>();
+            ObjectArrayList<String> blockNames = new ObjectArrayList<>(blocks.size());
+
             for (var block : blocks) {
                 var registryName = block.getRegistryName();
                 if (registryName != null) {
@@ -172,73 +174,23 @@ final class TagSync {
         @Override
         public void fromBytes(ByteBuf buf) {
             int totalSize = buf.readableBytes();
-            if (totalSize > MAX_PACKET_SIZE) {
-                TagLog.error("Packet too large: {} bytes, max allowed: " + MAX_PACKET_SIZE, totalSize);
-            }
+            validateSize(totalSize);
 
             int st = buf.readUnsignedByte();
-            if (st < 0 || st >= SyncType.values().length) {
-                syncType = SyncType.NONE;
-            } else {
-                syncType = SyncType.values()[st];
-            }
+            syncType = readSyncType(st);
+            tagData = new TagData();
 
             int itemTagCount = buf.readInt();
-            if (itemTagCount < 0) {
-                TagLog.error("Invalid itemTagCount: {}", itemTagCount);
-            }
-            tagData = new TagData();
-            tagData.itemTags = new HashMap<>(itemTagCount);
-            for (int i = 0; i < itemTagCount; i++) {
-                var tagName = readString(buf);
-                int entryCount = buf.readInt();
-                if (entryCount < 0) {
-                    TagLog.error("Invalid item entry count: {}", entryCount);
-                }
-                List<ItemEntry> entries = new ArrayList<>(entryCount);
-                for (int j = 0; j < entryCount; j++) {
-                    var itemId = readString(buf);
-                    int metadata = buf.readInt();
-                    entries.add(new ItemEntry(itemId, metadata));
-                }
-                tagData.itemTags.put(tagName, entries);
-            }
+            validateCount("itemTagCount", itemTagCount);
+            tagData.itemTags = readItemTags(buf, itemTagCount);
 
             int fluidTagCount = buf.readInt();
-            if (fluidTagCount < 0) {
-                TagLog.error("Invalid fluidTagCount: {}", fluidTagCount);
-            }
-            tagData.fluidTags = new HashMap<>(fluidTagCount);
-            for (int i = 0; i < fluidTagCount; i++) {
-                var tagName = readString(buf);
-                int fluidCount = buf.readInt();
-                if (fluidCount < 0) {
-                    TagLog.error("Invalid fluid count: {}", fluidCount);
-                }
-                List<String> fluids = new ArrayList<>(fluidCount);
-                for (int j = 0; j < fluidCount; j++) {
-                    fluids.add(readString(buf));
-                }
-                tagData.fluidTags.put(tagName, fluids);
-            }
+            validateCount("fluidTagCount", fluidTagCount);
+            tagData.fluidTags = readStringMap(buf, fluidTagCount);
 
             int blockTagCount = buf.readInt();
-            if (blockTagCount < 0) {
-                TagLog.error("Invalid blockTagCount: {}", blockTagCount);
-            }
-            tagData.blockTags = new HashMap<>(blockTagCount);
-            for (int i = 0; i < blockTagCount; i++) {
-                var tagName = readString(buf);
-                int blockCount = buf.readInt();
-                if (blockCount < 0) {
-                    TagLog.error("Invalid block count: {}", blockCount);
-                }
-                List<String> blocks = new ArrayList<>(blockCount);
-                for (int j = 0; j < blockCount; j++) {
-                    blocks.add(readString(buf));
-                }
-                tagData.blockTags.put(tagName, blocks);
-            }
+            validateCount("blockTagCount", blockTagCount);
+            tagData.blockTags = readStringMap(buf, blockTagCount);
         }
 
         @Override
@@ -248,37 +200,16 @@ final class TagSync {
                 tempBuf.writeByte(syncType.ordinal());
 
                 tempBuf.writeInt(tagData.itemTags.size());
-                for (Map.Entry<String, List<ItemEntry>> entry : tagData.itemTags.entrySet()) {
-                    writeString(tempBuf, entry.getKey());
-                    tempBuf.writeInt(entry.getValue().size());
-                    for (var itemEntry : entry.getValue()) {
-                        writeString(tempBuf, itemEntry.itemId);
-                        tempBuf.writeInt(itemEntry.metadata);
-                    }
-                }
+                writeItemTags(tempBuf, tagData.itemTags);
 
                 tempBuf.writeInt(tagData.fluidTags.size());
-                for (Map.Entry<String, List<String>> entry : tagData.fluidTags.entrySet()) {
-                    writeString(tempBuf, entry.getKey());
-                    tempBuf.writeInt(entry.getValue().size());
-                    for (var fluidName : entry.getValue()) {
-                        writeString(tempBuf, fluidName);
-                    }
-                }
+                writeStringMap(tempBuf, tagData.fluidTags);
 
                 tempBuf.writeInt(tagData.blockTags.size());
-                for (Map.Entry<String, List<String>> entry : tagData.blockTags.entrySet()) {
-                    writeString(tempBuf, entry.getKey());
-                    tempBuf.writeInt(entry.getValue().size());
-                    for (var blockName : entry.getValue()) {
-                        writeString(tempBuf, blockName);
-                    }
-                }
+                writeStringMap(tempBuf, tagData.blockTags);
 
                 int totalSize = tempBuf.readableBytes();
-                if (totalSize > MAX_PACKET_SIZE) {
-                    TagLog.error("Tag sync packet too large: {} bytes, max allowed: " + MAX_PACKET_SIZE, totalSize);
-                }
+                validateSize(totalSize);
 
                 buf.writeBytes(tempBuf);
             } finally {
@@ -286,14 +217,90 @@ final class TagSync {
             }
         }
 
+        private void validateSize(int size) {
+            if (size > MAX_PACKET_SIZE) {
+                TagLog.error("Packet too large: {} bytes, max allowed: {}", size, MAX_PACKET_SIZE);
+            }
+        }
+
+        private void validateCount(String fieldName, int count) {
+            if (count < 0) {
+                TagLog.error("Invalid {}: {}", fieldName, count);
+            }
+        }
+
+        private SyncType readSyncType(int ordinal) {
+            if (ordinal < 0 || ordinal >= SyncType.values().length) {
+                return SyncType.NONE;
+            }
+            return SyncType.values()[ordinal];
+        }
+
+        private Object2ObjectMap<String, ObjectArrayList<ItemEntry>> readItemTags(ByteBuf buf, int tagCount) {
+            Object2ObjectMap<String, ObjectArrayList<ItemEntry>> itemTags = new Object2ObjectOpenHashMap<>(tagCount);
+            for (int i = 0; i < tagCount; i++) {
+                var tagName = readString(buf);
+                int entryCount = buf.readInt();
+                validateCount("item entry count", entryCount);
+
+                ObjectArrayList<ItemEntry> entries = new ObjectArrayList<>(entryCount);
+                for (int j = 0; j < entryCount; j++) {
+                    var itemId = readString(buf);
+                    int metadata = buf.readInt();
+                    entries.add(new ItemEntry(itemId, metadata));
+                }
+                itemTags.put(tagName, entries);
+            }
+            return itemTags;
+        }
+
+        private Object2ObjectMap<String, ObjectArrayList<String>> readStringMap(ByteBuf buf, int tagCount) {
+            Object2ObjectMap<String, ObjectArrayList<String>> map = new Object2ObjectOpenHashMap<>(tagCount);
+            for (int i = 0; i < tagCount; i++) {
+                var tagName = readString(buf);
+                int count = buf.readInt();
+                validateCount("entry count", count);
+
+                ObjectArrayList<String> entries = new ObjectArrayList<>(count);
+                for (int j = 0; j < count; j++) {
+                    entries.add(readString(buf));
+                }
+                map.put(tagName, entries);
+            }
+            return map;
+        }
+
+        private void writeItemTags(ByteBuf buf, Object2ObjectMap<String, ObjectArrayList<ItemEntry>> itemTags) {
+            for (var entry : itemTags.object2ObjectEntrySet()) {
+                writeString(buf, entry.getKey());
+                buf.writeInt(entry.getValue().size());
+                for (var itemEntry : entry.getValue()) {
+                    writeString(buf, itemEntry.itemId);
+                    buf.writeInt(itemEntry.metadata);
+                }
+            }
+        }
+
+        private void writeStringMap(ByteBuf buf, Object2ObjectMap<String, ObjectArrayList<String>> map) {
+            for (var entry : map.object2ObjectEntrySet()) {
+                writeString(buf, entry.getKey());
+                buf.writeInt(entry.getValue().size());
+                for (var value : entry.getValue()) {
+                    writeString(buf, value);
+                }
+            }
+        }
+
         private String readString(ByteBuf buf) {
             int length = buf.readInt();
             if (length < 0) {
                 TagLog.error("Negative string length: {}", length);
+                return "";
             }
 
             if (buf.readableBytes() < length) {
                 TagLog.error("Not enough bytes for string: need {}, have {}", length, buf.readableBytes());
+                return "";
             }
 
             byte[] bytes = new byte[length];
@@ -302,10 +309,11 @@ final class TagSync {
         }
 
         private void writeString(ByteBuf buf, String str) {
-            if (str == null) {
+            if (str == null || str.isEmpty()) {
                 buf.writeInt(0);
                 return;
             }
+
             byte[] bytes = str.getBytes(StandardCharsets.UTF_8);
             buf.writeInt(bytes.length);
             buf.writeBytes(bytes);
@@ -322,10 +330,20 @@ final class TagSync {
         public void toBytes(ByteBuf buf) {}
     }
 
+    public static class ClientSyncMessage implements IMessage {
+        public ClientSyncMessage() {}
+
+        @Override
+        public void fromBytes(ByteBuf buf) {}
+
+        @Override
+        public void toBytes(ByteBuf buf) {}
+    }
+
     public static class TagData {
-        public Map<String, List<ItemEntry>> itemTags;
-        public Map<String, List<String>> fluidTags;
-        public Map<String, List<String>> blockTags;
+        public Object2ObjectMap<String, ObjectArrayList<ItemEntry>> itemTags;
+        public Object2ObjectMap<String, ObjectArrayList<String>> fluidTags;
+        public Object2ObjectMap<String, ObjectArrayList<String>> blockTags;
     }
 
     @Desugar
