@@ -21,46 +21,97 @@ public final class TagHelper {
 
     private TagHelper() {}
 
+    /**
+     * Get all tags associated with the specified ItemStack
+     *
+     * @param stack The ItemStack to query, can be null
+     * @return An unmodifiable set of tag names, empty if stack is null or empty
+     */
     @Nonnull
     public static Set<String> tags(@Nullable ItemStack stack) {
         return (stack == null || stack.isEmpty()) ? Collections.emptySet() : TagManager.ITEM.getTags(ItemKey.toKey(stack));
     }
 
+    /**
+     * Get all tags associated with the specified FluidStack
+     *
+     * @param stack The FluidStack to query, can be null
+     * @return An unmodifiable set of tag names, empty if stack is null or has no fluid
+     */
     @Nonnull
     public static Set<String> tags(@Nullable FluidStack stack) {
         return (stack == null || stack.getFluid() == null) ? Collections.emptySet() : TagManager.FLUID.getTags(stack.getFluid());
     }
 
+    /**
+     * Get all tags associated with the specified Block
+     *
+     * @param block The Block to query, can be null
+     * @return An unmodifiable set of tag names, empty if block is null
+     */
     @Nonnull
     public static Set<String> tags(@Nullable Block block) {
         return block == null ? Collections.emptySet() : TagManager.BLOCK.getTags(block);
     }
 
+    /**
+     * Get all tags associated with the specified BlockState
+     *
+     * @param blockState The IBlockState to query, can be null
+     * @return An unmodifiable set of tag names, empty if blockState is null
+     */
     @Nonnull
     public static Set<String> tags(@Nullable IBlockState blockState) {
         return blockState == null ? Collections.emptySet() : TagManager.BLOCK.getTags(blockState.getBlock());
     }
 
+    /**
+     * Get all tags associated with the specified TileEntity
+     *
+     * @param blockEntity The TileEntity to query, can be null
+     * @return An unmodifiable set of tag names, empty if blockEntity is null
+     */
     @Nonnull
     public static Set<String> tags(@Nullable TileEntity blockEntity) {
         return blockEntity == null ? Collections.emptySet() : TagManager.BLOCK.getTags(getBlock(blockEntity));
     }
 
+    /**
+     * Get all tags defined for items
+     *
+     * @return An unmodifiable set of all item tag names
+     */
     @Nonnull
     public static Set<String> allItemTags() {
         return TagManager.ITEM.allTags();
     }
 
+    /**
+     * Get all tags defined for fluids
+     *
+     * @return An unmodifiable set of all fluid tag names
+     */
     @Nonnull
     public static Set<String> allFluidTags() {
         return TagManager.FLUID.allTags();
     }
 
+    /**
+     * Get all tags defined for blocks
+     *
+     * @return An unmodifiable set of all block tag names
+     */
     @Nonnull
     public static Set<String> allBlockTags() {
         return TagManager.BLOCK.allTags();
     }
 
+    /**
+     * Get all ItemStacks associated with the specified tag name
+     *
+     * @param tagName The tag name to query, can be null
+     * @return An unmodifiable set of ItemStacks, empty if tagName is null or empty
+     */
     @Nonnull
     public static Set<ItemStack> itemKeys(@Nullable String tagName) {
         if (tagInvalid(tagName)) {
@@ -76,6 +127,12 @@ public final class TagHelper {
         return Collections.unmodifiableSet(result);
     }
 
+    /**
+     * Get all FluidStacks associated with the specified tag name
+     *
+     * @param tagName The tag name to query, can be null
+     * @return An unmodifiable set of FluidStacks (1000mb each), empty if tagName is null or empty
+     */
     @Nonnull
     public static Set<FluidStack> fluidKeys(@Nullable String tagName) {
         if (tagInvalid(tagName)) {
@@ -91,6 +148,12 @@ public final class TagHelper {
         return Collections.unmodifiableSet(result);
     }
 
+    /**
+     * Get all Blocks associated with the specified tag name
+     *
+     * @param tagName The tag name to query, can be null
+     * @return An unmodifiable set of Blocks, empty if tagName is null or empty
+     */
     @Nonnull
     public static Set<Block> blockKeys(@Nullable String tagName) {
         if (tagInvalid(tagName)) {
@@ -99,6 +162,11 @@ public final class TagHelper {
         return TagManager.BLOCK.getKeys(tagName);
     }
 
+    /**
+     * Get all ItemStacks that have at least one tag
+     *
+     * @return An unmodifiable set of all tagged ItemStacks
+     */
     @Nonnull
     public static Set<ItemStack> allItemKeys() {
         Set<ItemKey> keys = TagManager.ITEM.allKeys();
@@ -110,6 +178,11 @@ public final class TagHelper {
         return Collections.unmodifiableSet(result);
     }
 
+    /**
+     * Get all FluidStacks that have at least one tag
+     *
+     * @return An unmodifiable set of all tagged FluidStacks (1000mb each)
+     */
     @Nonnull
     public static Set<FluidStack> allFluidKeys() {
         Set<Fluid> keys = TagManager.FLUID.allKeys();
@@ -121,11 +194,21 @@ public final class TagHelper {
         return Collections.unmodifiableSet(result);
     }
 
+    /**
+     * Get all Blocks that have at least one tag
+     *
+     * @return An unmodifiable set of all tagged Blocks
+     */
     @Nonnull
     public static Set<Block> allBlockKeys() {
         return TagManager.BLOCK.allKeys();
     }
 
+    /**
+     * Get all item tag entries with their associated ItemStacks
+     *
+     * @return An unmodifiable map of tag name to set of ItemStacks
+     */
     @Nonnull
     public static Map<String, Set<ItemStack>> allItemEntries() {
         Map<String, Set<ItemKey>> itemKeyMap = TagManager.ITEM.getAllEntries();
@@ -141,6 +224,11 @@ public final class TagHelper {
         return result;
     }
 
+    /**
+     * Get all fluid tag entries with their associated FluidStacks
+     *
+     * @return An unmodifiable map of tag name to set of FluidStacks (1000mb each)
+     */
     @Nonnull
     public static Map<String, Set<FluidStack>> allFluidEntries() {
         Map<String, Set<Fluid>> fluidMap = TagManager.FLUID.getAllEntries();
@@ -155,11 +243,23 @@ public final class TagHelper {
         return result;
     }
 
+    /**
+     * Get all block tag entries with their associated Blocks
+     *
+     * @return An unmodifiable map of tag name to set of Blocks
+     */
     @Nonnull
     public static Map<String, Set<Block>> allBlockEntries() {
         return TagManager.BLOCK.getAllEntries();
     }
 
+    /**
+     * Check if the specified ItemStack has the given tag
+     *
+     * @param stack The ItemStack to check, can be null
+     * @param tagName The tag name to check for, can be null
+     * @return true if stack is not null/empty, tagName is valid, and stack has the tag
+     */
     public static boolean hasTag(@Nullable ItemStack stack, @Nullable String tagName) {
         if (stack == null || stack.isEmpty() || tagInvalid(tagName)) {
             return false;
@@ -169,6 +269,13 @@ public final class TagHelper {
         return TagManager.ITEM.hasTag(key, tagName);
     }
 
+    /**
+     * Check if the specified FluidStack has the given tag
+     *
+     * @param stack The FluidStack to check, can be null
+     * @param tagName The tag name to check for, can be null
+     * @return true if stack is not null/has fluid, tagName is valid, and fluid has the tag
+     */
     public static boolean hasTag(@Nullable FluidStack stack, @Nullable String tagName) {
         if (stack == null || stack.getFluid() == null || tagInvalid(tagName)) {
             return false;
@@ -176,6 +283,13 @@ public final class TagHelper {
         return TagManager.FLUID.hasTag(stack.getFluid(), tagName);
     }
 
+    /**
+     * Check if the specified Block has the given tag
+     *
+     * @param block The Block to check, can be null
+     * @param tagName The tag name to check for, can be null
+     * @return true if block is not null, tagName is valid, and block has the tag
+     */
     public static boolean hasTag(@Nullable Block block, @Nullable String tagName) {
         if (block == null || tagInvalid(tagName)) {
             return false;
@@ -183,6 +297,13 @@ public final class TagHelper {
         return TagManager.BLOCK.hasTag(block, tagName);
     }
 
+    /**
+     * Check if the specified BlockState has the given tag
+     *
+     * @param blockState The IBlockState to check, can be null
+     * @param tagName The tag name to check for, can be null
+     * @return true if blockState is not null, tagName is valid, and block has the tag
+     */
     public static boolean hasTag(@Nullable IBlockState blockState, @Nullable String tagName) {
         if (blockState == null || tagInvalid(tagName)) {
             return false;
@@ -190,6 +311,13 @@ public final class TagHelper {
         return TagManager.BLOCK.hasTag(blockState.getBlock(), tagName);
     }
 
+    /**
+     * Check if the specified TileEntity's block has the given tag
+     *
+     * @param blockEntity The TileEntity to check, can be null
+     * @param tagName The tag name to check for, can be null
+     * @return true if blockEntity is not null, tagName is valid, and block has the tag
+     */
     public static boolean hasTag(@Nullable TileEntity blockEntity, @Nullable String tagName) {
         if (blockEntity == null || tagInvalid(tagName)) {
             return false;
@@ -197,6 +325,13 @@ public final class TagHelper {
         return TagManager.BLOCK.hasTag(getBlock(blockEntity), tagName);
     }
 
+    /**
+     * Check if the specified ItemStack has any of the given tags
+     *
+     * @param stack The ItemStack to check, can be null
+     * @param tagNames The tag names to check for, can be null or empty
+     * @return true if stack is not null/empty, tagNames are valid, and stack has any of the tags
+     */
     public static boolean hasAnyTag(@Nullable ItemStack stack, @Nullable String... tagNames) {
         if (stack == null || stack.isEmpty() || tagInvalid(tagNames)) {
             return false;
@@ -206,6 +341,13 @@ public final class TagHelper {
         return TagManager.ITEM.hasAnyTag(key, tagNames);
     }
 
+    /**
+     * Check if the specified FluidStack has any of the given tags
+     *
+     * @param stack The FluidStack to check, can be null
+     * @param tagNames The tag names to check for, can be null or empty
+     * @return true if stack is not null/has fluid, tagNames are valid, and fluid has any of the tags
+     */
     public static boolean hasAnyTag(@Nullable FluidStack stack, @Nullable String... tagNames) {
         if (stack == null ||stack.getFluid() == null || tagInvalid(tagNames)) {
             return false;
@@ -213,6 +355,13 @@ public final class TagHelper {
         return TagManager.FLUID.hasAnyTag(stack.getFluid(), tagNames);
     }
 
+    /**
+     * Check if the specified Block has any of the given tags
+     *
+     * @param block The Block to check, can be null
+     * @param tagNames The tag names to check for, can be null or empty
+     * @return true if block is not null, tagNames are valid, and block has any of the tags
+     */
     public static boolean hasAnyTag(@Nullable Block block, @Nullable String... tagNames) {
         if (block == null || tagInvalid(tagNames)) {
             return false;
@@ -220,6 +369,13 @@ public final class TagHelper {
         return TagManager.BLOCK.hasAnyTag(block, tagNames);
     }
 
+    /**
+     * Check if the specified BlockState has any of the given tags
+     *
+     * @param blockState The IBlockState to check, can be null
+     * @param tagNames The tag names to check for, can be null or empty
+     * @return true if blockState is not null, tagNames are valid, and block has any of the tags
+     */
     public static boolean hasAnyTag(@Nullable IBlockState blockState, @Nullable String... tagNames) {
         if (blockState == null || tagInvalid(tagNames)) {
             return false;
@@ -227,6 +383,13 @@ public final class TagHelper {
         return TagManager.BLOCK.hasAnyTag(blockState.getBlock(), tagNames);
     }
 
+    /**
+     * Check if the specified TileEntity's block has any of the given tags
+     *
+     * @param blockEntity The TileEntity to check, can be null
+     * @param tagNames The tag names to check for, can be null or empty
+     * @return true if blockEntity is not null, tagNames are valid, and block has any of the tags
+     */
     public static boolean hasAnyTag(@Nullable TileEntity blockEntity, @Nullable String... tagNames) {
         if (blockEntity == null || tagInvalid(tagNames)) {
             return false;
@@ -234,42 +397,93 @@ public final class TagHelper {
         return TagManager.BLOCK.hasAnyTag(getBlock(blockEntity), tagNames);
     }
 
+    /**
+     * Get the total number of tags defined for items
+     *
+     * @return The count of unique item tags
+     */
     public static int itemTagCount() {
         return TagManager.ITEM.tagCount();
     }
 
+    /**
+     * Get the total number of tags defined for fluids
+     *
+     * @return The count of unique fluid tags
+     */
     public static int fluidTagCount() {
         return TagManager.FLUID.tagCount();
     }
 
+    /**
+     * Get the total number of tags defined for blocks
+     *
+     * @return The count of unique block tags
+     */
     public static int blockTagCount() {
         return TagManager.BLOCK.tagCount();
     }
 
+    /**
+     * Get the total number of items that have at least one tag
+     *
+     * @return The count of unique tagged items
+     */
     public static int itemKeyCount() {
         return TagManager.ITEM.keyCount();
     }
 
+    /**
+     * Get the total number of fluids that have at least one tag
+     *
+     * @return The count of unique tagged fluids
+     */
     public static int fluidKeyCount() {
         return TagManager.FLUID.keyCount();
     }
 
+    /**
+     * Get the total number of blocks that have at least one tag
+     *
+     * @return The count of unique tagged blocks
+     */
     public static int blockKeyCount() {
         return TagManager.BLOCK.keyCount();
     }
 
+    /**
+     * Get the total number of item-tag associations
+     *
+     * @return The count of all item-tag pairs
+     */
     public static int itemAssociationCount() {
         return TagManager.ITEM.associationCount();
     }
 
+    /**
+     * Get the total number of fluid-tag associations
+     *
+     * @return The count of all fluid-tag pairs
+     */
     public static int fluidAssociationCount() {
         return TagManager.FLUID.associationCount();
     }
 
+    /**
+     * Get the total number of block-tag associations
+     *
+     * @return The count of all block-tag pairs
+     */
     public static int blockAssociationCount() {
         return TagManager.BLOCK.associationCount();
     }
 
+    /**
+     * Check if the specified tag name exists for items
+     *
+     * @param tagName The tag name to check, can be null
+     * @return true if tagName is valid and exists in item tags
+     */
     public boolean itemTagExists(@Nullable String tagName) {
         if (tagInvalid(tagName)) {
             return false;
@@ -277,6 +491,12 @@ public final class TagHelper {
         return TagManager.ITEM.exists(tagName);
     }
 
+    /**
+     * Check if the specified tag name exists for fluids
+     *
+     * @param tagName The tag name to check, can be null
+     * @return true if tagName is valid and exists in fluid tags
+     */
     public boolean fluidTagExists(@Nullable String tagName) {
         if (tagInvalid(tagName)) {
             return false;
@@ -284,6 +504,12 @@ public final class TagHelper {
         return TagManager.FLUID.exists(tagName);
     }
 
+    /**
+     * Check if the specified tag name exists for blocks
+     *
+     * @param tagName The tag name to check, can be null
+     * @return true if tagName is valid and exists in block tags
+     */
     public boolean blockTagExists(@Nullable String tagName) {
         if (tagInvalid(tagName)) {
             return false;
@@ -291,6 +517,12 @@ public final class TagHelper {
         return TagManager.BLOCK.exists(tagName);
     }
 
+    /**
+     * Check if the specified tag name exists in any category (items, fluids, or blocks)
+     *
+     * @param tagName The tag name to check, can be null
+     * @return true if tagName is valid and exists in any tag category
+     */
     public boolean tagExists(@Nullable String tagName) {
         if (tagInvalid(tagName)) {
             return false;
