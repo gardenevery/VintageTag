@@ -484,7 +484,7 @@ public final class TagHelper {
      * @param tagName The tag name to check, can be null
      * @return true if tagName is valid and exists in item tags
      */
-    public boolean itemTagExists(@Nullable String tagName) {
+    public static boolean itemTagExists(@Nullable String tagName) {
         if (tagInvalid(tagName)) {
             return false;
         }
@@ -497,7 +497,7 @@ public final class TagHelper {
      * @param tagName The tag name to check, can be null
      * @return true if tagName is valid and exists in fluid tags
      */
-    public boolean fluidTagExists(@Nullable String tagName) {
+    public static boolean fluidTagExists(@Nullable String tagName) {
         if (tagInvalid(tagName)) {
             return false;
         }
@@ -510,7 +510,7 @@ public final class TagHelper {
      * @param tagName The tag name to check, can be null
      * @return true if tagName is valid and exists in block tags
      */
-    public boolean blockTagExists(@Nullable String tagName) {
+    public static boolean blockTagExists(@Nullable String tagName) {
         if (tagInvalid(tagName)) {
             return false;
         }
@@ -523,7 +523,7 @@ public final class TagHelper {
      * @param tagName The tag name to check, can be null
      * @return true if tagName is valid and exists in any tag category
      */
-    public boolean tagExists(@Nullable String tagName) {
+    public static boolean tagExists(@Nullable String tagName) {
         if (tagInvalid(tagName)) {
             return false;
         }
