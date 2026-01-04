@@ -48,9 +48,7 @@ final class Tag<T> {
         for (var entry : tagToKeys.object2ReferenceEntrySet()) {
             var tag = entry.getKey();
             ObjectOpenHashSet<T> keys = entry.getValue();
-            if (keys != null && !keys.isEmpty()) {
-                result.put(tag, new HashSet<>(keys));
-            }
+            result.put(tag, new HashSet<>(keys));
         }
         return result;
     }
@@ -62,6 +60,7 @@ final class Tag<T> {
 
     public boolean hasAnyTag(@Nonnull T key, @Nonnull String... tagNames) {
         var tags = keyToTags.get(key);
+
         if (tags == null || tagNames.length == 0) {
             return false;
         }

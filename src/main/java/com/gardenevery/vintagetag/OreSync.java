@@ -34,7 +34,7 @@ final class OreSync {
                         int synced = syncWildcardEntry(oreStack.getItem(), oreName);
                         totalEntries += synced;
                     } else {
-                        create(oreName, oreStack);
+                        create(oreStack, oreName);
                         totalEntries++;
                     }
                 } catch (Exception e) {
@@ -50,10 +50,8 @@ final class OreSync {
         for (int meta = 0; meta < 16; meta++) {
             try {
                 var specificStack = new ItemStack(item, 1, meta);
-                if (!specificStack.isEmpty() && specificStack.getItem() == item) {
-                    create(tagName, specificStack);
+                    create(specificStack, tagName);
                     synced++;
-                }
             } catch (Exception e) {
                 //
             }
@@ -61,7 +59,7 @@ final class OreSync {
 
         if (synced == 0) {
             var wildcardStack = new ItemStack(item, 1, OreDictionary.WILDCARD_VALUE);
-            create(tagName, wildcardStack);
+            create(wildcardStack, tagName);
             synced = 1;
         }
         return synced;
@@ -102,8 +100,8 @@ final class OreSync {
         TagLog.info("=== Sync completed: {} tags, {} items ===", tags, items);
     }
 
-    private static void create(String tagName, ItemStack stack) {
-        if (tagName == null || tagName.isEmpty() || stack == null || stack.isEmpty()) {
+    private static void create(ItemStack stack, String tagName) {
+        if (stack == null || stack.isEmpty() || tagName == null || tagName.isEmpty()) {
             return;
         }
 

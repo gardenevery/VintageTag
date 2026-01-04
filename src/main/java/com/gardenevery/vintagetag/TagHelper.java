@@ -14,12 +14,15 @@ import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.NonNullList;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
 
 public final class TagHelper {
 
     private TagHelper() {}
+
+    private static final NonNullList<ItemStack> EMPTY = NonNullList.create();
 
     /**
      * Get all tags associated with the specified ItemStack
@@ -124,7 +127,28 @@ public final class TagHelper {
         for (var key : keys) {
             result.add(key.toElement());
         }
-        return Collections.unmodifiableSet(result);
+        return result;
+    }
+
+    /**
+     * Get all ItemStacks associated with the specified tag name as a NonNullList
+     *
+     * @param tagName The tag name to query, can be null
+     * @return A NonNullList of ItemStacks, empty if tagName is null or empty
+     */
+    @Nonnull
+    public static NonNullList<ItemStack> itemKeysList(@Nullable String tagName) {
+        if (tagInvalid(tagName)) {
+            return EMPTY;
+        }
+
+        Set<ItemKey> keys = TagManager.ITEM.getKeys(tagName);
+        NonNullList<ItemStack> result = NonNullList.create();
+
+        for (var key : keys) {
+            result.add(key.toElement());
+        }
+        return result;
     }
 
     /**
@@ -145,7 +169,7 @@ public final class TagHelper {
         for (var key : keys) {
             result.add(new FluidStack(key, 1000));
         }
-        return Collections.unmodifiableSet(result);
+        return result;
     }
 
     /**
@@ -175,7 +199,7 @@ public final class TagHelper {
         for (var key : keys) {
             result.add(key.toElement());
         }
-        return Collections.unmodifiableSet(result);
+        return result;
     }
 
     /**
@@ -191,7 +215,7 @@ public final class TagHelper {
         for (var key : keys) {
             result.add(new FluidStack(key, 1000));
         }
-        return Collections.unmodifiableSet(result);
+        return result;
     }
 
     /**
@@ -220,7 +244,6 @@ public final class TagHelper {
                     .collect(Collectors.toSet());
             result.put(entry.getKey(), itemStacks);
         }
-
         return result;
     }
 
