@@ -1,12 +1,11 @@
 package com.gardenevery.vintagetag;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import com.github.bsideup.jabel.Desugar;
+
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -23,12 +22,12 @@ record ItemKey(Item item, int metadata) {
     }
 
     @Nonnull
-    public static Set<ItemKey> toKeys(@Nullable Set<ItemStack> stacks) {
+    public static ObjectOpenHashSet<ItemKey> toKeys(@Nullable ObjectOpenHashSet<ItemStack> stacks) {
         if (stacks == null || stacks.isEmpty()) {
-            return Collections.emptySet();
+            return new ObjectOpenHashSet<>();
         }
 
-        Set<ItemKey> keys = new HashSet<>();
+        ObjectOpenHashSet<ItemKey> keys = new ObjectOpenHashSet<>();
         for (var stack : stacks) {
             if (stack != null && !stack.isEmpty()) {
                 var key = ItemKey.toKey(stack);

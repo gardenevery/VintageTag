@@ -100,9 +100,9 @@ public class TagCommand extends CommandBase {
     public void executeReload(MinecraftServer server, ICommandSender sender, String[] args) {
         long startTime = System.currentTimeMillis();
 
-        TagManager.ITEM.clear();
-        TagManager.FLUID.clear();
-        TagManager.BLOCK.clear();
+        TagManager.item().clear();
+        TagManager.fluid().clear();
+        TagManager.block().clear();
 
         if (TagConfig.enableOreSync) {
             OreSync.oreDictionarySync();

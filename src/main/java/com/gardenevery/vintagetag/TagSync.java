@@ -31,7 +31,6 @@ final class TagSync {
 
     public enum SyncType {
         NONE,
-        INCREMENTAL,
         FULL
     }
 
@@ -85,8 +84,8 @@ final class TagSync {
         var data = new TagData();
 
         data.itemTags = new Object2ObjectOpenHashMap<>();
-        for (var tagName : TagManager.ITEM.allTags()) {
-            Set<ItemKey> keys = TagManager.ITEM.getKeys(tagName);
+        for (var tagName : TagManager.item().allTags()) {
+            Set<ItemKey> keys = TagManager.item().getKeys(tagName);
             ObjectArrayList<ItemEntry> entries = new ObjectArrayList<>(keys.size());
 
             for (var key : keys) {
@@ -99,8 +98,8 @@ final class TagSync {
         }
 
         data.fluidTags = new Object2ObjectOpenHashMap<>();
-        for (var tagName : TagManager.FLUID.allTags()) {
-            Set<Fluid> fluids = TagManager.FLUID.getKeys(tagName);
+        for (var tagName : TagManager.fluid().allTags()) {
+            Set<Fluid> fluids = TagManager.fluid().getKeys(tagName);
             ObjectArrayList<String> fluidNames = new ObjectArrayList<>(fluids.size());
 
             for (var fluid : fluids) {
@@ -113,8 +112,8 @@ final class TagSync {
         }
 
         data.blockTags = new Object2ObjectOpenHashMap<>();
-        for (var tagName : TagManager.BLOCK.allTags()) {
-            Set<Block> blocks = TagManager.BLOCK.getKeys(tagName);
+        for (var tagName : TagManager.block().allTags()) {
+            Set<Block> blocks = TagManager.block().getKeys(tagName);
             ObjectArrayList<String> blockNames = new ObjectArrayList<>(blocks.size());
 
             for (var block : blocks) {

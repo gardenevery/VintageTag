@@ -23,7 +23,6 @@ import net.minecraftforge.fml.common.network.NetworkRegistry;
 
 @SideOnly(Side.CLIENT)
 final class ClientTagSync {
-
     @SideOnly(Side.CLIENT)
     public static void registerClient() {
         if (TagSync.NETWORK == null) {
@@ -51,9 +50,9 @@ final class ClientTagSync {
             }
 
             if (message.syncType == SyncType.FULL) {
-                TagManager.ITEM.clear();
-                TagManager.FLUID.clear();
-                TagManager.BLOCK.clear();
+                TagManager.item().clear();
+                TagManager.fluid().clear();
+                TagManager.block().clear();
 
                 for (var entry : message.tagData.itemTags.object2ObjectEntrySet()) {
                     ObjectSet<ItemKey> keys = new ObjectOpenHashSet<>(entry.getValue().size());
@@ -69,7 +68,7 @@ final class ClientTagSync {
                         }
                     }
                     if (!keys.isEmpty()) {
-                        TagManager.ITEM.create(keys, entry.getKey());
+                        TagManager.item().create(keys, entry.getKey());
                     }
                 }
 
@@ -82,7 +81,7 @@ final class ClientTagSync {
                         }
                     }
                     if (!fluids.isEmpty()) {
-                        TagManager.FLUID.create(fluids, entry.getKey());
+                        TagManager.fluid().create(fluids, entry.getKey());
                     }
                 }
 
@@ -100,7 +99,7 @@ final class ClientTagSync {
                         }
                     }
                     if (!blocks.isEmpty()) {
-                        TagManager.BLOCK.create(blocks, entry.getKey());
+                        TagManager.block().create(blocks, entry.getKey());
                     }
                 }
             }

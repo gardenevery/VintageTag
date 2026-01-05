@@ -6,20 +6,17 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayDeque;
-import java.util.Collections;
 import java.util.Deque;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.zip.ZipFile;
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 
 import com.github.bsideup.jabel.Desugar;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
 import it.unimi.dsi.fastutil.objects.Object2ReferenceOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
@@ -90,28 +87,6 @@ import org.apache.commons.io.IOUtils;
 @SuppressWarnings("all")
 final class TagLoader {
 
-    enum TagType {
-        ITEM("item"),
-        FLUID("fluid"),
-        BLOCK("block");
-
-        private final String name;
-
-        TagType(String name) {
-            this.name = name;
-        }
-
-        @Nullable
-        static TagType getType(String name) {
-            return switch (name) {
-                case "item" -> ITEM;
-                case "fluid" -> FLUID;
-                case "block" -> BLOCK;
-                default -> null;
-            };
-        }
-    }
-
     enum Operation {
         ADD,
         REPLACE
@@ -121,6 +96,9 @@ final class TagLoader {
     private static final Pattern VALID_FILENAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]+\\.json$", Pattern.CASE_INSENSITIVE);
     private static final Object2ReferenceOpenHashMap<File, String> CACHED_TAG_JARS = new Object2ReferenceOpenHashMap<>();
 
+    private static final String ITEM_TYPE = "item";
+    private static final String FLUID_TYPE = "fluid";
+    private static final String BLOCK_TYPE = "block";
     private static final String CONFIG = "config";
     private static final String DATA_TAGS_PREFIX = "data/tags/";
     private static final String ITEM_DIR = "tags/item/";
@@ -159,9 +137,9 @@ final class TagLoader {
     }
 
     public static void scanConfigTags() {
-        scanConfigTagDirectory(new File(CONFIG, ITEM_DIR), TagType.ITEM);
-        scanConfigTagDirectory(new File(CONFIG, FLUID_DIR), TagType.FLUID);
-        scanConfigTagDirectory(new File(CONFIG, BLOCK_DIR), TagType.BLOCK);
+        scanConfigTagDirectory(new File(CONFIG, ITEM_DIR), ITEM_TYPE);
+        scanConfigTagDirectory(new File(CONFIG, FLUID_DIR), FLUID_TYPE);
+        scanConfigTagDirectory(new File(CONFIG, BLOCK_DIR), BLOCK_TYPE);
     }
 
     private static boolean jarHasTagsDir(File jarFile) {
@@ -180,12 +158,12 @@ final class TagLoader {
         return false;
     }
 
-    private static void scanConfigTagDirectory(File directory, TagType tagType) {
+    private static void scanConfigTagDirectory(File directory, String tagType) {
         if (!isValidDirectory(directory)) {
             return;
         }
 
-        Set<String> processedFiles = new HashSet<>();
+        ObjectOpenHashSet<String> processedFiles = new ObjectOpenHashSet<>();
         Deque<FileInfo> stack = new ArrayDeque<>();
 
         var rootJsonFiles = directory.listFiles((dir, name) -> isValidJsonFileName(name) && new File(dir, name).isFile());
@@ -255,22 +233,21 @@ final class TagLoader {
                     var parts = entryName.split(SLASH);
                     if (parts.length >= 4) {
                         var typeStr = parts[2];
-                        var type = TagType.getType(typeStr);
+                        if (!isValidTagType(typeStr)) {
+                            continue;
+                        }
 
-                        if (type != null) {
-                            var fileName = parts[parts.length - 1];
+                        var fileName = parts[parts.length - 1];
+                        if (!isValidJsonFileName(fileName)) {
+                            continue;
+                        }
 
-                            if (!isValidJsonFileName(fileName)) {
-                                continue;
-                            }
-
-                            if (parts.length - 4 <= 2 + 1) {
-                                var tagName = buildTagNameFromPath(fileName, parts);
-                                try (var stream = zip.getInputStream(entry)) {
-                                    processTagStream(stream, modId, tagName, type);
-                                } catch (IOException e) {
-                                    TagLog.info("Failed to read tag entry from JAR: {}", entryName, e);
-                                }
+                        if (parts.length - 4 <= 2 + 1) {
+                            var tagName = buildTagNameFromPath(fileName, parts);
+                            try (var stream = zip.getInputStream(entry)) {
+                                processTagStream(stream, modId, tagName, typeStr);
+                            } catch (IOException e) {
+                                TagLog.info("Failed to read tag entry from JAR: {}", entryName, e);
                             }
                         }
                     }
@@ -281,7 +258,11 @@ final class TagLoader {
         }
     }
 
-    private static void processTagFile(File file, String tagName, TagType type) {
+    private static boolean isValidTagType(String type) {
+        return ITEM_TYPE.equals(type) || FLUID_TYPE.equals(type) || BLOCK_TYPE.equals(type);
+    }
+
+    private static void processTagFile(File file, String tagName, String type) {
         try {
             var jsonObject = parseJsonFile(file);
             if (jsonObject == null) {
@@ -293,7 +274,7 @@ final class TagLoader {
         }
     }
 
-    private static void processTagStream(InputStream stream, String modId, String tagName, TagType type) {
+    private static void processTagStream(InputStream stream, String modId, String tagName, String type) {
         try {
             var json = IOUtils.toString(stream, StandardCharsets.UTF_8);
             var jsonObject = GSON.fromJson(json, JsonObject.class);
@@ -310,7 +291,7 @@ final class TagLoader {
         }
     }
 
-    private static void processTagJson(JsonObject jsonObject, String tagName, TagType type) {
+    private static void processTagJson(JsonObject jsonObject, String tagName, String type) {
         if (jsonObject == null) {
             return;
         }
@@ -325,25 +306,25 @@ final class TagLoader {
             replace = jsonObject.get(REPLACE).getAsBoolean();
         }
 
-        var operation = replace ? Operation.REPLACE : Operation.ADD;
+        Operation operation = replace ? Operation.REPLACE : Operation.ADD;
 
         switch (type) {
-            case ITEM:
-                Set<ItemData> itemData = parseItemData(jsonObject);
-                Set<ItemStack> itemStacks = createItems(itemData);
+            case ITEM_TYPE:
+                ObjectOpenHashSet<ItemData> itemData = parseItemData(jsonObject);
+                ObjectOpenHashSet<ItemStack> itemStacks = createItems(itemData);
                 applyItemTag(tagName, operation, itemStacks);
                 break;
 
-            case FLUID:
-                Set<String> fluidNames = parseStringSet(jsonObject);
-                Set<Fluid> fluids = createFluids(fluidNames);
+            case FLUID_TYPE:
+                ObjectOpenHashSet<String> fluidNames = parseStringSet(jsonObject);
+                ObjectOpenHashSet<Fluid> fluids = createFluids(fluidNames);
                 applyFluidTag(tagName, operation, fluids);
                 break;
 
-            case BLOCK:
-                Set<String> blockNames = parseStringSet(jsonObject);
-                Set<ResourceLocation> blockLocations = parseResourceLocations(blockNames);
-                Set<Block> blocks = createBlocks(blockLocations);
+            case BLOCK_TYPE:
+                ObjectOpenHashSet<String> blockNames = parseStringSet(jsonObject);
+                ObjectOpenHashSet<ResourceLocation> blockLocations = parseResourceLocations(blockNames);
+                ObjectOpenHashSet<Block> blocks = createBlocks(blockLocations);
                 applyBlockTag(tagName, operation, blocks);
                 break;
         }
@@ -359,8 +340,8 @@ final class TagLoader {
         }
     }
 
-    private static Set<ItemData> parseItemData(JsonObject jsonObject) {
-        Set<ItemData> itemData = new HashSet<>();
+    private static ObjectOpenHashSet<ItemData> parseItemData(JsonObject jsonObject) {
+        ObjectOpenHashSet<ItemData> itemData = new ObjectOpenHashSet<>();
 
         if (!jsonObject.has(VALUES) || !jsonObject.get(VALUES).isJsonArray()) {
             return itemData;
@@ -393,8 +374,8 @@ final class TagLoader {
         return itemData;
     }
 
-    private static Set<String> parseStringSet(JsonObject jsonObject) {
-        Set<String> result = new HashSet<>();
+    private static ObjectOpenHashSet<String> parseStringSet(JsonObject jsonObject) {
+        ObjectOpenHashSet<String> result = new ObjectOpenHashSet<>();
 
         if (!jsonObject.has(VALUES) || !jsonObject.get(VALUES).isJsonArray()) {
             return result;
@@ -409,8 +390,8 @@ final class TagLoader {
         return result;
     }
 
-    private static Set<ResourceLocation> parseResourceLocations(Set<String> strings) {
-        Set<ResourceLocation> result = new HashSet<>();
+    private static ObjectOpenHashSet<ResourceLocation> parseResourceLocations(ObjectOpenHashSet<String> strings) {
+        ObjectOpenHashSet<ResourceLocation> result = new ObjectOpenHashSet<>();
 
         for (var str : strings) {
             try {
@@ -422,27 +403,31 @@ final class TagLoader {
         return result;
     }
 
-    private static Set<ItemStack> createItems(Set<ItemData> itemData) {
+    private static ObjectOpenHashSet<ItemStack> createItems(ObjectOpenHashSet<ItemData> itemData) {
         if (itemData == null || itemData.isEmpty()) {
-            return Collections.emptySet();
+            return new ObjectOpenHashSet<>();
         }
 
-        Set<ItemStack> result = new HashSet<>();
+        ObjectOpenHashSet<ItemStack> result = new ObjectOpenHashSet<>();
         for (var data : itemData) {
             var item = ForgeRegistries.ITEMS.getValue(data.id());
             if (item != null) {
-                result.add(new ItemStack(item, 1, data.metadata()));
+                int effectiveMetadata = data.metadata();
+                if (!item.getHasSubtypes() && effectiveMetadata != 0) {
+                    effectiveMetadata = 0;
+                }
+                result.add(new ItemStack(item, 1, effectiveMetadata));
             }
         }
         return result;
     }
 
-    private static Set<Fluid> createFluids(Set<String> fluidNames) {
+    private static ObjectOpenHashSet<Fluid> createFluids(ObjectOpenHashSet<String> fluidNames) {
         if (fluidNames == null || fluidNames.isEmpty()) {
-            return Collections.emptySet();
+            return new ObjectOpenHashSet<>();
         }
 
-        Set<Fluid> result = new HashSet<>();
+        ObjectOpenHashSet<Fluid> result = new ObjectOpenHashSet<>();
         for (var fluidName : fluidNames) {
             var fluid = FluidRegistry.getFluid(fluidName);
             if (fluid != null) {
@@ -452,12 +437,12 @@ final class TagLoader {
         return result;
     }
 
-    private static Set<Block> createBlocks(Set<ResourceLocation> blockNames) {
+    private static ObjectOpenHashSet<Block> createBlocks(ObjectOpenHashSet<ResourceLocation> blockNames) {
         if (blockNames == null || blockNames.isEmpty()) {
-            return Collections.emptySet();
+            return new ObjectOpenHashSet<>();
         }
 
-        Set<Block> result = new HashSet<>();
+        ObjectOpenHashSet<Block> result = new ObjectOpenHashSet<>();
         for (var blockName : blockNames) {
             var block = ForgeRegistries.BLOCKS.getValue(blockName);
             if (block != null) {
@@ -467,51 +452,51 @@ final class TagLoader {
         return result;
     }
 
-    private static void applyItemTag(String tagName, Operation operation, Set<ItemStack> stacks) {
+    private static void applyItemTag(String tagName, Operation operation, ObjectOpenHashSet<ItemStack> stacks) {
         switch (operation) {
             case ADD -> {
-                Set<ItemKey> keys = ItemKey.toKeys(stacks);
+                ObjectOpenHashSet<ItemKey> keys = ItemKey.toKeys(stacks);
                 if (!keys.isEmpty()) {
-                    TagManager.ITEM.create(keys, tagName);
+                    TagManager.item().create(keys, tagName);
                 }
             }
             case REPLACE -> {
-                TagManager.ITEM.remove(tagName);
-                Set<ItemKey> keys = ItemKey.toKeys(stacks);
+                TagManager.item().remove(tagName);
+                ObjectOpenHashSet<ItemKey> keys = ItemKey.toKeys(stacks);
                 if (!keys.isEmpty()) {
-                    TagManager.ITEM.create(keys, tagName);
+                    TagManager.item().create(keys, tagName);
                 }
             }
         }
     }
 
-    private static void applyFluidTag(String tagName, Operation operation, Set<Fluid> fluids) {
+    private static void applyFluidTag(String tagName, Operation operation, ObjectOpenHashSet<Fluid> fluids) {
         switch (operation) {
             case ADD -> {
                 if (fluids != null && !fluids.isEmpty()) {
-                    TagManager.FLUID.create(fluids, tagName);
+                    TagManager.fluid().create(fluids, tagName);
                 }
             }
             case REPLACE -> {
-                TagManager.FLUID.remove(tagName);
+                TagManager.fluid().remove(tagName);
                 if (fluids != null && !fluids.isEmpty()) {
-                    TagManager.FLUID.create(fluids, tagName);
+                    TagManager.fluid().create(fluids, tagName);
                 }
             }
         }
     }
 
-    private static void applyBlockTag(String tagName, Operation operation, Set<Block> blocks) {
+    private static void applyBlockTag(String tagName, Operation operation, ObjectOpenHashSet<Block> blocks) {
         switch (operation) {
             case ADD -> {
                 if (blocks != null && !blocks.isEmpty()) {
-                    TagManager.BLOCK.create(blocks, tagName);
+                    TagManager.block().create(blocks, tagName);
                 }
             }
             case REPLACE -> {
-                TagManager.BLOCK.remove(tagName);
+                TagManager.block().remove(tagName);
                 if (blocks != null && !blocks.isEmpty()) {
-                    TagManager.BLOCK.create(blocks, tagName);
+                    TagManager.block().create(blocks, tagName);
                 }
             }
         }
