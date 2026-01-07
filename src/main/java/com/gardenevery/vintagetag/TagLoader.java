@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.zip.ZipFile;
 import javax.annotation.Nonnull;
@@ -87,11 +88,6 @@ import org.apache.commons.io.IOUtils;
 @SuppressWarnings("all")
 final class TagLoader {
 
-    enum Operation {
-        ADD,
-        REPLACE
-    }
-
     private static final Gson GSON = new Gson();
     private static final Pattern VALID_FILENAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]+\\.json$", Pattern.CASE_INSENSITIVE);
     private static final Object2ReferenceOpenHashMap<File, String> CACHED_TAG_JARS = new Object2ReferenceOpenHashMap<>();
@@ -113,6 +109,11 @@ final class TagLoader {
     private static final String COLON = ":";
     private static final String SLASH = "/";
     private static final String STRING_EMPTY = "";
+
+    enum Operation {
+        ADD,
+        REPLACE
+    }
 
     public static void scanModDirs() {
         for (var mod : Loader.instance().getModList()) {
@@ -203,7 +204,7 @@ final class TagLoader {
                     }
                     processedFiles.add(filePath);
                     var tagName = jsonFile.getName().replace(JSON, STRING_EMPTY);
-                    String fullTagName = buildTagName(currentNamespace, currentPath, tagName);
+                    var fullTagName = buildTagName(currentNamespace, currentPath, tagName);
                     processTagFile(jsonFile, fullTagName, tagType);
                 }
             }
@@ -232,8 +233,8 @@ final class TagLoader {
                 if (entryName.startsWith(DATA_TAGS_PREFIX) && entryName.endsWith(JSON)) {
                     var parts = entryName.split(SLASH);
                     if (parts.length >= 4) {
-                        var typeStr = parts[2];
-                        if (!isValidTagType(typeStr)) {
+                        var typeString = parts[2];
+                        if (!isValidTagType(typeString)) {
                             continue;
                         }
 
@@ -245,7 +246,7 @@ final class TagLoader {
                         if (parts.length - 4 <= 2 + 1) {
                             var tagName = buildTagNameFromPath(fileName, parts);
                             try (var stream = zip.getInputStream(entry)) {
-                                processTagStream(stream, modId, tagName, typeStr);
+                                processTagStream(stream, modId, tagName, typeString);
                             } catch (IOException e) {
                                 TagLog.info("Failed to read tag entry from JAR: {}", entryName, e);
                             }
@@ -306,7 +307,7 @@ final class TagLoader {
             replace = jsonObject.get(REPLACE).getAsBoolean();
         }
 
-        Operation operation = replace ? Operation.REPLACE : Operation.ADD;
+        var operation = replace ? Operation.REPLACE : Operation.ADD;
 
         switch (type) {
             case ITEM_TYPE:
@@ -393,11 +394,11 @@ final class TagLoader {
     private static ObjectOpenHashSet<ResourceLocation> parseResourceLocations(ObjectOpenHashSet<String> strings) {
         ObjectOpenHashSet<ResourceLocation> result = new ObjectOpenHashSet<>();
 
-        for (var str : strings) {
+        for (var string : strings) {
             try {
-                result.add(new ResourceLocation(str));
+                result.add(new ResourceLocation(string));
             } catch (Exception e) {
-                TagLog.info("Invalid resource location: {}", str, e);
+                TagLog.info("Invalid resource location: {}", string, e);
             }
         }
         return result;
@@ -455,16 +456,16 @@ final class TagLoader {
     private static void applyItemTag(String tagName, Operation operation, ObjectOpenHashSet<ItemStack> stacks) {
         switch (operation) {
             case ADD -> {
-                ObjectOpenHashSet<ItemKey> keys = ItemKey.toKeys(stacks);
+                Set<ItemKey> keys = ItemKey.toKey(stacks);
                 if (!keys.isEmpty()) {
-                    TagManager.item().create(keys, tagName);
+                    TagManager.item().register(keys, tagName);
                 }
             }
             case REPLACE -> {
                 TagManager.item().remove(tagName);
-                ObjectOpenHashSet<ItemKey> keys = ItemKey.toKeys(stacks);
+                Set<ItemKey> keys = ItemKey.toKey(stacks);
                 if (!keys.isEmpty()) {
-                    TagManager.item().create(keys, tagName);
+                    TagManager.item().register(keys, tagName);
                 }
             }
         }
@@ -474,13 +475,13 @@ final class TagLoader {
         switch (operation) {
             case ADD -> {
                 if (fluids != null && !fluids.isEmpty()) {
-                    TagManager.fluid().create(fluids, tagName);
+                    TagManager.fluid().register(fluids, tagName);
                 }
             }
             case REPLACE -> {
                 TagManager.fluid().remove(tagName);
                 if (fluids != null && !fluids.isEmpty()) {
-                    TagManager.fluid().create(fluids, tagName);
+                    TagManager.fluid().register(fluids, tagName);
                 }
             }
         }
@@ -490,13 +491,13 @@ final class TagLoader {
         switch (operation) {
             case ADD -> {
                 if (blocks != null && !blocks.isEmpty()) {
-                    TagManager.block().create(blocks, tagName);
+                    TagManager.block().register(blocks, tagName);
                 }
             }
             case REPLACE -> {
                 TagManager.block().remove(tagName);
                 if (blocks != null && !blocks.isEmpty()) {
-                    TagManager.block().create(blocks, tagName);
+                    TagManager.block().register(blocks, tagName);
                 }
             }
         }

@@ -160,13 +160,13 @@ final class TagSync {
     }
 
     public static class TagDataSyncMessage implements IMessage {
-        public SyncType syncType;
+        public SyncType type;
         public TagData tagData;
 
         public TagDataSyncMessage() {}
 
-        public TagDataSyncMessage(SyncType syncType, TagData tagData) {
-            this.syncType = syncType;
+        public TagDataSyncMessage(SyncType type, TagData tagData) {
+            this.type = type;
             this.tagData = tagData;
         }
 
@@ -176,7 +176,7 @@ final class TagSync {
             validateSize(totalSize);
 
             int st = buf.readUnsignedByte();
-            syncType = readSyncType(st);
+            type = readSyncType(st);
             tagData = new TagData();
 
             int itemTagCount = buf.readInt();
@@ -196,7 +196,7 @@ final class TagSync {
         public void toBytes(ByteBuf buf) {
             var tempBuf = buf.alloc().buffer();
             try {
-                tempBuf.writeByte(syncType.ordinal());
+                tempBuf.writeByte(type.ordinal());
 
                 tempBuf.writeInt(tagData.itemTags.size());
                 writeItemTags(tempBuf, tagData.itemTags);
@@ -307,13 +307,13 @@ final class TagSync {
             return new String(bytes, StandardCharsets.UTF_8);
         }
 
-        private void writeString(ByteBuf buf, String str) {
-            if (str == null || str.isEmpty()) {
+        private void writeString(ByteBuf buf, String string) {
+            if (string == null || string.isEmpty()) {
                 buf.writeInt(0);
                 return;
             }
 
-            byte[] bytes = str.getBytes(StandardCharsets.UTF_8);
+            byte[] bytes = string.getBytes(StandardCharsets.UTF_8);
             buf.writeInt(bytes.length);
             buf.writeBytes(bytes);
         }

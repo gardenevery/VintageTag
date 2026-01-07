@@ -22,7 +22,7 @@ record ItemKey(Item item, int metadata) {
     }
 
     @Nonnull
-    public static ObjectOpenHashSet<ItemKey> toKeys(@Nullable ObjectOpenHashSet<ItemStack> stacks) {
+    public static ObjectOpenHashSet<ItemKey> toKey(@Nullable ObjectOpenHashSet<ItemStack> stacks) {
         if (stacks == null || stacks.isEmpty()) {
             return new ObjectOpenHashSet<>();
         }
@@ -38,7 +38,7 @@ record ItemKey(Item item, int metadata) {
     }
 
     @Nonnull
-    public ItemStack toElement() {
+    public ItemStack toStack() {
         return new ItemStack(item, 1, metadata);
     }
 }

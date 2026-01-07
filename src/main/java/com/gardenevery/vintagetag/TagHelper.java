@@ -1,7 +1,6 @@
 package com.gardenevery.vintagetag;
 
 import java.util.Collections;
-import java.util.stream.Collectors;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -125,7 +124,7 @@ public final class TagHelper {
         Set<ItemStack> result = new ObjectOpenHashSet<>();
 
         for (var key : keys) {
-            result.add(key.toElement());
+            result.add(key.toStack());
         }
         return result;
     }
@@ -146,7 +145,7 @@ public final class TagHelper {
         NonNullList<ItemStack> result = NonNullList.create();
 
         for (var key : keys) {
-            result.add(key.toElement());
+            result.add(key.toStack());
         }
         return result;
     }
@@ -197,7 +196,7 @@ public final class TagHelper {
         Set<ItemStack> result = new ObjectOpenHashSet<>();
 
         for (var key : keys) {
-            result.add(key.toElement());
+            result.add(key.toStack());
         }
         return result;
     }
@@ -236,15 +235,22 @@ public final class TagHelper {
     @Nonnull
     public static Map<String, Set<ItemStack>> allItemEntries() {
         Map<String, Set<ItemKey>> itemKeyMap = TagManager.item().getAllEntries();
-        Map<String, Set<ItemStack>> result = new HashMap<>();
+        if (itemKeyMap.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Map<String, Set<ItemStack>> result = new HashMap<>(itemKeyMap.size());
 
         for (Map.Entry<String, Set<ItemKey>> entry : itemKeyMap.entrySet()) {
-            Set<ItemStack> itemStacks = entry.getValue().stream()
-                    .map(ItemKey::toElement)
-                    .collect(Collectors.toSet());
-            result.put(entry.getKey(), itemStacks);
+            Set<ItemKey> keys = entry.getValue();
+            Set<ItemStack> itemStacks = new ObjectOpenHashSet<>(keys.size());
+
+            for (var key : keys) {
+                itemStacks.add(key.toStack());
+            }
+            result.put(entry.getKey(), Collections.unmodifiableSet(itemStacks));
         }
-        return result;
+        return Collections.unmodifiableMap(result);
     }
 
     /**
@@ -255,15 +261,22 @@ public final class TagHelper {
     @Nonnull
     public static Map<String, Set<FluidStack>> allFluidEntries() {
         Map<String, Set<Fluid>> fluidMap = TagManager.fluid().getAllEntries();
-        Map<String, Set<FluidStack>> result = new HashMap<>();
+        if (fluidMap.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Map<String, Set<FluidStack>> result = new HashMap<>(fluidMap.size());
 
         for (Map.Entry<String, Set<Fluid>> entry : fluidMap.entrySet()) {
-            Set<FluidStack> fluidStacks = entry.getValue().stream()
-                    .map(fluid -> new FluidStack(fluid, 1000))
-                    .collect(Collectors.toSet());
-            result.put(entry.getKey(), fluidStacks);
+            Set<Fluid> fluids = entry.getValue();
+            Set<FluidStack> fluidStacks = new ObjectOpenHashSet<>(fluids.size());
+
+            for (var fluid : fluids) {
+                fluidStacks.add(new FluidStack(fluid, 1000));
+            }
+            result.put(entry.getKey(), Collections.unmodifiableSet(fluidStacks));
         }
-        return result;
+        return Collections.unmodifiableMap(result);
     }
 
     /**
@@ -418,6 +431,76 @@ public final class TagHelper {
             return false;
         }
         return TagManager.block().hasAnyTag(getBlock(blockEntity), tagNames);
+    }
+
+    /**
+     * Check if the specified ItemStack has all the given tags
+     *
+     * @param stack The ItemStack to check, can be null
+     * @param tagNames The tag names to check for, can be null or empty
+     * @return true if stack is not null/empty, tagNames are valid, and stack has all the tags
+     */
+    public static boolean hasAllTags(@Nullable ItemStack stack, @Nullable String... tagNames) {
+        if (stack == null || stack.isEmpty() || tagInvalid(tagNames)) {
+            return false;
+        }
+        return TagManager.item().hasAllTags(ItemKey.toKey(stack), tagNames);
+    }
+
+    /**
+     * Check if the specified FluidStack has all the given tags
+     *
+     * @param stack The FluidStack to check, can be null
+     * @param tagNames The tag names to check for, can be null or empty
+     * @return true if stack is not null/has fluid, tagNames are valid, and fluid has all the tags
+     */
+    public static boolean hasAllTags(@Nullable FluidStack stack, @Nullable String... tagNames) {
+        if (stack == null || stack.getFluid() == null || tagInvalid(tagNames)) {
+            return false;
+        }
+        return TagManager.fluid().hasAllTags(stack.getFluid(), tagNames);
+    }
+
+    /**
+     * Check if the specified Block has all the given tags
+     *
+     * @param block The Block to check, can be null
+     * @param tagNames The tag names to check for, can be null or empty
+     * @return true if block is not null, tagNames are valid, and block has all the tags
+     */
+    public static boolean hasAllTags(@Nullable Block block, @Nullable String... tagNames) {
+        if (block == null || tagInvalid(tagNames)) {
+            return false;
+        }
+        return TagManager.block().hasAllTags(block, tagNames);
+    }
+
+    /**
+     * Check if the specified BlockState has all the given tags
+     *
+     * @param blockState The IBlockState to check, can be null
+     * @param tagNames The tag names to check for, can be null or empty
+     * @return true if blockState is not null, tagNames are valid, and block has all the tags
+     */
+    public static boolean hasAllTags(@Nullable IBlockState blockState, @Nullable String... tagNames) {
+        if (blockState == null || tagInvalid(tagNames)) {
+            return false;
+        }
+        return TagManager.block().hasAllTags(blockState.getBlock(), tagNames);
+    }
+
+    /**
+     * Check if the specified TileEntity's block has all the given tags
+     *
+     * @param blockEntity The TileEntity to check, can be null
+     * @param tagNames The tag names to check for, can be null or empty
+     * @return true if blockEntity is not null, tagNames are valid, and block has all the tags
+     */
+    public static boolean hasAllTags(@Nullable TileEntity blockEntity, @Nullable String... tagNames) {
+        if (blockEntity == null || tagInvalid(tagNames)) {
+            return false;
+        }
+        return TagManager.block().hasAllTags(getBlock(blockEntity), tagNames);
     }
 
     /**

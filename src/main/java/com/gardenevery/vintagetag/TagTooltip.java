@@ -50,22 +50,22 @@ public class TagTooltip {
         return shiftDown;
     }
 
-    private static void addTagsToTooltip(ItemStack stack, List<String> tooltip) {
-        Set<String> itemTags = TagHelper.tags(stack);
+    private static void addTagsToTooltip(ItemStack itemStack, List<String> tooltip) {
+        Set<String> itemTags = TagHelper.tags(itemStack);
 
         Set<String> fluidTags = null;
-        if (stack.hasCapability(CapabilityFluidHandler.FLUID_HANDLER_ITEM_CAPABILITY, null)) {
-            var fluidHandler = stack.getCapability(CapabilityFluidHandler.FLUID_HANDLER_ITEM_CAPABILITY, null);
+        if (itemStack.hasCapability(CapabilityFluidHandler.FLUID_HANDLER_ITEM_CAPABILITY, null)) {
+            var fluidHandler = itemStack.getCapability(CapabilityFluidHandler.FLUID_HANDLER_ITEM_CAPABILITY, null);
             if (fluidHandler != null) {
-                var fluid = fluidHandler.drain(Integer.MAX_VALUE, false);
-                if (fluid != null && fluid.amount > 0) {
-                    fluidTags = TagHelper.tags(fluid);
+                var fluidStack = fluidHandler.drain(Integer.MAX_VALUE, false);
+                if (fluidStack != null && fluidStack.amount > 0) {
+                    fluidTags = TagHelper.tags(fluidStack);
                 }
             }
         }
 
         Set<String> blockTags = null;
-        var block = Block.getBlockFromItem(stack.getItem());
+        var block = Block.getBlockFromItem(itemStack.getItem());
         if (block != Blocks.AIR) {
             blockTags = TagHelper.tags(block);
         }

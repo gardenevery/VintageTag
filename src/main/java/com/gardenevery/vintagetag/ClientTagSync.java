@@ -49,7 +49,7 @@ final class ClientTagSync {
                 return;
             }
 
-            if (message.syncType == SyncType.FULL) {
+            if (message.type == SyncType.FULL) {
                 TagManager.item().clear();
                 TagManager.fluid().clear();
                 TagManager.block().clear();
@@ -68,7 +68,7 @@ final class ClientTagSync {
                         }
                     }
                     if (!keys.isEmpty()) {
-                        TagManager.item().create(keys, entry.getKey());
+                        TagManager.item().register(keys, entry.getKey());
                     }
                 }
 
@@ -81,7 +81,7 @@ final class ClientTagSync {
                         }
                     }
                     if (!fluids.isEmpty()) {
-                        TagManager.fluid().create(fluids, entry.getKey());
+                        TagManager.fluid().register(fluids, entry.getKey());
                     }
                 }
 
@@ -99,7 +99,7 @@ final class ClientTagSync {
                         }
                     }
                     if (!blocks.isEmpty()) {
-                        TagManager.block().create(blocks, entry.getKey());
+                        TagManager.block().register(blocks, entry.getKey());
                     }
                 }
             }

@@ -26,7 +26,7 @@ final class OreSync {
 
             List<ItemStack> ores = OreDictionary.getOres(oreName, false);
             for (var oreStack : ores) {
-                if (oreStack.isEmpty()) {
+                if (oreStack == null || oreStack.isEmpty()) {
                     failedEntries++;
                     continue;
                 }
@@ -36,7 +36,7 @@ final class OreSync {
                         int synced = syncWildcardEntry(oreStack.getItem(), oreName);
                         totalEntries += synced;
                     } else {
-                        create(oreStack, oreName);
+                        register(oreStack, oreName);
                         totalEntries++;
                     }
                 } catch (Exception e) {
@@ -45,23 +45,6 @@ final class OreSync {
             }
         }
         TagLog.info("=== Sync completed: {} successful, {} failed ===", totalEntries, failedEntries);
-    }
-
-    private static int syncWildcardEntry(Item item, String tagName) {
-        int synced = 0;
-
-        NonNullList<ItemStack> subItems = NonNullList.create();
-        item.getSubItems(CreativeTabs.SEARCH, subItems);
-
-        for (var subStack : subItems) {
-            try {
-                create(subStack, tagName);
-                synced++;
-            } catch (Exception e) {
-                //
-            }
-        }
-        return synced;
     }
 
     public static void syncToOreDictionary() {
@@ -83,15 +66,8 @@ final class OreSync {
             tags++;
 
             for (var itemKey : itemKeys) {
-                try {
-                    var stack = itemKey.toElement();
-                    if (!stack.isEmpty()) {
-                        OreDictionary.registerOre(tagName, stack);
-                        items++;
-                    }
-                } catch (Exception ignored) {
-                    //
-                }
+                OreDictionary.registerOre(tagName, itemKey.toStack());
+                items++;
             }
         }
 
@@ -99,12 +75,18 @@ final class OreSync {
         TagLog.info("=== Sync completed: {} tags, {} items ===", tags, items);
     }
 
-    private static void create(ItemStack stack, String tagName) {
-        if (stack == null || stack.isEmpty() || tagName == null || tagName.isEmpty()) {
-            return;
-        }
+    private static int syncWildcardEntry(Item item, String tagName) {
+        NonNullList<ItemStack> subItems = NonNullList.create();
+        item.getSubItems(CreativeTabs.SEARCH, subItems);
 
+        for (var subStack : subItems) {
+            register(subStack, tagName);
+        }
+        return subItems.size();
+    }
+
+    private static void register(ItemStack stack, String tagName) {
         var key = ItemKey.toKey(stack);
-        TagManager.item().create(key, tagName);
+        TagManager.item().register(key, tagName);
     }
 }
