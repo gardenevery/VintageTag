@@ -5,6 +5,7 @@ tag.command.statistics.title=§6=== §f标签统计 §6===
 tag.command.statistics.items=§a物品标签：%s    关联数：%s
 tag.command.statistics.fluids=§b流体标签：%s    关联数：%s
 tag.command.statistics.blocks=§e方块标签：%s    关联数：%s
+tag.command.statistics.blockStates=§d方块状态标签：%s    关联数：%s
 tag.command.statistics.total=§6总标签：%s    总关联：%s
 
 tag.command.help.title=§6=== Tag 命令帮助 ===

@@ -51,7 +51,7 @@ public class TagTooltip {
     }
 
     private static void addTagsToTooltip(ItemStack itemStack, List<String> tooltip) {
-        Set<String> itemTags = TagHelper.tags(itemStack);
+        Set<String> itemTags = TagHelper.item().tags(itemStack);
 
         Set<String> fluidTags = null;
         if (itemStack.hasCapability(CapabilityFluidHandler.FLUID_HANDLER_ITEM_CAPABILITY, null)) {
@@ -59,7 +59,7 @@ public class TagTooltip {
             if (fluidHandler != null) {
                 var fluidStack = fluidHandler.drain(Integer.MAX_VALUE, false);
                 if (fluidStack != null && fluidStack.amount > 0) {
-                    fluidTags = TagHelper.tags(fluidStack);
+                    fluidTags = TagHelper.fluid().tags(fluidStack);
                 }
             }
         }
@@ -67,7 +67,7 @@ public class TagTooltip {
         Set<String> blockTags = null;
         var block = Block.getBlockFromItem(itemStack.getItem());
         if (block != Blocks.AIR) {
-            blockTags = TagHelper.tags(block);
+            blockTags = TagHelper.block().tags(block);
         }
 
         boolean hasItemTags = !itemTags.isEmpty();

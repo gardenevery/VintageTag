@@ -5,6 +5,7 @@ tag.command.statistics.title=§6=== §fTag Statistics §6===
 tag.command.statistics.items=§aItem Tags: %s    Associations: %s
 tag.command.statistics.fluids=§bFluid Tags: %s    Associations: %s
 tag.command.statistics.blocks=§eBlock Tags: %s    Associations: %s
+tag.command.statistics.blockStates=§eBlockState Tags: %s    Associations: %s
 tag.command.statistics.total=§6Total: %s    Associations: %s
 
 tag.command.help.title=§6=== Tag Command Help ===

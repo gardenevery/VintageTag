@@ -26,7 +26,7 @@ final class ClientTagSync {
     @SideOnly(Side.CLIENT)
     public static void registerClient() {
         if (TagSync.NETWORK == null) {
-            TagSync.NETWORK = NetworkRegistry.INSTANCE.newSimpleChannel("TagSync");
+            TagSync.NETWORK = NetworkRegistry.INSTANCE.newSimpleChannel("VintageTag");
         }
 
         TagSync.NETWORK.registerMessage(TagDataSyncHandler.class, TagDataSyncMessage.class, 0, Side.CLIENT);
@@ -50,10 +50,6 @@ final class ClientTagSync {
             }
 
             if (message.type == SyncType.FULL) {
-                TagManager.item().clear();
-                TagManager.fluid().clear();
-                TagManager.block().clear();
-
                 for (var entry : message.tagData.itemTags.object2ObjectEntrySet()) {
                     ObjectSet<ItemKey> keys = new ObjectOpenHashSet<>(entry.getValue().size());
                     for (var itemEntry : entry.getValue()) {
@@ -68,7 +64,7 @@ final class ClientTagSync {
                         }
                     }
                     if (!keys.isEmpty()) {
-                        TagManager.item().register(keys, entry.getKey());
+                        TagManager.registerItem(keys, entry.getKey());
                     }
                 }
 
@@ -81,7 +77,7 @@ final class ClientTagSync {
                         }
                     }
                     if (!fluids.isEmpty()) {
-                        TagManager.fluid().register(fluids, entry.getKey());
+                        TagManager.registerFluid(fluids, entry.getKey());
                     }
                 }
 
@@ -99,9 +95,10 @@ final class ClientTagSync {
                         }
                     }
                     if (!blocks.isEmpty()) {
-                        TagManager.block().register(blocks, entry.getKey());
+                        TagManager.registerBlock(blocks, entry.getKey());
                     }
                 }
+                TagManager.bake();
             }
         }
     }

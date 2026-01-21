@@ -35,7 +35,7 @@ final class TagSync {
     }
 
     public static void register() {
-        NETWORK = NetworkRegistry.INSTANCE.newSimpleChannel("TagSync");
+        NETWORK = NetworkRegistry.INSTANCE.newSimpleChannel("VintageTag");
         MinecraftForge.EVENT_BUS.register(new EventHandler());
 
         NETWORK.registerMessage(
@@ -84,7 +84,7 @@ final class TagSync {
         var data = new TagData();
 
         data.itemTags = new Object2ObjectOpenHashMap<>();
-        for (var tagName : TagManager.item().allTags()) {
+        for (var tagName : TagManager.item().getAllTags()) {
             Set<ItemKey> keys = TagManager.item().getKeys(tagName);
             ObjectArrayList<ItemEntry> entries = new ObjectArrayList<>(keys.size());
 
@@ -98,7 +98,7 @@ final class TagSync {
         }
 
         data.fluidTags = new Object2ObjectOpenHashMap<>();
-        for (var tagName : TagManager.fluid().allTags()) {
+        for (var tagName : TagManager.fluid().getAllTags()) {
             Set<Fluid> fluids = TagManager.fluid().getKeys(tagName);
             ObjectArrayList<String> fluidNames = new ObjectArrayList<>(fluids.size());
 
@@ -112,7 +112,7 @@ final class TagSync {
         }
 
         data.blockTags = new Object2ObjectOpenHashMap<>();
-        for (var tagName : TagManager.block().allTags()) {
+        for (var tagName : TagManager.block().getAllTags()) {
             Set<Block> blocks = TagManager.block().getKeys(tagName);
             ObjectArrayList<String> blockNames = new ObjectArrayList<>(blocks.size());
 

@@ -13,8 +13,8 @@ public class TagMod {
 
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
+        BlockMapper.register();
         TagSync.register();
-        TagLoader.scanModDirs();
         if (event.getSide() == Side.CLIENT) {
             ClientTagSync.registerClient();
         }
@@ -41,6 +41,8 @@ public class TagMod {
         if (TagConfig.enableConfigScanner) {
             TagLoader.scanConfigTags();
         }
+
+        TagManager.bake();
 
         if (TagConfig.enableSyncToOreDict) {
             OreSync.syncToOreDictionary();

@@ -53,7 +53,7 @@ final class OreSync {
         int tags = 0;
         int items = 0;
 
-        for (var tagName : TagManager.item().allTags()) {
+        for (var tagName : TagManager.item().getAllTags()) {
             if (tagName == null || tagName.isEmpty()) {
                 continue;
             }
@@ -87,6 +87,6 @@ final class OreSync {
 
     private static void register(ItemStack stack, String tagName) {
         var key = ItemKey.toKey(stack);
-        TagManager.item().register(key, tagName);
+        TagManager.register(key, tagName);
     }
 }
