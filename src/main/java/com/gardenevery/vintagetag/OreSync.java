@@ -1,7 +1,12 @@
 package com.gardenevery.vintagetag;
 
 import java.util.List;
-import java.util.Set;
+import java.util.stream.Collectors;
+
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectSet;
 
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.item.Item;
@@ -11,7 +16,17 @@ import net.minecraftforge.oredict.OreDictionary;
 
 final class OreSync {
 
+    private static final Object2ObjectMap<String, ObjectSet<ItemKey>> ORE_CACHE = new Object2ObjectOpenHashMap<>();
+    private static volatile boolean hasSynced = false;
+
     public static void oreDictionarySync() {
+        if (hasSynced) {
+            TagLog.info("=== Using cached OreDictionary data ===");
+            applyCachedTags();
+            return;
+        }
+
+        hasSynced = true;
 
         var oreNames = OreDictionary.getOreNames();
         int totalEntries = 0;
@@ -25,6 +40,8 @@ final class OreSync {
             }
 
             List<ItemStack> ores = OreDictionary.getOres(oreName, false);
+            ObjectSet<ItemKey> itemKeys = new ObjectOpenHashSet<>();
+
             for (var oreStack : ores) {
                 if (oreStack == null || oreStack.isEmpty()) {
                     failedEntries++;
@@ -33,60 +50,42 @@ final class OreSync {
 
                 try {
                     if (oreStack.getMetadata() == OreDictionary.WILDCARD_VALUE && oreStack.getItem().getHasSubtypes()) {
-                        int synced = syncWildcardEntry(oreStack.getItem(), oreName);
-                        totalEntries += synced;
+                        ObjectSet<ItemKey> wildcardKeys = syncWildcardEntry(oreStack.getItem());
+                        itemKeys.addAll(wildcardKeys);
+                        totalEntries += wildcardKeys.size();
                     } else {
-                        register(oreStack, oreName);
+                        var key = ItemKey.toKey(oreStack);
+                        itemKeys.add(key);
                         totalEntries++;
                     }
                 } catch (Exception e) {
                     failedEntries++;
                 }
             }
+            if (!itemKeys.isEmpty()) {
+                ORE_CACHE.put(oreName, itemKeys);
+            }
         }
+
+        applyCachedTags();
         TagLog.info("=== Sync completed: {} successful, {} failed ===", totalEntries, failedEntries);
     }
 
-    public static void syncToOreDictionary() {
-        TagLog.info("=== Starting sync from Tags to OreDictionary ===");
-
-        int tags = 0;
-        int items = 0;
-
-        for (var tagName : TagManager.item().getAllTags()) {
-            if (tagName == null || tagName.isEmpty()) {
-                continue;
-            }
-
-            Set<ItemKey> itemKeys = TagManager.item().getKeys(tagName);
-            if (itemKeys.isEmpty()) {
-                continue;
-            }
-
-            tags++;
-
-            for (var itemKey : itemKeys) {
-                OreDictionary.registerOre(tagName, itemKey.toStack());
-                items++;
-            }
+    private static void applyCachedTags() {
+        int totalTags = 0;
+        for (Object2ObjectMap.Entry<String, ObjectSet<ItemKey>> entry : ORE_CACHE.object2ObjectEntrySet()) {
+            TagManager.registerItem(entry.getValue(), entry.getKey());
+            totalTags += entry.getValue().size();
         }
-
-        OreDictionary.rebakeMap();
-        TagLog.info("=== Sync completed: {} tags, {} items ===", tags, items);
+        TagLog.info("Applied {} items from {} cached ore categories", totalTags, ORE_CACHE.size());
     }
 
-    private static int syncWildcardEntry(Item item, String tagName) {
+    private static ObjectSet<ItemKey> syncWildcardEntry(Item item) {
         NonNullList<ItemStack> subItems = NonNullList.create();
         item.getSubItems(CreativeTabs.SEARCH, subItems);
 
-        for (var subStack : subItems) {
-            register(subStack, tagName);
-        }
-        return subItems.size();
-    }
-
-    private static void register(ItemStack stack, String tagName) {
-        var key = ItemKey.toKey(stack);
-        TagManager.register(key, tagName);
+        return subItems.stream()
+                .map(ItemKey::toKey)
+                .collect(Collectors.toCollection(ObjectOpenHashSet::new));
     }
 }

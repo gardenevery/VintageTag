@@ -7,7 +7,6 @@ import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +19,8 @@ import javax.annotation.Nonnull;
 import com.github.bsideup.jabel.Desugar;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 
 import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
@@ -92,7 +93,7 @@ final class TagLoader {
 
     private static final Gson GSON = new Gson();
     private static final Pattern VALID_FILENAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]+\\.json$", Pattern.CASE_INSENSITIVE);
-    private static final Map<File, List<JarTagData>> CACHED_JAR_TAGS = new HashMap<>();
+    private static final Map<File, List<JarTagData>> CACHED_JAR_TAGS = new Object2ObjectOpenHashMap<>();
     private static boolean isInitialized = false;
 
     public enum Operation {

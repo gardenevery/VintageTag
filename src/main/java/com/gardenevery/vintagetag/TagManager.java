@@ -43,22 +43,22 @@ final class TagManager {
     }
 
     public static void bake() {
-        final Tag<ItemKey> newItemSnapshot = ITEM_CONTAINER.build();
-        final Tag<Fluid> newFluidSnapshot = FLUID_CONTAINER.build();
-        final Tag<Block> newBlockSnapshot = BLOCK_CONTAINER.build();
-        final Tag<IBlockState> newBlockStateSnapshot = BLOCK_STATE_CONTAINER.build();
-
         synchronized (TagManager.class) {
+            final Tag<ItemKey> newItemSnapshot = ITEM_CONTAINER.build();
+            final Tag<Fluid> newFluidSnapshot = FLUID_CONTAINER.build();
+            final Tag<Block> newBlockSnapshot = BLOCK_CONTAINER.build();
+            final Tag<IBlockState> newBlockStateSnapshot = BLOCK_STATE_CONTAINER.build();
+
             ITEM_SNAPSHOT.set(newItemSnapshot);
             FLUID_SNAPSHOT.set(newFluidSnapshot);
             BLOCK_SNAPSHOT.set(newBlockSnapshot);
             BLOCK_STATE_SNAPSHOT.set(newBlockStateSnapshot);
-        }
 
-        ITEM_CONTAINER.clear();
-        FLUID_CONTAINER.clear();
-        BLOCK_CONTAINER.clear();
-        BLOCK_STATE_CONTAINER.clear();
+            ITEM_CONTAINER.clear();
+            FLUID_CONTAINER.clear();
+            BLOCK_CONTAINER.clear();
+            BLOCK_STATE_CONTAINER.clear();
+        }
     }
 
     public static void register(ItemKey itemKey, String tagName) {

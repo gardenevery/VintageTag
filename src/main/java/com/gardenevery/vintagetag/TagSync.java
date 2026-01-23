@@ -12,6 +12,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 import net.minecraft.block.Block;
+import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fluids.Fluid;
@@ -31,33 +32,14 @@ final class TagSync {
 
     public enum SyncType {
         NONE,
+        PARTIAL,
         FULL
     }
 
     public static void register() {
         NETWORK = NetworkRegistry.INSTANCE.newSimpleChannel("VintageTag");
         MinecraftForge.EVENT_BUS.register(new EventHandler());
-
-        NETWORK.registerMessage(
-                (message, ctx) -> null,
-                TagDataSyncMessage.class,
-                0,
-                Side.CLIENT
-        );
-
-        NETWORK.registerMessage(
-                (message, ctx) -> null,
-                ServerSyncMessage.class,
-                1,
-                Side.CLIENT
-        );
-
-        NETWORK.registerMessage(
-                (message, ctx) -> null,
-                ClientSyncMessage.class,
-                2,
-                Side.SERVER
-        );
+        NETWORK.registerMessage((message, ctx) -> null, TagDataSyncMessage.class, 0, Side.CLIENT);
     }
 
     public static void sync(@Nullable EntityPlayerMP player) {
@@ -124,26 +106,23 @@ final class TagSync {
             }
             data.blockTags.put(tagName, blockNames);
         }
-        return data;
-    }
 
-    public static void syncOreDictionary(@Nullable EntityPlayerMP player) {
-        if (FMLCommonHandler.instance().getMinecraftServerInstance() == null) {
-            return;
-        }
+        data.blockStateTags = new Object2ObjectOpenHashMap<>();
+        for (var tagName : TagManager.blockState().getAllTags()) {
+            Set<IBlockState> blockStates = TagManager.blockState().getKeys(tagName);
+            ObjectArrayList<BlockStateEntry> entries = new ObjectArrayList<>(blockStates.size());
 
-        var message = new ServerSyncMessage();
-
-        if (player == null) {
-            for (var onlinePlayer : FMLCommonHandler.instance()
-                    .getMinecraftServerInstance()
-                    .getPlayerList()
-                    .getPlayers()) {
-                NETWORK.sendTo(message, onlinePlayer);
+            for (var state : blockStates) {
+                var block = state.getBlock();
+                var registryName = block.getRegistryName();
+                if (registryName != null) {
+                    int metadata = block.getMetaFromState(state);
+                    entries.add(new BlockStateEntry(registryName.toString(), metadata));
+                }
             }
-        } else {
-            NETWORK.sendTo(message, player);
+            data.blockStateTags.put(tagName, entries);
         }
+        return data;
     }
 
     public static class EventHandler {
@@ -151,10 +130,6 @@ final class TagSync {
         public void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
             if (event.player instanceof EntityPlayerMP entityPlayerMP) {
                 TagSync.sync(entityPlayerMP);
-
-                if (TagConfig.enableSyncToOreDict) {
-                    TagSync.syncOreDictionary(entityPlayerMP);
-                }
             }
         }
     }
@@ -190,6 +165,10 @@ final class TagSync {
             int blockTagCount = buf.readInt();
             validateCount("blockTagCount", blockTagCount);
             tagData.blockTags = readStringMap(buf, blockTagCount);
+
+            int blockStateTagCount = buf.readInt();
+            validateCount("blockStateTagCount", blockStateTagCount);
+            tagData.blockStateTags = readBlockStateTags(buf, blockStateTagCount);
         }
 
         @Override
@@ -206,6 +185,9 @@ final class TagSync {
 
                 tempBuf.writeInt(tagData.blockTags.size());
                 writeStringMap(tempBuf, tagData.blockTags);
+
+                tempBuf.writeInt(tagData.blockStateTags.size());
+                writeBlockStateTags(tempBuf, tagData.blockStateTags);
 
                 int totalSize = tempBuf.readableBytes();
                 validateSize(totalSize);
@@ -253,6 +235,24 @@ final class TagSync {
             return itemTags;
         }
 
+        private Object2ObjectMap<String, ObjectArrayList<BlockStateEntry>> readBlockStateTags(ByteBuf buf, int tagCount) {
+            Object2ObjectMap<String, ObjectArrayList<BlockStateEntry>> blockStateTags = new Object2ObjectOpenHashMap<>(tagCount);
+            for (int i = 0; i < tagCount; i++) {
+                var tagName = readString(buf);
+                int entryCount = buf.readInt();
+                validateCount("blockState entry count", entryCount);
+
+                ObjectArrayList<BlockStateEntry> entries = new ObjectArrayList<>(entryCount);
+                for (int j = 0; j < entryCount; j++) {
+                    var blockId = readString(buf);
+                    int metadata = buf.readInt();
+                    entries.add(new BlockStateEntry(blockId, metadata));
+                }
+                blockStateTags.put(tagName, entries);
+            }
+            return blockStateTags;
+        }
+
         private Object2ObjectMap<String, ObjectArrayList<String>> readStringMap(ByteBuf buf, int tagCount) {
             Object2ObjectMap<String, ObjectArrayList<String>> map = new Object2ObjectOpenHashMap<>(tagCount);
             for (int i = 0; i < tagCount; i++) {
@@ -276,6 +276,17 @@ final class TagSync {
                 for (var itemEntry : entry.getValue()) {
                     writeString(buf, itemEntry.itemId);
                     buf.writeInt(itemEntry.metadata);
+                }
+            }
+        }
+
+        private void writeBlockStateTags(ByteBuf buf, Object2ObjectMap<String, ObjectArrayList<BlockStateEntry>> blockStateTags) {
+            for (var entry : blockStateTags.object2ObjectEntrySet()) {
+                writeString(buf, entry.getKey());
+                buf.writeInt(entry.getValue().size());
+                for (var blockStateEntry : entry.getValue()) {
+                    writeString(buf, blockStateEntry.blockId);
+                    buf.writeInt(blockStateEntry.metadata);
                 }
             }
         }
@@ -319,32 +330,16 @@ final class TagSync {
         }
     }
 
-    public static class ServerSyncMessage implements IMessage {
-        public ServerSyncMessage() {}
-
-        @Override
-        public void fromBytes(ByteBuf buf) {}
-
-        @Override
-        public void toBytes(ByteBuf buf) {}
-    }
-
-    public static class ClientSyncMessage implements IMessage {
-        public ClientSyncMessage() {}
-
-        @Override
-        public void fromBytes(ByteBuf buf) {}
-
-        @Override
-        public void toBytes(ByteBuf buf) {}
-    }
-
     public static class TagData {
         public Object2ObjectMap<String, ObjectArrayList<ItemEntry>> itemTags;
         public Object2ObjectMap<String, ObjectArrayList<String>> fluidTags;
         public Object2ObjectMap<String, ObjectArrayList<String>> blockTags;
+        public Object2ObjectMap<String, ObjectArrayList<BlockStateEntry>> blockStateTags;
     }
 
     @Desugar
     public record ItemEntry(String itemId, int metadata) {}
+
+    @Desugar
+    public record BlockStateEntry(String blockId, int metadata) {}
 }

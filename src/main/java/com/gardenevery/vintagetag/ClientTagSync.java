@@ -1,14 +1,13 @@
 package com.gardenevery.vintagetag;
 
-import com.gardenevery.vintagetag.TagSync.ClientSyncMessage;
 import com.gardenevery.vintagetag.TagSync.TagDataSyncMessage;
-import com.gardenevery.vintagetag.TagSync.ServerSyncMessage;
 import com.gardenevery.vintagetag.TagSync.SyncType;
 
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 
 import net.minecraft.block.Block;
+import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.fluids.Fluid;
@@ -28,10 +27,7 @@ final class ClientTagSync {
         if (TagSync.NETWORK == null) {
             TagSync.NETWORK = NetworkRegistry.INSTANCE.newSimpleChannel("VintageTag");
         }
-
         TagSync.NETWORK.registerMessage(TagDataSyncHandler.class, TagDataSyncMessage.class, 0, Side.CLIENT);
-        TagSync.NETWORK.registerMessage(ServerSyncHandler.class, ServerSyncMessage.class, 1, Side.CLIENT);
-        TagSync.NETWORK.registerMessage(ClientSyncHandler.class, ClientSyncMessage.class, 2, Side.SERVER);
     }
 
     @SideOnly(Side.CLIENT)
@@ -43,28 +39,29 @@ final class ClientTagSync {
             return null;
         }
 
+        @SuppressWarnings("deprecation")
         @SideOnly(Side.CLIENT)
         private void processClientSync(TagDataSyncMessage message) {
-            if (message == null || message.tagData == null) {
+            if (message == null || message.tagData == null || message.type == null) {
                 return;
             }
 
             if (message.type == SyncType.FULL) {
                 for (var entry : message.tagData.itemTags.object2ObjectEntrySet()) {
-                    ObjectSet<ItemKey> keys = new ObjectOpenHashSet<>(entry.getValue().size());
+                    ObjectSet<ItemKey> itemKeys = new ObjectOpenHashSet<>(entry.getValue().size());
                     for (var itemEntry : entry.getValue()) {
                         try {
-                            var location = new ResourceLocation(itemEntry.itemId());
-                            var item = ForgeRegistries.ITEMS.getValue(location);
+                            var resourceLocation = new ResourceLocation(itemEntry.itemId());
+                            var item = ForgeRegistries.ITEMS.getValue(resourceLocation);
                             if (item != null) {
-                                keys.add(new ItemKey(item, itemEntry.metadata()));
+                                itemKeys.add(new ItemKey(item, itemEntry.metadata()));
                             }
                         } catch (Exception e) {
                             //
                         }
                     }
-                    if (!keys.isEmpty()) {
-                        TagManager.registerItem(keys, entry.getKey());
+                    if (!itemKeys.isEmpty()) {
+                        TagManager.registerItem(itemKeys, entry.getKey());
                     }
                 }
 
@@ -85,8 +82,8 @@ final class ClientTagSync {
                     ObjectSet<Block> blocks = new ObjectOpenHashSet<>(entry.getValue().size());
                     for (var blockName : entry.getValue()) {
                         try {
-                            var location = new ResourceLocation(blockName);
-                            var block = ForgeRegistries.BLOCKS.getValue(location);
+                            var resourceLocation = new ResourceLocation(blockName);
+                            var block = ForgeRegistries.BLOCKS.getValue(resourceLocation);
                             if (block != null) {
                                 blocks.add(block);
                             }
@@ -98,35 +95,27 @@ final class ClientTagSync {
                         TagManager.registerBlock(blocks, entry.getKey());
                     }
                 }
+
+                for (var entry : message.tagData.blockStateTags.object2ObjectEntrySet()) {
+                    ObjectSet<IBlockState> blockStates = new ObjectOpenHashSet<>(entry.getValue().size());
+                    for (var blockStateEntry : entry.getValue()) {
+                        try {
+                            var resourceLocation = new ResourceLocation(blockStateEntry.blockId());
+                            var block = ForgeRegistries.BLOCKS.getValue(resourceLocation);
+                            if (block != null) {
+                                var blockState = block.getStateFromMeta(blockStateEntry.metadata());
+                                blockStates.add(blockState);
+                            }
+                        } catch (Exception e) {
+                            //
+                        }
+                    }
+                    if (!blockStates.isEmpty()) {
+                        TagManager.registerBlockState(blockStates, entry.getKey());
+                    }
+                }
                 TagManager.bake();
             }
         }
-    }
-
-    @SideOnly(Side.CLIENT)
-    public static class ServerSyncHandler implements IMessageHandler<ServerSyncMessage, IMessage> {
-        @Override
-        @SideOnly(Side.CLIENT)
-        public IMessage onMessage(ServerSyncMessage message, MessageContext ctx) {
-            Minecraft.getMinecraft().addScheduledTask(this::processOreDictionarySync);
-            return null;
-        }
-
-        @SideOnly(Side.CLIENT)
-        private void processOreDictionarySync() {
-            OreSync.syncToOreDictionary();
-        }
-    }
-
-    @SideOnly(Side.CLIENT)
-    public static class ClientSyncHandler implements IMessageHandler<ClientSyncMessage, IMessage> {
-        @Override
-        @SideOnly(Side.CLIENT)
-        public IMessage onMessage(ClientSyncMessage message, MessageContext ctx) {
-            return null;
-        }
-
-        @SideOnly(Side.CLIENT)
-        private void processOreDictionarySync() {}
     }
 }

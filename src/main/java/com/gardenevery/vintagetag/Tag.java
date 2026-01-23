@@ -41,8 +41,8 @@ final class Tag<T> {
         if (map.isEmpty()) {
             return ImmutableMap.of();
         }
-        ImmutableMap.Builder<K, ImmutableSet<V>> builder = ImmutableMap.builder();
 
+        ImmutableMap.Builder<K, ImmutableSet<V>> builder = ImmutableMap.builder();
         for (var entry : map.object2ReferenceEntrySet()) {
             builder.put(entry.getKey(), ImmutableSet.copyOf(entry.getValue()));
         }
@@ -129,7 +129,6 @@ final class Tag<T> {
         return tagToKeys.containsKey(tagName);
     }
 
-    @SuppressWarnings("UnusedReturnValue")
     static final class MutableTagContainer<T> {
         private final Object2ReferenceOpenHashMap<String, ObjectOpenHashSet<T>> tagToKeys;
         private final Object2ReferenceOpenHashMap<T, ObjectOpenHashSet<String>> keyToTags;

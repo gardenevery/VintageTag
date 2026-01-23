@@ -55,6 +55,45 @@ public final class TagHelper {
         return BlockStateTagHelper.INSTANCE;
     }
 
+    /**
+     * Get the total number of tags
+     *
+     * @return The total number of tags
+     */
+    public static int tagCount() {
+        int count = TagManager.item().getTagCount();
+        count += TagManager.fluid().getTagCount();
+        count += TagManager.block().getTagCount();
+        count += TagManager.blockState().getTagCount();
+        return count;
+    }
+
+    /**
+     * Get the total number of tag associations
+     *
+     * @return The total number of tag associations
+     */
+    public static int associationCount() {
+        int count = TagManager.item().getAssociationCount();
+        count += TagManager.fluid().getAssociationCount();
+        count += TagManager.block().getAssociationCount();
+        count += TagManager.blockState().getAssociationCount();
+        return count;
+    }
+
+    /**
+     * Get the total number of tag keys
+     *
+     * @return The total number of tag keys
+     */
+    public static int keyCount() {
+        int count = TagManager.item().getKeyCount();
+        count += TagManager.fluid().getKeyCount();
+        count += TagManager.block().getKeyCount();
+        count += TagManager.blockState().getKeyCount();
+        return count;
+    }
+
     private static boolean tagInvalid(@Nullable String tagName) {
         return tagName == null || tagName.isEmpty();
     }

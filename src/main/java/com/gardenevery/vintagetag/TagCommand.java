@@ -73,38 +73,20 @@ public class TagCommand extends CommandBase {
         sender.sendMessage(new TextComponentTranslation("tag.command.statistics.title"));
 
         sender.sendMessage(new TextComponentTranslation("tag.command.statistics.items",
-                TagHelper.item().tagCount(),
-                TagHelper.item().associationCount(),
-                TagHelper.item().keyCount()
-        ));
+                TagHelper.item().tagCount(), TagHelper.item().associationCount(), TagHelper.item().keyCount()));
 
         sender.sendMessage(new TextComponentTranslation("tag.command.statistics.fluids",
-                TagHelper.fluid().tagCount(),
-                TagHelper.fluid().associationCount(),
-                TagHelper.fluid().keyCount()
-        ));
+                TagHelper.fluid().tagCount(), TagHelper.fluid().associationCount(), TagHelper.fluid().keyCount()));
 
         sender.sendMessage(new TextComponentTranslation("tag.command.statistics.blocks",
-                TagHelper.block().tagCount(),
-                TagHelper.block().associationCount(),
-                TagHelper.block().keyCount()
-        ));
+                TagHelper.block().tagCount(), TagHelper.block().associationCount(), TagHelper.block().keyCount()));
 
         sender.sendMessage(new TextComponentTranslation("tag.command.statistics.blockStates",
-                TagHelper.blockState().tagCount(),
-                TagHelper.blockState().associationCount(),
-                TagHelper.blockState().keyCount()
-        ));
+                TagHelper.blockState().tagCount(), TagHelper.blockState().associationCount(), TagHelper.blockState().keyCount()));
 
-        int totalTags = TagHelper.item().tagCount() + TagHelper.fluid().tagCount() + TagHelper.block().tagCount()
-                + TagHelper.blockState().tagCount();
-
-        int totalAssociations = TagHelper.item().associationCount() + TagHelper.fluid().associationCount()
-                + TagHelper.block().associationCount()+ TagHelper.blockState().associationCount();
-
-        int totalKeys = TagHelper.item().keyCount() + TagHelper.fluid().keyCount() + TagHelper.block().keyCount()
-                + TagHelper.blockState().keyCount();
-
+        int totalTags = TagHelper.tagCount();
+        int totalAssociations = TagHelper.associationCount();
+        int totalKeys = TagHelper.keyCount();
         sender.sendMessage(new TextComponentTranslation("tag.command.statistics.total", totalTags, totalAssociations, totalKeys));
     }
 
@@ -125,11 +107,6 @@ public class TagCommand extends CommandBase {
 
         TagManager.bake();
         TagSync.sync(null);
-
-        if (TagConfig.enableSyncToOreDict) {
-            OreSync.syncToOreDictionary();
-            TagSync.syncOreDictionary(null);
-        }
 
         long endTime = System.currentTimeMillis();
         long duration = endTime - startTime;

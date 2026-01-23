@@ -41,12 +41,7 @@ public class TagMod {
         if (TagConfig.enableConfigScanner) {
             TagLoader.scanConfigTags();
         }
-
         TagManager.bake();
-
-        if (TagConfig.enableSyncToOreDict) {
-            OreSync.syncToOreDictionary();
-        }
     }
 
     @Mod.EventHandler
