@@ -1,5 +1,6 @@
 package com.gardenevery.vintagetag;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
@@ -30,11 +31,9 @@ final class Tag<T> {
         this.keyToTags = buildMap(container.keyToTags);
         this.tags = this.tagToKeys.keySet();
 
-        int count = 0;
-        for (ImmutableSet<T> keys : this.tagToKeys.values()) {
-            count += keys.size();
-        }
-        this.associationCount = count;
+        this.associationCount = this.tagToKeys.values().stream()
+                .mapToInt(ImmutableSet::size)
+                .sum();
     }
 
     private static <K, V> ImmutableMap<K, ImmutableSet<V>> buildMap(Object2ReferenceOpenHashMap<K, ObjectOpenHashSet<V>> map) {
@@ -82,17 +81,15 @@ final class Tag<T> {
     }
 
     public boolean hasAnyTag(@Nonnull T key, @Nonnull String... tagNames) {
+        if (tagNames.length == 0) {
+            return false;
+        }
+
         var tags = keyToTags.get(key);
         if (tags == null) {
             return false;
         }
-
-        for (var tag : tagNames) {
-            if (tags.contains(tag)) {
-                return true;
-            }
-        }
-        return false;
+        return Arrays.stream(tagNames).anyMatch(tags::contains);
     }
 
     public boolean hasAllTags(@Nonnull T key, @Nonnull String... tagNames) {
@@ -104,13 +101,7 @@ final class Tag<T> {
         if (tags == null) {
             return false;
         }
-
-        for (var tag : tagNames) {
-            if (!tags.contains(tag)) {
-                return false;
-            }
-        }
-        return true;
+        return Arrays.stream(tagNames).allMatch(tags::contains);
     }
 
     public int getTagCount() {

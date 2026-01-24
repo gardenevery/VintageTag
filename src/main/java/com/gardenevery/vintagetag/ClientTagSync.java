@@ -1,16 +1,18 @@
 package com.gardenevery.vintagetag;
 
-import com.gardenevery.vintagetag.TagSync.TagDataSyncMessage;
-import com.gardenevery.vintagetag.TagSync.SyncType;
+import java.util.function.Function;
 
+import com.gardenevery.vintagetag.TagSync.BlockStateEntry;
+import com.gardenevery.vintagetag.TagSync.ItemEntry;
+import com.gardenevery.vintagetag.TagSync.SyncType;
+import com.gardenevery.vintagetag.TagSync.TagDataSyncMessage;
+
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
 import net.minecraftforge.fml.common.network.simpleimpl.IMessageHandler;
@@ -39,83 +41,104 @@ final class ClientTagSync {
             return null;
         }
 
-        @SuppressWarnings("deprecation")
         @SideOnly(Side.CLIENT)
         private void processClientSync(TagDataSyncMessage message) {
             if (message == null || message.tagData == null || message.type == null) {
                 return;
             }
 
-            if (message.type == SyncType.FULL) {
-                for (var entry : message.tagData.itemTags.object2ObjectEntrySet()) {
-                    ObjectSet<ItemKey> itemKeys = new ObjectOpenHashSet<>(entry.getValue().size());
-                    for (var itemEntry : entry.getValue()) {
-                        try {
-                            var resourceLocation = new ResourceLocation(itemEntry.itemId());
-                            var item = ForgeRegistries.ITEMS.getValue(resourceLocation);
-                            if (item != null) {
-                                itemKeys.add(new ItemKey(item, itemEntry.metadata()));
-                            }
-                        } catch (Exception e) {
-                            //
-                        }
-                    }
-                    if (!itemKeys.isEmpty()) {
-                        TagManager.registerItem(itemKeys, entry.getKey());
-                    }
-                }
-
-                for (var entry : message.tagData.fluidTags.object2ObjectEntrySet()) {
-                    ObjectSet<Fluid> fluids = new ObjectOpenHashSet<>(entry.getValue().size());
-                    for (var fluidName : entry.getValue()) {
-                        var fluid = FluidRegistry.getFluid(fluidName);
-                        if (fluid != null) {
-                            fluids.add(fluid);
-                        }
-                    }
-                    if (!fluids.isEmpty()) {
-                        TagManager.registerFluid(fluids, entry.getKey());
-                    }
-                }
-
-                for (var entry : message.tagData.blockTags.object2ObjectEntrySet()) {
-                    ObjectSet<Block> blocks = new ObjectOpenHashSet<>(entry.getValue().size());
-                    for (var blockName : entry.getValue()) {
-                        try {
-                            var resourceLocation = new ResourceLocation(blockName);
-                            var block = ForgeRegistries.BLOCKS.getValue(resourceLocation);
-                            if (block != null) {
-                                blocks.add(block);
-                            }
-                        } catch (Exception e) {
-                            //
-                        }
-                    }
-                    if (!blocks.isEmpty()) {
-                        TagManager.registerBlock(blocks, entry.getKey());
-                    }
-                }
-
-                for (var entry : message.tagData.blockStateTags.object2ObjectEntrySet()) {
-                    ObjectSet<IBlockState> blockStates = new ObjectOpenHashSet<>(entry.getValue().size());
-                    for (var blockStateEntry : entry.getValue()) {
-                        try {
-                            var resourceLocation = new ResourceLocation(blockStateEntry.blockId());
-                            var block = ForgeRegistries.BLOCKS.getValue(resourceLocation);
-                            if (block != null) {
-                                var blockState = block.getStateFromMeta(blockStateEntry.metadata());
-                                blockStates.add(blockState);
-                            }
-                        } catch (Exception e) {
-                            //
-                        }
-                    }
-                    if (!blockStates.isEmpty()) {
-                        TagManager.registerBlockState(blockStates, entry.getKey());
-                    }
-                }
-                TagManager.bake();
+            if (message.type == SyncType.NONE) {
+                return;
             }
+
+            message.tagData.itemTags().object2ObjectEntrySet()
+                    .forEach(entry -> processItemEntries(entry.getKey(), entry.getValue()));
+
+            message.tagData.fluidTags().object2ObjectEntrySet()
+                    .forEach(entry -> processFluidEntries(entry.getKey(), entry.getValue()));
+
+            message.tagData.blockTags().object2ObjectEntrySet()
+                    .forEach(entry -> processBlockEntries(entry.getKey(), entry.getValue()));
+
+            message.tagData.blockStateTags().object2ObjectEntrySet()
+                    .forEach(entry -> processBlockStateEntries(entry.getKey(), entry.getValue()));
+
+            TagManager.bake();
+        }
+
+        @SideOnly(Side.CLIENT)
+        private void processItemEntries(String tagName, ObjectArrayList<ItemEntry> entries) {
+            processEntries(tagName, entries, entry -> {
+                    try {
+                        var resourceLocation = new ResourceLocation(entry.itemId());
+                        var item = ForgeRegistries.ITEMS.getValue(resourceLocation);
+                        return item != null ? new ItemKey(item, entry.metadata()) : null;
+                    } catch (Exception e) {
+                        return null;
+                    }
+                },
+                TagManager::registerItem
+            );
+        }
+
+        @SideOnly(Side.CLIENT)
+        private void processFluidEntries(String tagName, ObjectArrayList<String> entries) {
+            processEntries(tagName, entries, FluidRegistry::getFluid, TagManager::registerFluid);
+        }
+
+        @SideOnly(Side.CLIENT)
+        private void processBlockEntries(String tagName, ObjectArrayList<String> entries) {
+            processEntries(tagName, entries, name -> {
+                   try {
+                       var resourceLocation = new ResourceLocation(name);
+                       return ForgeRegistries.BLOCKS.getValue(resourceLocation);
+                   } catch (Exception e) {
+                       return null;
+                   }
+               },
+               TagManager::registerBlock
+            );
+        }
+
+        @SuppressWarnings("deprecation")
+        @SideOnly(Side.CLIENT)
+        private void processBlockStateEntries(String tagName, ObjectArrayList<BlockStateEntry> entries) {
+            processEntries(tagName, entries, entry -> {
+                    try {
+                        var resourceLocation = new ResourceLocation(entry.blockId());
+                        var block = ForgeRegistries.BLOCKS.getValue(resourceLocation);
+                        return block != null ? block.getStateFromMeta(entry.metadata()) : null;
+                    } catch (Exception e) {
+                        return null;
+                    }
+                },
+                TagManager::registerBlockState
+            );
+        }
+
+        @SideOnly(Side.CLIENT)
+        private <T, R> void processEntries(String tagName, ObjectArrayList<T> entries, Function<T, R> mapper, RegistrationFunction<R> registerFunc) {
+            if (entries == null || entries.isEmpty()) {
+                return;
+            }
+
+            ObjectSet<R> results = new ObjectOpenHashSet<>(entries.size());
+            entries.forEach(entry -> {
+                R result = mapper.apply(entry);
+                if (result != null) {
+                    results.add(result);
+                }
+            });
+
+            if (!results.isEmpty()) {
+                registerFunc.register(results, tagName);
+            }
+        }
+
+        @FunctionalInterface
+        @SideOnly(Side.CLIENT)
+        private interface RegistrationFunction<T> {
+            void register(ObjectSet<T> items, String tagName);
         }
     }
 }

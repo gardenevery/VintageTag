@@ -50,9 +50,24 @@ public final class TagHelper {
     /**
      * TagHelper.blockState()
      */
-    @Nonnull
-    public static BlockStateTagHelper blockState() {
-        return BlockStateTagHelper.INSTANCE;
+//    @Nonnull
+//    public static BlockStateTagHelper blockState() {
+//        return BlockStateTagHelper.INSTANCE;
+//    }
+
+    /**
+     * Check if the specified ItemStack matches the specified target ItemStack
+     *
+     * @param input The ItemStack to check, can be null
+     * @param target The ItemStack to match, can be null
+     * @param strict If true, only exact matches will be considered
+     * @return True if the ItemStack matches the target ItemStack
+     */
+    public static boolean matches(@Nonnull ItemStack input, @Nonnull ItemStack target, boolean strict) {
+        if (input.isEmpty() || target.isEmpty()) {
+            return false;
+        }
+        return strict ? ItemKey.toKey(input).equals(ItemKey.toKey(target)) : input.getItem().equals(target.getItem());
     }
 
     /**
@@ -61,11 +76,8 @@ public final class TagHelper {
      * @return The total number of tags
      */
     public static int tagCount() {
-        int count = TagManager.item().getTagCount();
-        count += TagManager.fluid().getTagCount();
-        count += TagManager.block().getTagCount();
-        count += TagManager.blockState().getTagCount();
-        return count;
+        return TagManager.item().getTagCount() + TagManager.fluid().getTagCount() +
+                TagManager.block().getTagCount() + TagManager.blockState().getTagCount();
     }
 
     /**
@@ -74,11 +86,8 @@ public final class TagHelper {
      * @return The total number of tag associations
      */
     public static int associationCount() {
-        int count = TagManager.item().getAssociationCount();
-        count += TagManager.fluid().getAssociationCount();
-        count += TagManager.block().getAssociationCount();
-        count += TagManager.blockState().getAssociationCount();
-        return count;
+        return TagManager.item().getAssociationCount() + TagManager.fluid().getAssociationCount() +
+            TagManager.block().getAssociationCount() + TagManager.blockState().getAssociationCount();
     }
 
     /**
@@ -87,11 +96,8 @@ public final class TagHelper {
      * @return The total number of tag keys
      */
     public static int keyCount() {
-        int count = TagManager.item().getKeyCount();
-        count += TagManager.fluid().getKeyCount();
-        count += TagManager.block().getKeyCount();
-        count += TagManager.blockState().getKeyCount();
-        return count;
+        return TagManager.item().getKeyCount() + TagManager.fluid().getKeyCount() +
+            TagManager.block().getKeyCount() + TagManager.blockState().getKeyCount();
     }
 
     private static boolean tagInvalid(@Nullable String tagName) {
@@ -144,7 +150,7 @@ public final class TagHelper {
                 return Collections.emptySet();
             }
 
-            Set<ItemKey> keys = TagManager.item().getKeys(tagName);
+            var keys = TagManager.item().getKeys(tagName);
             Set<ItemStack> result = new ObjectOpenHashSet<>();
 
             for (var key : keys) {
@@ -165,7 +171,7 @@ public final class TagHelper {
                 return EMPTY;
             }
 
-            Set<ItemKey> keys = TagManager.item().getKeys(tagName);
+            var keys = TagManager.item().getKeys(tagName);
             NonNullList<ItemStack> result = NonNullList.create();
 
             for (var key : keys) {
@@ -181,7 +187,7 @@ public final class TagHelper {
          */
         @Nonnull
         public Set<ItemStack> allKeys() {
-            Set<ItemKey> keys = TagManager.item().getAllKeys();
+            var keys = TagManager.item().getAllKeys();
             Set<ItemStack> result = new ObjectOpenHashSet<>();
 
             for (var key : keys) {
@@ -205,7 +211,7 @@ public final class TagHelper {
             ImmutableMap.Builder<String, ImmutableSet<ItemStack>> builder = ImmutableMap.builder();
 
             for (Map.Entry<String, ImmutableSet<ItemKey>> entry : itemKeyMap.entrySet()) {
-                ImmutableSet<ItemKey> keys = entry.getValue();
+                var keys = entry.getValue();
                 ImmutableSet.Builder<ItemStack> itemStackBuilder = ImmutableSet.builder();
 
                 for (var key : keys) {
@@ -344,7 +350,7 @@ public final class TagHelper {
                 return Collections.emptySet();
             }
 
-            Set<Fluid> keys = TagManager.fluid().getKeys(tagName);
+            var keys = TagManager.fluid().getKeys(tagName);
             Set<FluidStack> result = new ObjectOpenHashSet<>();
 
             for (var key : keys) {
@@ -360,7 +366,7 @@ public final class TagHelper {
          */
         @Nonnull
         public Set<FluidStack> allKeys() {
-            Set<Fluid> keys = TagManager.fluid().getAllKeys();
+            var keys = TagManager.fluid().getAllKeys();
             Set<FluidStack> result = new ObjectOpenHashSet<>();
 
             for (var key : keys) {
@@ -384,7 +390,7 @@ public final class TagHelper {
             ImmutableMap.Builder<String, ImmutableSet<FluidStack>> builder = ImmutableMap.builder();
 
             for (Map.Entry<String, ImmutableSet<Fluid>> entry : fluidMap.entrySet()) {
-                ImmutableSet<Fluid> fluids = entry.getValue();
+                var fluids = entry.getValue();
                 ImmutableSet.Builder<FluidStack> fluidStackBuilder = ImmutableSet.builder();
 
                 for (var fluid : fluids) {

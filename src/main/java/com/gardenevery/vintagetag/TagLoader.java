@@ -4,17 +4,22 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.ArrayDeque;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Deque;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import com.github.bsideup.jabel.Desugar;
 import com.google.gson.Gson;
@@ -23,7 +28,6 @@ import com.google.gson.JsonObject;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 
 import net.minecraft.block.Block;
-import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidRegistry;
@@ -47,7 +51,7 @@ import org.apache.commons.io.IOUtils;
  * numbers in tag names and can omit namespaces (e.g. item tag "Abc_1" located in tags/item/Abc_1.json)
  * <p>
  * tags/item/a.json = item tag "a"  tags/item/a/b.json = item tag "a:b"  tags/item/a/b/c.json = item tag "a:b/c"
- *
+ * <p>
  * Does not scan if the directory is too deeply nested (e.g., config/tags/item/a/b/c/d.json)
  * <p>
  * Supports an optional "replace" field. If "replace": true, the tag content will be replaced; otherwise,
@@ -88,13 +92,13 @@ import org.apache.commons.io.IOUtils;
 //    "water"
 //  ]
 //}
-@SuppressWarnings("all")
 final class TagLoader {
 
     private static final Gson GSON = new Gson();
+    private static final int MAX_DIRECTORY_DEPTH = 3;
+    private static volatile boolean isInitialized = false;
     private static final Pattern VALID_FILENAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]+\\.json$", Pattern.CASE_INSENSITIVE);
     private static final Map<File, List<JarTagData>> CACHED_JAR_TAGS = new Object2ObjectOpenHashMap<>();
-    private static boolean isInitialized = false;
 
     public enum Operation {
         ADD,
@@ -102,32 +106,28 @@ final class TagLoader {
     }
 
     public static void scanModTags() {
-        if (!isInitialized) {
-            for (var mod : Loader.instance().getModList()) {
-                var source = mod.getSource();
-                var modId = mod.getModId();
-
-                if (source == null) {
-                    continue;
-                }
-                if (source.isFile() && source.getName().endsWith(".jar")) {
-                    cacheJarTags(source, modId);
-                }
-            }
-            isInitialized = true;
+        if (isInitialized) {
+            return;
         }
 
-        for (var entry : CACHED_JAR_TAGS.entrySet()) {
-            for (var tagData : entry.getValue()) {
+        for (var mod : Loader.instance().getModList()) {
+            var source = mod.getSource();
+            if (source == null || !source.isFile() || !source.getName().endsWith(".jar")) {
+                continue;
+            }
+            cacheJarTags(source, mod.getModId());
+        }
+
+        CACHED_JAR_TAGS.forEach((jarFile, tagList) -> {
+            for (var tagData : tagList) {
                 processTagJson(tagData.jsonObject(), tagData.tagName(), tagData.type());
             }
-        }
+        });
+        isInitialized = true;
     }
 
     public static void scanConfigTags() {
-        scanConfigTagDirectory(new File("config", "tags/item/"), "item");
-        scanConfigTagDirectory(new File("config", "tags/fluid/"), "fluid");
-        scanConfigTagDirectory(new File("config", "tags/block/"), "block");
+        scanTagDirectory(Paths.get("config", "tags"), TagLoader::processConfigTagFile);
     }
 
     private static void cacheJarTags(File jarFile, String modId) {
@@ -138,332 +138,249 @@ final class TagLoader {
         List<JarTagData> tagList = new ArrayList<>();
 
         try (var zip = new ZipFile(jarFile)) {
-            var entries = zip.entries();
-
-            while (entries.hasMoreElements()) {
-                var entry = entries.nextElement();
-                var entryName = entry.getName();
-
-                if (entryName.startsWith("data/tags/") && entryName.endsWith(".json")) {
-                    var parts = entryName.split("/");
-                    if (parts.length >= 4) {
-                        var typeString = parts[2];
-                        if (!isValidTagType(typeString)) {
-                            continue;
-                        }
-
-                        var fileName = parts[parts.length - 1];
-                        if (!isValidJsonFileName(fileName)) {
-                            continue;
-                        }
-
-                        if (parts.length - 4 <= 2 + 1) {
-                            var tagName = buildTagNameFromPath(fileName, parts);
-                            try (var stream = zip.getInputStream(entry)) {
-                                var json = IOUtils.toString(stream, StandardCharsets.UTF_8);
-                                var jsonObject = GSON.fromJson(json, JsonObject.class);
-
-                                if (jsonObject != null) {
-                                    tagList.add(new JarTagData(modId, tagName, typeString, jsonObject));
-                                }
-                            } catch (IOException e) {
-                                TagLog.info("Failed to read tag entry from JAR: {}", entryName, e);
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (!tagList.isEmpty()) {
-                CACHED_JAR_TAGS.put(jarFile, tagList);
-            }
+            zip.stream()
+                    .filter(entry -> !entry.isDirectory())
+                    .filter(entry -> entry.getName().startsWith("data/tags/") && entry.getName().endsWith(".json"))
+                    .forEach(entry -> processJarEntry(entry, modId, zip, tagList));
         } catch (IOException e) {
             TagLog.info("Failed to scan JAR file for tags: {}", jarFile.getName(), e);
         }
+
+        if (!tagList.isEmpty()) {
+            CACHED_JAR_TAGS.put(jarFile, tagList);
+        }
     }
 
-    private static void scanConfigTagDirectory(File directory, String tagType) {
-        if (!directory.exists() || !directory.isDirectory()) {
+    private static void processJarEntry(ZipEntry entry, String modId, ZipFile zip, List<JarTagData> tagList) {
+        var entryName = entry.getName();
+        var parts = entryName.split("/");
+
+        if (parts.length < 4) {
             return;
         }
 
-        Set<String> processedFiles = new HashSet<>();
-        Deque<TagFileInfo> stack = new ArrayDeque<>();
-
-        var rootJsonFiles = directory.listFiles((dir, name) -> isValidJsonFileName(name) && new File(dir, name).isFile());
-        if (rootJsonFiles != null) {
-            for (var jsonFile : rootJsonFiles) {
-                var filePath = jsonFile.getAbsolutePath();
-                if (processedFiles.contains(filePath)) {
-                    continue;
-                }
-                processedFiles.add(filePath);
-                var tagName = jsonFile.getName().replace(".json", "");
-                processTagFile(jsonFile, tagName, tagType);
-            }
+        var tagType = TagType.getType(parts[2]);
+        if (tagType == null) {
+            return;
         }
 
-        var allDirs = directory.listFiles(File::isDirectory);
-        if (allDirs != null) {
-            for (var dir : allDirs) {
-                var namespace = dir.getName();
-                stack.push(new TagFileInfo(dir, namespace, "", 0));
-            }
+        var fileName = parts[parts.length - 1];
+        if (!isValidJsonFileName(fileName)) {
+            return;
         }
 
-        while (!stack.isEmpty()) {
-            var current = stack.pop();
-            var currentDir = current.file();
-            var namespace = current.namespace();
-            var currentPath = current.path();
-            int currentDepth = current.depth();
-
-            var jsonFiles = currentDir.listFiles((dir, name) -> isValidJsonFileName(name) && new File(dir, name).isFile());
-            if (jsonFiles != null) {
-                for (var jsonFile : jsonFiles) {
-                    var filePath = jsonFile.getAbsolutePath();
-                    if (processedFiles.contains(filePath)) {
-                        continue;
-                    }
-                    processedFiles.add(filePath);
-
-                    var tagNameOnly = jsonFile.getName().replace(".json", "");
-                    var fullTagName = buildFullTagName(namespace, currentPath, tagNameOnly);
-
-                    processTagFile(jsonFile, fullTagName, tagType);
-                }
-            }
-
-            if (currentDepth < 2) {
-                var subDirs = currentDir.listFiles(File::isDirectory);
-                if (subDirs != null) {
-                    for (var subDir : subDirs) {
-                        var subDirName = subDir.getName();
-                        var newPath = currentPath.isEmpty() ? subDirName : currentPath + "/" + subDirName;
-                        stack.push(new TagFileInfo(subDir, namespace, newPath, currentDepth + 1));
-                    }
-                }
-            }
+        if (parts.length - 4 > MAX_DIRECTORY_DEPTH) {
+            return;
         }
-    }
 
-    private static void processTagFile(File file, String tagName, String type) {
-        try {
-            var json = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+        var tagName = buildTagNameFromPath(fileName, parts);
+        try (var stream = zip.getInputStream(entry)) {
+            var json = IOUtils.toString(stream, StandardCharsets.UTF_8);
             var jsonObject = GSON.fromJson(json, JsonObject.class);
 
-            if (jsonObject == null) {
-                return;
+            if (jsonObject != null) {
+                tagList.add(new JarTagData(modId, tagName, tagType, jsonObject));
             }
-
-            processTagJson(jsonObject, tagName, type);
-        } catch (Exception e) {
-            TagLog.info("Failed to process {} tag file: {}", type, file.getAbsolutePath(), e);
+        } catch (IOException e) {
+            TagLog.info("Failed to read tag entry from JAR: {}", entryName, e);
         }
     }
 
-    private static void processTagJson(JsonObject jsonObject, String tagName, String type) {
-        if (jsonObject == null) {
+    private static void scanTagDirectory(Path rootDir, TagFileProcessor processor) {
+        if (!Files.exists(rootDir) || !Files.isDirectory(rootDir)) {
             return;
         }
 
-        if (!jsonObject.has("values") || !jsonObject.get("values").isJsonArray()) {
+        for (var type : TagType.values()) {
+            if (type == TagType.BLOCK_STATE) continue;
+
+            var typeDir = rootDir.resolve(type.getName());
+            if (Files.exists(typeDir) && Files.isDirectory(typeDir)) {
+                scanTypeDirectory(typeDir, type, processor);
+            }
+        }
+    }
+
+    private static void scanTypeDirectory(Path typeDir, TagType type, TagFileProcessor processor) {
+        try (var paths = Files.walk(typeDir, MAX_DIRECTORY_DEPTH)) {
+            paths.filter(Files::isRegularFile)
+                .filter(path -> path.getFileName().toString().endsWith(".json")).forEach(path -> {
+                    var relativePath = typeDir.relativize(path).toString().replace(File.separatorChar, '/');
+                    var tagName = convertPathToTagName(relativePath);
+                    processor.process(path, tagName, type);
+                });
+        } catch (IOException e) {
+            TagLog.info("Failed to scan directory: {}", typeDir, e);
+        }
+    }
+
+    private static void processConfigTagFile(Path file, String tagName, TagType type) {
+        try {
+             byte[] bytes = Files.readAllBytes(file);
+             var json = new String(bytes, StandardCharsets.UTF_8);
+
+            var jsonObject = GSON.fromJson(json, JsonObject.class);
+
+            if (jsonObject != null) {
+                processTagJson(jsonObject, tagName, type);
+            }
+        } catch (Exception e) {
+            TagLog.info("Failed to process {} tag file: {}", type.name().toLowerCase(), file, e);
+        }
+    }
+
+    private static void processTagJson(JsonObject jsonObject, String tagName, TagType type) {
+        if (jsonObject == null || !jsonObject.has("values") || !jsonObject.get("values").isJsonArray()) {
             TagLog.info("Invalid JSON for tag {}: missing or invalid 'values' array", tagName);
             return;
         }
 
-        boolean replace = false;
-        if (jsonObject.has("replace") && jsonObject.get("replace").isJsonPrimitive()) {
-            replace = jsonObject.get("replace").getAsBoolean();
-        }
-
+        boolean replace = jsonObject.has("replace") && jsonObject.get("replace").isJsonPrimitive() && jsonObject.get("replace").getAsBoolean();
         var operation = replace ? Operation.REPLACE : Operation.ADD;
 
         switch (type) {
-            case "item":
-                Set<ItemData> itemData = parseItemData(jsonObject);
-                Set<ItemStack> itemStacks = createItems(itemData);
-                applyItemTag(tagName, operation, itemStacks);
-                break;
-
-            case "fluid":
-                Set<String> fluidNames = parseStringSet(jsonObject);
-                Set<Fluid> fluids = createFluids(fluidNames);
-                applyFluidTag(tagName, operation, fluids);
-                break;
-
-            case "block":
-                Set<String> blockNames = parseStringSet(jsonObject);
-                Set<ResourceLocation> blockLocations = parseResourceLocations(blockNames);
-                Set<Block> blocks = createBlocks(blockLocations);
-                applyBlockTag(tagName, operation, blocks);
-                break;
+            case ITEM -> processItemTag(tagName, operation, jsonObject);
+            case FLUID -> processFluidTag(tagName, operation, jsonObject);
+            case BLOCK -> processBlockTag(tagName, operation, jsonObject);
+            case BLOCK_STATE -> TagLog.info("BlockState tags not yet supported: {}", tagName);
         }
     }
 
-    private static Set<ItemData> parseItemData(JsonObject jsonObject) {
-        Set<ItemData> itemData = new HashSet<>();
-
-        if (!jsonObject.has("values") || !jsonObject.get("values").isJsonArray()) {
-            return itemData;
+    private static void processItemTag(String tagName, Operation operation, JsonObject jsonObject) {
+        var itemEntries = parseItemEntries(jsonObject);
+        if (itemEntries.isEmpty()) {
+            return;
         }
 
+        var itemKeys = createItemKeys(itemEntries);
+        if (itemKeys.isEmpty()) {
+            return;
+        }
+        applyTagOperation(tagName, operation, itemKeys, TagManager::registerItem, TagManager::removeItem);
+    }
+
+    private static void processFluidTag(String tagName, Operation operation, JsonObject jsonObject) {
+        var fluidNames = parseStringEntries(jsonObject);
+        if (fluidNames.isEmpty()) {
+            return;
+        }
+
+        var fluids = createFluids(fluidNames);
+        if (fluids.isEmpty()) {
+            return;
+        }
+        applyTagOperation(tagName, operation, fluids, TagManager::registerFluid, TagManager::removeFluid);
+    }
+
+    private static void processBlockTag(String tagName, Operation operation, JsonObject jsonObject) {
+        var blockNames = parseStringEntries(jsonObject);
+        if (blockNames.isEmpty()) {
+            return;
+        }
+
+        var blocks = createBlocks(blockNames);
+        if (blocks.isEmpty()) {
+            return;
+        }
+        applyTagOperation(tagName, operation, blocks, TagManager::registerBlock, TagManager::removeBlock);
+    }
+
+    private static Set<ItemEntry> parseItemEntries(JsonObject jsonObject) {
         var valuesArray = jsonObject.getAsJsonArray("values");
-        for (var jsonElement : valuesArray) {
-            if (!jsonElement.isJsonObject()) {
+        if (valuesArray == null) {
+            return Collections.emptySet();
+        }
+
+        Set<ItemEntry> entries = new HashSet<>();
+        for (var element : valuesArray) {
+            if (!element.isJsonObject()) {
                 continue;
             }
 
-            var itemObj = jsonElement.getAsJsonObject();
+            var itemObj = element.getAsJsonObject();
             if (!itemObj.has("id") || !itemObj.get("id").isJsonPrimitive()) {
                 continue;
             }
 
             try {
                 var id = itemObj.get("id").getAsString();
-                int metadata = 0;
-
-                if (itemObj.has("metadata") && itemObj.get("metadata").isJsonPrimitive()) {
-                    metadata = itemObj.get("metadata").getAsInt();
-                }
-
-                itemData.add(new ItemData(new ResourceLocation(id), metadata));
+                int metadata = itemObj.has("metadata") && itemObj.get("metadata").isJsonPrimitive() ? itemObj.get("metadata").getAsInt() : 0;
+                entries.add(new ItemEntry(id, metadata));
             } catch (Exception e) {
                 //
             }
         }
-        return itemData;
+        return entries;
     }
 
-    private static Set<String> parseStringSet(JsonObject jsonObject) {
-        Set<String> result = new HashSet<>();
-
-        if (!jsonObject.has("values") || !jsonObject.get("values").isJsonArray()) {
-            return result;
-        }
-
+    private static Set<String> parseStringEntries(JsonObject jsonObject) {
         var valuesArray = jsonObject.getAsJsonArray("values");
-        for (var jsonElement : valuesArray) {
-            if (jsonElement.isJsonPrimitive()) {
-                result.add(jsonElement.getAsString());
+        if (valuesArray == null) {
+            return Collections.emptySet();
+        }
+
+        Set<String> entries = new HashSet<>();
+        for (var element : valuesArray) {
+            if (element.isJsonPrimitive()) {
+                entries.add(element.getAsString());
             }
         }
-        return result;
+        return entries;
     }
 
-    private static Set<ResourceLocation> parseResourceLocations(Set<String> strings) {
-        Set<ResourceLocation> result = new HashSet<>();
+    private static Set<ItemKey> createItemKeys(Set<ItemEntry> itemEntries) {
+        return itemEntries.stream()
+                .map(entry -> {
+                    var id = parseResourceLocation(entry.id());
+                    if (id == null) return null;
 
-        for (var string : strings) {
-            try {
-                result.add(new ResourceLocation(string));
-            } catch (Exception e) {
-                TagLog.info("Invalid resource location: {}", string, e);
-            }
-        }
-        return result;
-    }
+                    var item = ForgeRegistries.ITEMS.getValue(id);
+                    if (item == null) return null;
 
-    private static Set<ItemStack> createItems(Set<ItemData> itemData) {
-        if (itemData == null || itemData.isEmpty()) {
-            return new HashSet<>();
-        }
-
-        Set<ItemStack> result = new HashSet<>();
-        for (var data : itemData) {
-            var item = ForgeRegistries.ITEMS.getValue(data.id());
-            if (item != null) {
-                int effectiveMetadata = data.metadata();
-                if (!item.getHasSubtypes() && effectiveMetadata != 0) {
-                    effectiveMetadata = 0;
-                }
-                result.add(new ItemStack(item, 1, effectiveMetadata));
-            }
-        }
-        return result;
+                    int metadata = entry.metadata();
+                    if (!item.getHasSubtypes() && metadata != 0) {
+                        metadata = 0;
+                    }
+                    return ItemKey.toKey(item, metadata);
+                })
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
     }
 
     private static Set<Fluid> createFluids(Set<String> fluidNames) {
-        if (fluidNames == null || fluidNames.isEmpty()) {
-            return new HashSet<>();
-        }
-
-        Set<Fluid> result = new HashSet<>();
-        for (var fluidName : fluidNames) {
-            var fluid = FluidRegistry.getFluid(fluidName);
-            if (fluid != null) {
-                result.add(fluid);
-            }
-        }
-        return result;
+        return fluidNames.stream()
+                .map(FluidRegistry::getFluid)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
     }
 
-    private static Set<Block> createBlocks(Set<ResourceLocation> blockNames) {
-        if (blockNames == null || blockNames.isEmpty()) {
-            return new HashSet<>();
-        }
-
-        Set<Block> result = new HashSet<>();
-        for (var blockName : blockNames) {
-            var block = ForgeRegistries.BLOCKS.getValue(blockName);
-            if (block != null) {
-                result.add(block);
-            }
-        }
-        return result;
+    private static Set<Block> createBlocks(Set<String> blockNames) {
+        return blockNames.stream()
+                .map(TagLoader::parseResourceLocation)
+                .filter(Objects::nonNull)
+                .map(ForgeRegistries.BLOCKS::getValue)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
     }
 
-    private static void applyItemTag(String tagName, Operation operation, Set<ItemStack> stacks) {
+    private static <T> void applyTagOperation(String tagName, Operation operation, Set<T> items, BiConsumer<Set<T>, String> register,
+                                              Consumer<String> remove) {
         switch (operation) {
-            case ADD -> {
-                Set<ItemKey> keys = stacks.stream()
-                        .map(ItemKey::toKey)
-                        .collect(Collectors.toSet());
-                if (!keys.isEmpty()) {
-                    TagManager.registerItem(keys, tagName);
-                }
-            }
+            case ADD -> register.accept(items, tagName);
             case REPLACE -> {
-                TagManager.removeItem(tagName);
-                Set<ItemKey> keys = stacks.stream()
-                        .map(ItemKey::toKey)
-                        .collect(Collectors.toSet());
-                if (!keys.isEmpty()) {
-                    TagManager.registerItem(keys, tagName);
-                }
+                remove.accept(tagName);
+                register.accept(items, tagName);
             }
         }
     }
 
-    private static void applyFluidTag(String tagName, Operation operation, Set<Fluid> fluids) {
-        switch (operation) {
-            case ADD -> {
-                if (fluids != null && !fluids.isEmpty()) {
-                    TagManager.registerFluid(fluids, tagName);
-                }
-            }
-            case REPLACE -> {
-                TagManager.removeFluid(tagName);
-                if (fluids != null && !fluids.isEmpty()) {
-                    TagManager.registerFluid(fluids, tagName);
-                }
-            }
-        }
-    }
-
-    private static void applyBlockTag(String tagName, Operation operation, Set<Block> blocks) {
-        switch (operation) {
-            case ADD -> {
-                if (blocks != null && !blocks.isEmpty()) {
-                    TagManager.registerBlock(blocks, tagName);
-                }
-            }
-            case REPLACE -> {
-                TagManager.removeBlock(tagName);
-                if (blocks != null && !blocks.isEmpty()) {
-                    TagManager.registerBlock(blocks, tagName);
-                }
-            }
+    @Nullable
+    private static ResourceLocation parseResourceLocation(String string) {
+        try {
+            return new ResourceLocation(string);
+        } catch (Exception e) {
+            TagLog.info("Invalid resource location: {}", string, e);
+            return null;
         }
     }
 
@@ -482,36 +399,41 @@ final class TagLoader {
             }
 
             if (subPath.length() > 0) {
-                tagName = namespace + ":" + subPath + "/" + tagName;
+                return namespace + ":" + subPath + "/" + tagName;
             } else {
-                tagName = namespace + ":" + tagName;
+                return namespace + ":" + tagName;
             }
         }
         return tagName;
     }
 
-    private static String buildFullTagName(String namespace, String path, String tagName) {
-        if (path.isEmpty()) {
-            return namespace + ":" + tagName;
-        } else {
-            return namespace + ":" + path + "/" + tagName;
-        }
-    }
-
-    private static boolean isValidTagType(String type) {
-        return "item".equals(type) || "fluid".equals(type) || "block".equals(type);
+    private static String convertPathToTagName(String relativePath) {
+        var parts = relativePath.substring(0, relativePath.length() - 5).split("/");
+        return parts.length == 1 ? parts[0] : parts[0] + ":" + String.join("/", Arrays.copyOfRange(parts, 1, parts.length));
     }
 
     private static boolean isValidJsonFileName(String fileName) {
         return VALID_FILENAME_PATTERN.matcher(fileName).matches();
     }
 
-    @Desugar
-    private record TagFileInfo(File file, String namespace, String path, int depth) {}
+    @FunctionalInterface
+    private interface TagFileProcessor {
+        void process(Path file, String tagName, TagType type);
+    }
+
+    @FunctionalInterface
+    private interface BiConsumer<T, U> {
+        void accept(T t, U u);
+    }
+
+    @FunctionalInterface
+    private interface Consumer<T> {
+        void accept(T t);
+    }
 
     @Desugar
-    private record ItemData(ResourceLocation id, int metadata) {}
+    private record ItemEntry(String id, int metadata) {}
 
     @Desugar
-    private record JarTagData(String modId, String tagName, String type, JsonObject jsonObject) {}
+    private record JarTagData(String modId, String tagName, TagType type, JsonObject jsonObject) {}
 }

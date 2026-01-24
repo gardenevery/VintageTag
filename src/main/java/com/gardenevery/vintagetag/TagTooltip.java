@@ -32,7 +32,7 @@ public class TagTooltip {
             return;
         }
 
-        List<String> tooltip = event.getToolTip();
+        var tooltip = event.getToolTip();
 
         if (!isShiftPressed()) {
             tooltip.add(TextFormatting.GRAY + I18n.format("tag.tooltip.hold_shift"));
@@ -51,7 +51,7 @@ public class TagTooltip {
     }
 
     private static void addTagsToTooltip(ItemStack itemStack, List<String> tooltip) {
-        Set<String> itemTags = TagHelper.item().tags(itemStack);
+        var itemTags = TagHelper.item().tags(itemStack);
 
         Set<String> fluidTags = null;
         if (itemStack.hasCapability(CapabilityFluidHandler.FLUID_HANDLER_ITEM_CAPABILITY, null)) {
@@ -95,7 +95,7 @@ public class TagTooltip {
     }
 
     private static void addSortedTags(List<String> tooltip, Set<String> tags, TextFormatting color) {
-        List<String> sortedTags = new ArrayList<>(tags);
+        var sortedTags = new ArrayList<>(tags);
         Collections.sort(sortedTags);
         for (var tag : sortedTags) {
             tooltip.add(color + "  " + tag);

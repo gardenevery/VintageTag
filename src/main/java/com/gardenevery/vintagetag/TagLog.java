@@ -7,10 +7,6 @@ final class TagLog {
 
     private static final Logger LOGGER = LogManager.getLogger("VintageTag");
 
-    public static void info(String message) {
-        LOGGER.info(message);
-    }
-
     public static void info(String message, Object... params) {
         LOGGER.info(message, params);
     }

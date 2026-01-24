@@ -14,17 +14,11 @@ import net.minecraft.util.ResourceLocation;
 public final class BlockMapper {
 
     public static final int[] ALL_METADATA = new int[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
-
     private static final Object2ReferenceOpenHashMap<ResourceLocation, ObjectOpenHashSet<IBlockState>> nameToBlockState = new Object2ReferenceOpenHashMap<>();
 
     @Nullable
     public static Set<IBlockState> get(String name) {
-        if (name == null) {
-            return null;
-        }
-
-        var resourceLocation = new ResourceLocation(name);
-        return get(resourceLocation);
+        return name != null ? get(new ResourceLocation(name)) : null;
     }
 
     @Nullable
@@ -33,11 +27,8 @@ public final class BlockMapper {
             return null;
         }
 
-        ObjectOpenHashSet<IBlockState> blockStates = nameToBlockState.get(name);
-        if (blockStates != null && !blockStates.isEmpty()) {
-            return blockStates;
-        }
-        return null;
+        var blockStates = nameToBlockState.get(name);
+        return blockStates != null && !blockStates.isEmpty() ? blockStates : null;
     }
 
     @SuppressWarnings("deprecation")
@@ -46,10 +37,11 @@ public final class BlockMapper {
             return;
         }
 
+        var resourceLocation = new ResourceLocation(name);
+        var set = nameToBlockState.computeIfAbsent(resourceLocation, k -> new ObjectOpenHashSet<>());
+
         for (int meta : metadata) {
-            var blockState = block.getStateFromMeta(meta);
-            var resourceLocation = new ResourceLocation(name);
-            nameToBlockState.computeIfAbsent(resourceLocation, k -> new ObjectOpenHashSet<>()).add(blockState);
+            set.add(block.getStateFromMeta(meta));
         }
     }
 

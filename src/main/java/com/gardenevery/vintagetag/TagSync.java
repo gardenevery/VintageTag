@@ -1,7 +1,6 @@
 package com.gardenevery.vintagetag;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Set;
 import javax.annotation.Nullable;
 
 import com.github.bsideup.jabel.Desugar;
@@ -11,11 +10,8 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
@@ -32,7 +28,6 @@ final class TagSync {
 
     public enum SyncType {
         NONE,
-        PARTIAL,
         FULL
     }
 
@@ -63,11 +58,14 @@ final class TagSync {
     }
 
     private static TagData collectTagData() {
-        var data = new TagData();
+        return new TagData(collectItemTags(), collectFluidTags(), collectBlockTags(), collectBlockStateTags());
+    }
 
-        data.itemTags = new Object2ObjectOpenHashMap<>();
+    private static Object2ObjectMap<String, ObjectArrayList<ItemEntry>> collectItemTags() {
+        Object2ObjectMap<String, ObjectArrayList<ItemEntry>> itemTags = new Object2ObjectOpenHashMap<>();
+
         for (var tagName : TagManager.item().getAllTags()) {
-            Set<ItemKey> keys = TagManager.item().getKeys(tagName);
+            var keys = TagManager.item().getKeys(tagName);
             ObjectArrayList<ItemEntry> entries = new ObjectArrayList<>(keys.size());
 
             for (var key : keys) {
@@ -76,12 +74,19 @@ final class TagSync {
                     entries.add(new ItemEntry(registryName.toString(), key.metadata()));
                 }
             }
-            data.itemTags.put(tagName, entries);
-        }
 
-        data.fluidTags = new Object2ObjectOpenHashMap<>();
+            if (!entries.isEmpty()) {
+                itemTags.put(tagName, entries);
+            }
+        }
+        return itemTags;
+    }
+
+    private static Object2ObjectMap<String, ObjectArrayList<String>> collectFluidTags() {
+        Object2ObjectMap<String, ObjectArrayList<String>> fluidTags = new Object2ObjectOpenHashMap<>();
+
         for (var tagName : TagManager.fluid().getAllTags()) {
-            Set<Fluid> fluids = TagManager.fluid().getKeys(tagName);
+            var fluids = TagManager.fluid().getKeys(tagName);
             ObjectArrayList<String> fluidNames = new ObjectArrayList<>(fluids.size());
 
             for (var fluid : fluids) {
@@ -90,12 +95,19 @@ final class TagSync {
                     fluidNames.add(fluidName);
                 }
             }
-            data.fluidTags.put(tagName, fluidNames);
-        }
 
-        data.blockTags = new Object2ObjectOpenHashMap<>();
+            if (!fluidNames.isEmpty()) {
+                fluidTags.put(tagName, fluidNames);
+            }
+        }
+        return fluidTags;
+    }
+
+    private static Object2ObjectMap<String, ObjectArrayList<String>> collectBlockTags() {
+        Object2ObjectMap<String, ObjectArrayList<String>> blockTags = new Object2ObjectOpenHashMap<>();
+
         for (var tagName : TagManager.block().getAllTags()) {
-            Set<Block> blocks = TagManager.block().getKeys(tagName);
+            var blocks = TagManager.block().getKeys(tagName);
             ObjectArrayList<String> blockNames = new ObjectArrayList<>(blocks.size());
 
             for (var block : blocks) {
@@ -104,12 +116,19 @@ final class TagSync {
                     blockNames.add(registryName.toString());
                 }
             }
-            data.blockTags.put(tagName, blockNames);
-        }
 
-        data.blockStateTags = new Object2ObjectOpenHashMap<>();
+            if (!blockNames.isEmpty()) {
+                blockTags.put(tagName, blockNames);
+            }
+        }
+        return blockTags;
+    }
+
+    private static Object2ObjectMap<String, ObjectArrayList<BlockStateEntry>> collectBlockStateTags() {
+        Object2ObjectMap<String, ObjectArrayList<BlockStateEntry>> blockStateTags = new Object2ObjectOpenHashMap<>();
+
         for (var tagName : TagManager.blockState().getAllTags()) {
-            Set<IBlockState> blockStates = TagManager.blockState().getKeys(tagName);
+            var blockStates = TagManager.blockState().getKeys(tagName);
             ObjectArrayList<BlockStateEntry> entries = new ObjectArrayList<>(blockStates.size());
 
             for (var state : blockStates) {
@@ -120,9 +139,12 @@ final class TagSync {
                     entries.add(new BlockStateEntry(registryName.toString(), metadata));
                 }
             }
-            data.blockStateTags.put(tagName, entries);
+
+            if (!entries.isEmpty()) {
+                blockStateTags.put(tagName, entries);
+            }
         }
-        return data;
+        return blockStateTags;
     }
 
     public static class EventHandler {
@@ -152,23 +174,13 @@ final class TagSync {
 
             int st = buf.readUnsignedByte();
             type = readSyncType(st);
-            tagData = new TagData();
 
-            int itemTagCount = buf.readInt();
-            validateCount("itemTagCount", itemTagCount);
-            tagData.itemTags = readItemTags(buf, itemTagCount);
+            Object2ObjectMap<String, ObjectArrayList<ItemEntry>> itemTags = readOptionalMap(buf, this::readItemTags);
+            Object2ObjectMap<String, ObjectArrayList<String>> fluidTags = readOptionalMap(buf, this::readStringMap);
+            Object2ObjectMap<String, ObjectArrayList<String>> blockTags = readOptionalMap(buf, this::readStringMap);
+            Object2ObjectMap<String, ObjectArrayList<BlockStateEntry>> blockStateTags = readOptionalMap(buf, this::readBlockStateTags);
 
-            int fluidTagCount = buf.readInt();
-            validateCount("fluidTagCount", fluidTagCount);
-            tagData.fluidTags = readStringMap(buf, fluidTagCount);
-
-            int blockTagCount = buf.readInt();
-            validateCount("blockTagCount", blockTagCount);
-            tagData.blockTags = readStringMap(buf, blockTagCount);
-
-            int blockStateTagCount = buf.readInt();
-            validateCount("blockStateTagCount", blockStateTagCount);
-            tagData.blockStateTags = readBlockStateTags(buf, blockStateTagCount);
+            tagData = new TagData(itemTags, fluidTags, blockTags, blockStateTags);
         }
 
         @Override
@@ -177,17 +189,10 @@ final class TagSync {
             try {
                 tempBuf.writeByte(type.ordinal());
 
-                tempBuf.writeInt(tagData.itemTags.size());
-                writeItemTags(tempBuf, tagData.itemTags);
-
-                tempBuf.writeInt(tagData.fluidTags.size());
-                writeStringMap(tempBuf, tagData.fluidTags);
-
-                tempBuf.writeInt(tagData.blockTags.size());
-                writeStringMap(tempBuf, tagData.blockTags);
-
-                tempBuf.writeInt(tagData.blockStateTags.size());
-                writeBlockStateTags(tempBuf, tagData.blockStateTags);
+                writeOptionalMap(tempBuf, tagData.itemTags(), this::writeItemTags);
+                writeOptionalMap(tempBuf, tagData.fluidTags(), this::writeStringMap);
+                writeOptionalMap(tempBuf, tagData.blockTags(), this::writeStringMap);
+                writeOptionalMap(tempBuf, tagData.blockStateTags(), this::writeBlockStateTags);
 
                 int totalSize = tempBuf.readableBytes();
                 validateSize(totalSize);
@@ -198,15 +203,93 @@ final class TagSync {
             }
         }
 
+        private <T> Object2ObjectMap<String, ObjectArrayList<T>> readOptionalMap(ByteBuf buf, MapReader<T> reader) {
+            if (!buf.readBoolean()) {
+                return new Object2ObjectOpenHashMap<>();
+            }
+
+            int tagCount = buf.readInt();
+            validateCount(tagCount);
+            return reader.read(buf, tagCount);
+        }
+
+        private <T> void writeOptionalMap(ByteBuf buf, Object2ObjectMap<String, ObjectArrayList<T>> map, MapWriter<T> writer) {
+            boolean hasMap = map != null && !map.isEmpty();
+            buf.writeBoolean(hasMap);
+
+            if (hasMap) {
+                buf.writeInt(map.size());
+                writer.write(buf, map);
+            }
+        }
+
+        private Object2ObjectMap<String, ObjectArrayList<ItemEntry>> readItemTags(ByteBuf buf, int tagCount) {
+            return readTagEntries(buf, tagCount, () -> new ItemEntry(readString(buf), buf.readInt()));
+        }
+
+        private Object2ObjectMap<String, ObjectArrayList<BlockStateEntry>> readBlockStateTags(ByteBuf buf, int tagCount) {
+            return readTagEntries(buf, tagCount, () -> new BlockStateEntry(readString(buf), buf.readInt()));
+        }
+
+        private Object2ObjectMap<String, ObjectArrayList<String>> readStringMap(ByteBuf buf, int tagCount) {
+            return readTagEntries(buf, tagCount, () -> readString(buf));
+        }
+
+        private <T> Object2ObjectMap<String, ObjectArrayList<T>> readTagEntries(ByteBuf buf, int tagCount, EntryReader<T> entryReader) {
+            Object2ObjectMap<String, ObjectArrayList<T>> map = new Object2ObjectOpenHashMap<>(tagCount);
+
+            for (int i = 0; i < tagCount; i++) {
+                var tagName = readString(buf);
+                int entryCount = buf.readInt();
+                validateCount(entryCount);
+
+                ObjectArrayList<T> entries = new ObjectArrayList<>(entryCount);
+                for (int j = 0; j < entryCount; j++) {
+                    entries.add(entryReader.read());
+                }
+                map.put(tagName, entries);
+            }
+            return map;
+        }
+
+        private void writeItemTags(ByteBuf buf, Object2ObjectMap<String, ObjectArrayList<ItemEntry>> map) {
+            writeTagEntries(buf, map, (b, entry) -> {
+                writeString(b, entry.itemId());
+                b.writeInt(entry.metadata());
+            });
+        }
+
+        private void writeBlockStateTags(ByteBuf buf, Object2ObjectMap<String, ObjectArrayList<BlockStateEntry>> map) {
+            writeTagEntries(buf, map, (b, entry) -> {
+                 writeString(b, entry.blockId());
+                 b.writeInt(entry.metadata());
+            });
+        }
+
+        private void writeStringMap(ByteBuf buf, Object2ObjectMap<String, ObjectArrayList<String>> map) {
+            writeTagEntries(buf, map, this::writeString);
+        }
+
+        private <T> void writeTagEntries(ByteBuf buf, Object2ObjectMap<String, ObjectArrayList<T>> map, EntryWriter<T> entryWriter) {
+            for (var entry : map.object2ObjectEntrySet()) {
+                writeString(buf, entry.getKey());
+                buf.writeInt(entry.getValue().size());
+
+                for (var item : entry.getValue()) {
+                    entryWriter.write(buf, item);
+                }
+            }
+        }
+
         private void validateSize(int size) {
             if (size > MAX_PACKET_SIZE) {
                 TagLog.error("Packet too large: {} bytes, max allowed: {}", size, MAX_PACKET_SIZE);
             }
         }
 
-        private void validateCount(String fieldName, int count) {
+        private void validateCount(int count) {
             if (count < 0) {
-                TagLog.error("Invalid {}: {}", fieldName, count);
+                TagLog.error("Invalid count: {}", count);
             }
         }
 
@@ -215,90 +298,6 @@ final class TagSync {
                 return SyncType.NONE;
             }
             return SyncType.values()[ordinal];
-        }
-
-        private Object2ObjectMap<String, ObjectArrayList<ItemEntry>> readItemTags(ByteBuf buf, int tagCount) {
-            Object2ObjectMap<String, ObjectArrayList<ItemEntry>> itemTags = new Object2ObjectOpenHashMap<>(tagCount);
-            for (int i = 0; i < tagCount; i++) {
-                var tagName = readString(buf);
-                int entryCount = buf.readInt();
-                validateCount("item entry count", entryCount);
-
-                ObjectArrayList<ItemEntry> entries = new ObjectArrayList<>(entryCount);
-                for (int j = 0; j < entryCount; j++) {
-                    var itemId = readString(buf);
-                    int metadata = buf.readInt();
-                    entries.add(new ItemEntry(itemId, metadata));
-                }
-                itemTags.put(tagName, entries);
-            }
-            return itemTags;
-        }
-
-        private Object2ObjectMap<String, ObjectArrayList<BlockStateEntry>> readBlockStateTags(ByteBuf buf, int tagCount) {
-            Object2ObjectMap<String, ObjectArrayList<BlockStateEntry>> blockStateTags = new Object2ObjectOpenHashMap<>(tagCount);
-            for (int i = 0; i < tagCount; i++) {
-                var tagName = readString(buf);
-                int entryCount = buf.readInt();
-                validateCount("blockState entry count", entryCount);
-
-                ObjectArrayList<BlockStateEntry> entries = new ObjectArrayList<>(entryCount);
-                for (int j = 0; j < entryCount; j++) {
-                    var blockId = readString(buf);
-                    int metadata = buf.readInt();
-                    entries.add(new BlockStateEntry(blockId, metadata));
-                }
-                blockStateTags.put(tagName, entries);
-            }
-            return blockStateTags;
-        }
-
-        private Object2ObjectMap<String, ObjectArrayList<String>> readStringMap(ByteBuf buf, int tagCount) {
-            Object2ObjectMap<String, ObjectArrayList<String>> map = new Object2ObjectOpenHashMap<>(tagCount);
-            for (int i = 0; i < tagCount; i++) {
-                var tagName = readString(buf);
-                int count = buf.readInt();
-                validateCount("entry count", count);
-
-                ObjectArrayList<String> entries = new ObjectArrayList<>(count);
-                for (int j = 0; j < count; j++) {
-                    entries.add(readString(buf));
-                }
-                map.put(tagName, entries);
-            }
-            return map;
-        }
-
-        private void writeItemTags(ByteBuf buf, Object2ObjectMap<String, ObjectArrayList<ItemEntry>> itemTags) {
-            for (var entry : itemTags.object2ObjectEntrySet()) {
-                writeString(buf, entry.getKey());
-                buf.writeInt(entry.getValue().size());
-                for (var itemEntry : entry.getValue()) {
-                    writeString(buf, itemEntry.itemId);
-                    buf.writeInt(itemEntry.metadata);
-                }
-            }
-        }
-
-        private void writeBlockStateTags(ByteBuf buf, Object2ObjectMap<String, ObjectArrayList<BlockStateEntry>> blockStateTags) {
-            for (var entry : blockStateTags.object2ObjectEntrySet()) {
-                writeString(buf, entry.getKey());
-                buf.writeInt(entry.getValue().size());
-                for (var blockStateEntry : entry.getValue()) {
-                    writeString(buf, blockStateEntry.blockId);
-                    buf.writeInt(blockStateEntry.metadata);
-                }
-            }
-        }
-
-        private void writeStringMap(ByteBuf buf, Object2ObjectMap<String, ObjectArrayList<String>> map) {
-            for (var entry : map.object2ObjectEntrySet()) {
-                writeString(buf, entry.getKey());
-                buf.writeInt(entry.getValue().size());
-                for (var value : entry.getValue()) {
-                    writeString(buf, value);
-                }
-            }
         }
 
         private String readString(ByteBuf buf) {
@@ -328,14 +327,45 @@ final class TagSync {
             buf.writeInt(bytes.length);
             buf.writeBytes(bytes);
         }
+
+        @FunctionalInterface
+        private interface MapReader<T> {
+            Object2ObjectMap<String, ObjectArrayList<T>> read(ByteBuf buf, int tagCount);
+        }
+
+        @FunctionalInterface
+        private interface MapWriter<T> {
+            void write(ByteBuf buf, Object2ObjectMap<String, ObjectArrayList<T>> map);
+        }
+
+        @FunctionalInterface
+        private interface EntryReader<T> {
+            T read();
+        }
+
+        @FunctionalInterface
+        private interface EntryWriter<T> {
+            void write(ByteBuf buf, T entry);
+        }
     }
 
-    public static class TagData {
-        public Object2ObjectMap<String, ObjectArrayList<ItemEntry>> itemTags;
-        public Object2ObjectMap<String, ObjectArrayList<String>> fluidTags;
-        public Object2ObjectMap<String, ObjectArrayList<String>> blockTags;
-        public Object2ObjectMap<String, ObjectArrayList<BlockStateEntry>> blockStateTags;
-    }
+    @Desugar
+    public record TagData(Object2ObjectMap<String, ObjectArrayList<ItemEntry>> itemTags,
+                          Object2ObjectMap<String, ObjectArrayList<String>> fluidTags,
+                          Object2ObjectMap<String, ObjectArrayList<String>> blockTags,
+                          Object2ObjectMap<String, ObjectArrayList<BlockStateEntry>> blockStateTags) {
+            public TagData(
+                    Object2ObjectMap<String, ObjectArrayList<ItemEntry>> itemTags,
+                    Object2ObjectMap<String, ObjectArrayList<String>> fluidTags,
+                    Object2ObjectMap<String, ObjectArrayList<String>> blockTags,
+                    Object2ObjectMap<String, ObjectArrayList<BlockStateEntry>> blockStateTags
+            ) {
+                this.itemTags = itemTags != null ? itemTags : new Object2ObjectOpenHashMap<>();
+                this.fluidTags = fluidTags != null ? fluidTags : new Object2ObjectOpenHashMap<>();
+                this.blockTags = blockTags != null ? blockTags : new Object2ObjectOpenHashMap<>();
+                this.blockStateTags = blockStateTags != null ? blockStateTags : new Object2ObjectOpenHashMap<>();
+            }
+        }
 
     @Desugar
     public record ItemEntry(String itemId, int metadata) {}
