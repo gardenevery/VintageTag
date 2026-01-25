@@ -5,7 +5,6 @@ tag.command.statistics.title=§6=== §fTag Statistics §6===
 tag.command.statistics.items=§aItem Tags: %s    Associations: %s
 tag.command.statistics.fluids=§bFluid Tags: %s    Associations: %s
 tag.command.statistics.blocks=§eBlock Tags: %s    Associations: %s
-tag.command.statistics.blockStates=§eBlockState Tags: %s    Associations: %s
 tag.command.statistics.total=§6Total: %s    Associations: %s
 
 tag.command.help.title=§6=== Tag Command Help ===
@@ -29,3 +28,7 @@ tag.config.enable_tooltip=Enable Tag Tooltips
 tag.config.enable_tooltip.tooltip=Show tags in item tooltips when Shift is held.
 tag.config.enable_sync_to_oredict=Sync Item Tags to Ore Dictionary
 tag.config.enable_sync_to_oredict.tooltip=Add item tags as entries in the Forge Ore Dictionary.
+tag.config.show_fluid_tags=Show Fluid Tags
+tag.config.show_fluid_tags.tooltip=If item contains fluid, show fluid tags
+tag.config.show_block_tags=Show Block Tags
+tag.config.show_block_tags.tooltip=If item has block form, show block tags

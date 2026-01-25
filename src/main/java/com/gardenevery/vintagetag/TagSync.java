@@ -58,7 +58,7 @@ final class TagSync {
     }
 
     private static TagData collectTagData() {
-        return new TagData(collectItemTags(), collectFluidTags(), collectBlockTags(), collectBlockStateTags());
+        return new TagData(collectItemTags(), collectFluidTags(), collectBlockTags());
     }
 
     private static Object2ObjectMap<String, ObjectArrayList<ItemEntry>> collectItemTags() {
@@ -124,34 +124,11 @@ final class TagSync {
         return blockTags;
     }
 
-    private static Object2ObjectMap<String, ObjectArrayList<BlockStateEntry>> collectBlockStateTags() {
-        Object2ObjectMap<String, ObjectArrayList<BlockStateEntry>> blockStateTags = new Object2ObjectOpenHashMap<>();
-
-        for (var tagName : TagManager.blockState().getAllTags()) {
-            var blockStates = TagManager.blockState().getKeys(tagName);
-            ObjectArrayList<BlockStateEntry> entries = new ObjectArrayList<>(blockStates.size());
-
-            for (var state : blockStates) {
-                var block = state.getBlock();
-                var registryName = block.getRegistryName();
-                if (registryName != null) {
-                    int metadata = block.getMetaFromState(state);
-                    entries.add(new BlockStateEntry(registryName.toString(), metadata));
-                }
-            }
-
-            if (!entries.isEmpty()) {
-                blockStateTags.put(tagName, entries);
-            }
-        }
-        return blockStateTags;
-    }
-
     public static class EventHandler {
         @SubscribeEvent
         public void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
-            if (event.player instanceof EntityPlayerMP entityPlayerMP) {
-                TagSync.sync(entityPlayerMP);
+            if (event.player instanceof EntityPlayerMP player) {
+                TagSync.sync(player);
             }
         }
     }
@@ -178,9 +155,8 @@ final class TagSync {
             Object2ObjectMap<String, ObjectArrayList<ItemEntry>> itemTags = readOptionalMap(buf, this::readItemTags);
             Object2ObjectMap<String, ObjectArrayList<String>> fluidTags = readOptionalMap(buf, this::readStringMap);
             Object2ObjectMap<String, ObjectArrayList<String>> blockTags = readOptionalMap(buf, this::readStringMap);
-            Object2ObjectMap<String, ObjectArrayList<BlockStateEntry>> blockStateTags = readOptionalMap(buf, this::readBlockStateTags);
 
-            tagData = new TagData(itemTags, fluidTags, blockTags, blockStateTags);
+            tagData = new TagData(itemTags, fluidTags, blockTags);
         }
 
         @Override
@@ -192,7 +168,6 @@ final class TagSync {
                 writeOptionalMap(tempBuf, tagData.itemTags(), this::writeItemTags);
                 writeOptionalMap(tempBuf, tagData.fluidTags(), this::writeStringMap);
                 writeOptionalMap(tempBuf, tagData.blockTags(), this::writeStringMap);
-                writeOptionalMap(tempBuf, tagData.blockStateTags(), this::writeBlockStateTags);
 
                 int totalSize = tempBuf.readableBytes();
                 validateSize(totalSize);
@@ -227,10 +202,6 @@ final class TagSync {
             return readTagEntries(buf, tagCount, () -> new ItemEntry(readString(buf), buf.readInt()));
         }
 
-        private Object2ObjectMap<String, ObjectArrayList<BlockStateEntry>> readBlockStateTags(ByteBuf buf, int tagCount) {
-            return readTagEntries(buf, tagCount, () -> new BlockStateEntry(readString(buf), buf.readInt()));
-        }
-
         private Object2ObjectMap<String, ObjectArrayList<String>> readStringMap(ByteBuf buf, int tagCount) {
             return readTagEntries(buf, tagCount, () -> readString(buf));
         }
@@ -256,13 +227,6 @@ final class TagSync {
             writeTagEntries(buf, map, (b, entry) -> {
                 writeString(b, entry.itemId());
                 b.writeInt(entry.metadata());
-            });
-        }
-
-        private void writeBlockStateTags(ByteBuf buf, Object2ObjectMap<String, ObjectArrayList<BlockStateEntry>> map) {
-            writeTagEntries(buf, map, (b, entry) -> {
-                 writeString(b, entry.blockId());
-                 b.writeInt(entry.metadata());
             });
         }
 
@@ -352,24 +316,18 @@ final class TagSync {
     @Desugar
     public record TagData(Object2ObjectMap<String, ObjectArrayList<ItemEntry>> itemTags,
                           Object2ObjectMap<String, ObjectArrayList<String>> fluidTags,
-                          Object2ObjectMap<String, ObjectArrayList<String>> blockTags,
-                          Object2ObjectMap<String, ObjectArrayList<BlockStateEntry>> blockStateTags) {
-            public TagData(
-                    Object2ObjectMap<String, ObjectArrayList<ItemEntry>> itemTags,
-                    Object2ObjectMap<String, ObjectArrayList<String>> fluidTags,
-                    Object2ObjectMap<String, ObjectArrayList<String>> blockTags,
-                    Object2ObjectMap<String, ObjectArrayList<BlockStateEntry>> blockStateTags
-            ) {
-                this.itemTags = itemTags != null ? itemTags : new Object2ObjectOpenHashMap<>();
-                this.fluidTags = fluidTags != null ? fluidTags : new Object2ObjectOpenHashMap<>();
-                this.blockTags = blockTags != null ? blockTags : new Object2ObjectOpenHashMap<>();
-                this.blockStateTags = blockStateTags != null ? blockStateTags : new Object2ObjectOpenHashMap<>();
-            }
+                          Object2ObjectMap<String, ObjectArrayList<String>> blockTags) {
+        public TagData(
+                Object2ObjectMap<String, ObjectArrayList<ItemEntry>> itemTags,
+                Object2ObjectMap<String, ObjectArrayList<String>> fluidTags,
+                Object2ObjectMap<String, ObjectArrayList<String>> blockTags
+        ) {
+            this.itemTags = itemTags != null ? itemTags : new Object2ObjectOpenHashMap<>();
+            this.fluidTags = fluidTags != null ? fluidTags : new Object2ObjectOpenHashMap<>();
+            this.blockTags = blockTags != null ? blockTags : new Object2ObjectOpenHashMap<>();
         }
+    }
 
     @Desugar
     public record ItemEntry(String itemId, int metadata) {}
-
-    @Desugar
-    public record BlockStateEntry(String blockId, int metadata) {}
 }

@@ -1,6 +1,10 @@
 package com.gardenevery.vintagetag;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Set;
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import it.unimi.dsi.fastutil.objects.Object2ReferenceOpenHashMap;
@@ -15,20 +19,50 @@ public final class BlockMapper {
 
     public static final int[] ALL_METADATA = new int[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
     private static final Object2ReferenceOpenHashMap<ResourceLocation, ObjectOpenHashSet<IBlockState>> nameToBlockState = new Object2ReferenceOpenHashMap<>();
+    private static final Object2ReferenceOpenHashMap<IBlockState, ResourceLocation> blockStateToName = new Object2ReferenceOpenHashMap<>();
 
     @Nullable
-    public static Set<IBlockState> get(String name) {
-        return name != null ? get(new ResourceLocation(name)) : null;
+    public static ResourceLocation getName(IBlockState blockState) {
+        if (blockState == null) {
+            return null;
+        }
+        return blockStateToName.get(blockState);
     }
 
     @Nullable
-    public static Set<IBlockState> get(ResourceLocation name) {
+    public static String getNameString(IBlockState blockState) {
+        var name = getName(blockState);
+        return name != null ? name.toString() : null;
+    }
+
+    @Nonnull
+    public static Set<IBlockState> getKeys(String name) {
+        return name != null ? getKeys(new ResourceLocation(name)) : Collections.emptySet();
+    }
+
+    @Nonnull
+    public static Set<IBlockState> getKeys(ResourceLocation name) {
         if (name == null) {
-            return null;
+            return Collections.emptySet();
         }
 
         var blockStates = nameToBlockState.get(name);
-        return blockStates != null && !blockStates.isEmpty() ? blockStates : null;
+        return blockStates != null && !blockStates.isEmpty() ? blockStates : Collections.emptySet();
+    }
+
+    @Nonnull
+    public static List<IBlockState> getKeysList(String name) {
+        return name != null ? getKeysList(new ResourceLocation(name)) : Collections.emptyList();
+    }
+
+    @Nonnull
+    public static List<IBlockState> getKeysList(ResourceLocation name) {
+        if (name == null) {
+            return Collections.emptyList();
+        }
+
+        var blockStates = nameToBlockState.get(name);
+        return blockStates != null && !blockStates.isEmpty() ? new ArrayList<>(blockStates) : Collections.emptyList();
     }
 
     @SuppressWarnings("deprecation")
@@ -41,7 +75,9 @@ public final class BlockMapper {
         var set = nameToBlockState.computeIfAbsent(resourceLocation, k -> new ObjectOpenHashSet<>());
 
         for (int meta : metadata) {
-            set.add(block.getStateFromMeta(meta));
+            var state = block.getStateFromMeta(meta);
+            set.add(state);
+            blockStateToName.put(state, resourceLocation);
         }
     }
 

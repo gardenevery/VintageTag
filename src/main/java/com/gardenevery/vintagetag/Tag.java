@@ -1,11 +1,14 @@
 package com.gardenevery.vintagetag;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import javax.annotation.Nonnull;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
@@ -55,9 +58,21 @@ final class Tag<T> {
     }
 
     @Nonnull
+    public List<String> getTagsList(@Nonnull T key) {
+        var tags = keyToTags.get(key);
+        return tags == null ? Collections.emptyList() : new ArrayList<>(tags);
+    }
+
+    @Nonnull
     public Set<T> getKeys(@Nonnull String tagName) {
         var keys = tagToKeys.get(tagName);
         return keys == null ? Collections.emptySet() : keys;
+    }
+
+    @Nonnull
+    public List<T> getKeysList(@Nonnull String tagName) {
+        var keys = tagToKeys.get(tagName);
+        return keys == null ? Collections.emptyList() : new ArrayList<>(keys);
     }
 
     @Nonnull
@@ -66,8 +81,18 @@ final class Tag<T> {
     }
 
     @Nonnull
+    public List<String> getAllTagsList() {
+        return ImmutableList.copyOf(tags);
+    }
+
+    @Nonnull
     public ImmutableSet<T> getAllKeys() {
         return keyToTags.keySet();
+    }
+
+    @Nonnull
+    public List<T> getAllKeysList() {
+        return ImmutableList.copyOf(keyToTags.keySet());
     }
 
     @Nonnull
@@ -129,14 +154,6 @@ final class Tag<T> {
             this.keyToTags = new Object2ReferenceOpenHashMap<>();
         }
 
-        public void register(@Nonnull T key, @Nonnull String tagName) {
-            Objects.requireNonNull(key, "key must not be null");
-            Objects.requireNonNull(tagName, "tagName must not be null");
-
-            tagToKeys.computeIfAbsent(tagName, k -> new ObjectOpenHashSet<>()).add(key);
-            keyToTags.computeIfAbsent(key, k -> new ObjectOpenHashSet<>()).add(tagName);
-        }
-
         public void register(@Nonnull Set<T> keys, @Nonnull String tagName) {
             Objects.requireNonNull(keys, "keys must not be null");
             Objects.requireNonNull(tagName, "tagName must not be null");
@@ -153,12 +170,13 @@ final class Tag<T> {
             }
         }
 
-        public void remove(@Nonnull String tagName) {
+        public void replace(@Nonnull Set<T> keys, @Nonnull String tagName) {
+            Objects.requireNonNull(keys, "keys must not be null");
             Objects.requireNonNull(tagName, "tagName must not be null");
 
-            var keys = tagToKeys.remove(tagName);
-            if (keys != null) {
-                for (T key : keys) {
+            var existingKeys = tagToKeys.remove(tagName);
+            if (existingKeys != null) {
+                for (T key : existingKeys) {
                     var tags = keyToTags.get(key);
                     if (tags != null) {
                         tags.remove(tagName);
@@ -166,6 +184,15 @@ final class Tag<T> {
                             keyToTags.remove(key);
                         }
                     }
+                }
+            }
+
+            if (!keys.isEmpty()) {
+                var keySet = tagToKeys.computeIfAbsent(tagName, k -> new ObjectOpenHashSet<>());
+                keySet.addAll(keys);
+
+                for (T key : keys) {
+                    keyToTags.computeIfAbsent(key, k -> new ObjectOpenHashSet<>()).add(tagName);
                 }
             }
         }

@@ -45,7 +45,7 @@ final class OreSync {
                         var wildcardKeys = syncWildcardEntry(oreStack.getItem());
                         itemKeys.addAll(wildcardKeys);
                     } else {
-                        var key = ItemKey.toKey(oreStack);
+                        var key = ItemKey.of(oreStack);
                         itemKeys.add(key);
                     }
                 } catch (Exception e) {
@@ -73,7 +73,7 @@ final class OreSync {
         item.getSubItems(CreativeTabs.SEARCH, subItems);
 
         return subItems.stream()
-                .map(ItemKey::toKey)
+                .map(ItemKey::of)
                 .collect(Collectors.toCollection(ObjectOpenHashSet::new));
     }
 }

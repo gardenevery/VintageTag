@@ -192,8 +192,6 @@ final class TagLoader {
         }
 
         for (var type : TagType.values()) {
-            if (type == TagType.BLOCK_STATE) continue;
-
             var typeDir = rootDir.resolve(type.getName());
             if (Files.exists(typeDir) && Files.isDirectory(typeDir)) {
                 scanTypeDirectory(typeDir, type, processor);
@@ -242,7 +240,6 @@ final class TagLoader {
             case ITEM -> processItemTag(tagName, operation, jsonObject);
             case FLUID -> processFluidTag(tagName, operation, jsonObject);
             case BLOCK -> processBlockTag(tagName, operation, jsonObject);
-            case BLOCK_STATE -> TagLog.info("BlockState tags not yet supported: {}", tagName);
         }
     }
 
@@ -256,7 +253,7 @@ final class TagLoader {
         if (itemKeys.isEmpty()) {
             return;
         }
-        applyTagOperation(tagName, operation, itemKeys, TagManager::registerItem, TagManager::removeItem);
+        applyTagOperation(tagName, operation, itemKeys, TagManager::registerItem, TagManager::replaceItem);
     }
 
     private static void processFluidTag(String tagName, Operation operation, JsonObject jsonObject) {
@@ -269,7 +266,7 @@ final class TagLoader {
         if (fluids.isEmpty()) {
             return;
         }
-        applyTagOperation(tagName, operation, fluids, TagManager::registerFluid, TagManager::removeFluid);
+        applyTagOperation(tagName, operation, fluids, TagManager::registerFluid, TagManager::replaceFluid);
     }
 
     private static void processBlockTag(String tagName, Operation operation, JsonObject jsonObject) {
@@ -282,7 +279,7 @@ final class TagLoader {
         if (blocks.isEmpty()) {
             return;
         }
-        applyTagOperation(tagName, operation, blocks, TagManager::registerBlock, TagManager::removeBlock);
+        applyTagOperation(tagName, operation, blocks, TagManager::registerBlock, TagManager::replaceBlock);
     }
 
     private static Set<ItemEntry> parseItemEntries(JsonObject jsonObject) {
@@ -329,22 +326,25 @@ final class TagLoader {
     }
 
     private static Set<ItemKey> createItemKeys(Set<ItemEntry> itemEntries) {
-        return itemEntries.stream()
-                .map(entry -> {
-                    var id = parseResourceLocation(entry.id());
-                    if (id == null) return null;
+        return itemEntries.stream().map(entry -> {
+                var id = parseResourceLocation(entry.id());
+                if (id == null) {
+                    return null;
+                }
 
-                    var item = ForgeRegistries.ITEMS.getValue(id);
-                    if (item == null) return null;
+                var item = ForgeRegistries.ITEMS.getValue(id);
+                if (item == null) {
+                    return null;
+                }
 
-                    int metadata = entry.metadata();
-                    if (!item.getHasSubtypes() && metadata != 0) {
-                        metadata = 0;
-                    }
-                    return ItemKey.toKey(item, metadata);
-                })
-            .filter(Objects::nonNull)
-            .collect(Collectors.toSet());
+                int metadata = entry.metadata();
+                if (!item.getHasSubtypes() && metadata != 0) {
+                    metadata = 0;
+                }
+                return ItemKey.of(item, metadata);
+            })
+        .filter(Objects::nonNull)
+        .collect(Collectors.toSet());
     }
 
     private static Set<Fluid> createFluids(Set<String> fluidNames) {
@@ -364,13 +364,10 @@ final class TagLoader {
     }
 
     private static <T> void applyTagOperation(String tagName, Operation operation, Set<T> items, BiConsumer<Set<T>, String> register,
-                                              Consumer<String> remove) {
+                                              BiConsumer<Set<T>, String> replace) {
         switch (operation) {
             case ADD -> register.accept(items, tagName);
-            case REPLACE -> {
-                remove.accept(tagName);
-                register.accept(items, tagName);
-            }
+            case REPLACE -> replace.accept(items, tagName);
         }
     }
 
@@ -424,11 +421,6 @@ final class TagLoader {
     @FunctionalInterface
     private interface BiConsumer<T, U> {
         void accept(T t, U u);
-    }
-
-    @FunctionalInterface
-    private interface Consumer<T> {
-        void accept(T t);
     }
 
     @Desugar

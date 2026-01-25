@@ -5,8 +5,7 @@ import javax.annotation.Nullable;
 public enum TagType {
     ITEM("item"),
     FLUID("fluid"),
-    BLOCK("block"),
-    BLOCK_STATE("block_state");
+    BLOCK("block");
 
     private final String name;
 
@@ -19,16 +18,15 @@ public enum TagType {
     }
 
     @Nullable
-    public static TagType getType(String type) {
-        if (type == null) {
+    public static TagType getType(String name) {
+        if (name == null) {
             return null;
         }
 
-        return switch (type.toLowerCase()) {
+        return switch (name) {
             case "item" -> ITEM;
             case "fluid" -> FLUID;
             case "block" -> BLOCK;
-            case "block_state" -> BLOCK_STATE;
             default -> null;
         };
     }

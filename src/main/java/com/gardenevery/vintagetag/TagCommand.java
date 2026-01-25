@@ -81,9 +81,6 @@ public class TagCommand extends CommandBase {
         sender.sendMessage(new TextComponentTranslation("tag.command.statistics.blocks",
                 TagHelper.block().tagCount(), TagHelper.block().associationCount(), TagHelper.block().keyCount()));
 
-//        sender.sendMessage(new TextComponentTranslation("tag.command.statistics.blockStates",
-//                TagHelper.blockState().tagCount(), TagHelper.blockState().associationCount(), TagHelper.blockState().keyCount()));
-
         sender.sendMessage(new TextComponentTranslation("tag.command.statistics.total",
                 TagHelper.tagCount(), TagHelper.associationCount(), TagHelper.keyCount()));
     }

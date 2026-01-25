@@ -2,7 +2,6 @@ package com.gardenevery.vintagetag;
 
 import java.util.function.Function;
 
-import com.gardenevery.vintagetag.TagSync.BlockStateEntry;
 import com.gardenevery.vintagetag.TagSync.ItemEntry;
 import com.gardenevery.vintagetag.TagSync.SyncType;
 import com.gardenevery.vintagetag.TagSync.TagDataSyncMessage;
@@ -60,9 +59,6 @@ final class ClientTagSync {
             message.tagData.blockTags().object2ObjectEntrySet()
                     .forEach(entry -> processBlockEntries(entry.getKey(), entry.getValue()));
 
-            message.tagData.blockStateTags().object2ObjectEntrySet()
-                    .forEach(entry -> processBlockStateEntries(entry.getKey(), entry.getValue()));
-
             TagManager.bake();
         }
 
@@ -97,22 +93,6 @@ final class ClientTagSync {
                    }
                },
                TagManager::registerBlock
-            );
-        }
-
-        @SuppressWarnings("deprecation")
-        @SideOnly(Side.CLIENT)
-        private void processBlockStateEntries(String tagName, ObjectArrayList<BlockStateEntry> entries) {
-            processEntries(tagName, entries, entry -> {
-                    try {
-                        var resourceLocation = new ResourceLocation(entry.blockId());
-                        var block = ForgeRegistries.BLOCKS.getValue(resourceLocation);
-                        return block != null ? block.getStateFromMeta(entry.metadata()) : null;
-                    } catch (Exception e) {
-                        return null;
-                    }
-                },
-                TagManager::registerBlockState
             );
         }
 

@@ -1,13 +1,10 @@
 package com.gardenevery.vintagetag;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
 import net.minecraft.block.Block;
 import net.minecraft.client.resources.I18n;
-import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.text.TextFormatting;
 import net.minecraftforge.event.entity.player.ItemTooltipEvent;
@@ -20,11 +17,6 @@ import org.lwjgl.input.Keyboard;
 
 @SideOnly(Side.CLIENT)
 public class TagTooltip {
-
-    private static long lastKeyboardCheck = 0;
-    private static boolean shiftDown = false;
-    private static final long KEY_CHECK_INTERVAL = 100;
-
     @SubscribeEvent
     public void onItemTooltip(ItemTooltipEvent event) {
         var stack = event.getItemStack();
@@ -42,19 +34,14 @@ public class TagTooltip {
     }
 
     private static boolean isShiftPressed() {
-        long currentTime = System.currentTimeMillis();
-        if (currentTime - lastKeyboardCheck > KEY_CHECK_INTERVAL) {
-            shiftDown = Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT);
-            lastKeyboardCheck = currentTime;
-        }
-        return shiftDown;
+        return Keyboard.isCreated() && (Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT));
     }
 
     private static void addTagsToTooltip(ItemStack itemStack, List<String> tooltip) {
         var itemTags = TagHelper.item().tags(itemStack);
 
         Set<String> fluidTags = null;
-        if (itemStack.hasCapability(CapabilityFluidHandler.FLUID_HANDLER_ITEM_CAPABILITY, null)) {
+        if (TagConfig.showFluidTags && itemStack.hasCapability(CapabilityFluidHandler.FLUID_HANDLER_ITEM_CAPABILITY, null)) {
             var fluidHandler = itemStack.getCapability(CapabilityFluidHandler.FLUID_HANDLER_ITEM_CAPABILITY, null);
             if (fluidHandler != null) {
                 var fluidStack = fluidHandler.drain(Integer.MAX_VALUE, false);
@@ -65,8 +52,8 @@ public class TagTooltip {
         }
 
         Set<String> blockTags = null;
-        var block = Block.getBlockFromItem(itemStack.getItem());
-        if (block != Blocks.AIR) {
+        if (TagConfig.showBlockTags) {
+            var block = Block.getBlockFromItem(itemStack.getItem());
             blockTags = TagHelper.block().tags(block);
         }
 
@@ -95,10 +82,8 @@ public class TagTooltip {
     }
 
     private static void addSortedTags(List<String> tooltip, Set<String> tags, TextFormatting color) {
-        var sortedTags = new ArrayList<>(tags);
-        Collections.sort(sortedTags);
-        for (var tag : sortedTags) {
-            tooltip.add(color + "  " + tag);
-        }
+        tags.stream()
+                .sorted()
+                .forEach(tag -> tooltip.add(color + "  " + tag));
     }
 }

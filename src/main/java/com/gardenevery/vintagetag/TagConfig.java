@@ -9,7 +9,6 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 @Config(modid = Tags.MOD_ID)
 @Config.LangKey("tag.config.title")
 public class TagConfig {
-
     @Config.LangKey("tag.config.ore_sync")
     public static boolean enableOreSync = true;
 
@@ -22,6 +21,12 @@ public class TagConfig {
     @Config.LangKey("tag.config.enable_tooltip")
     @Config.RequiresMcRestart
     public static boolean enableTooltip = true;
+
+    @Config.LangKey("tag.config.show_fluid_tags")
+    public static boolean showFluidTags = true;
+
+    @Config.LangKey("tag.config.show_block_tags")
+    public static boolean showBlockTags = true;
 
     @Mod.EventBusSubscriber(modid = Tags.MOD_ID)
     private static class EventHandler {
