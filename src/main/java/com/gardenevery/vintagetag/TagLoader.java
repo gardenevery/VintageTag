@@ -93,7 +93,6 @@ import org.apache.commons.io.IOUtils;
 //  ]
 //}
 final class TagLoader {
-
     private static final Gson GSON = new Gson();
     private static final int MAX_DIRECTORY_DEPTH = 3;
     private static volatile boolean isInitialized = false;

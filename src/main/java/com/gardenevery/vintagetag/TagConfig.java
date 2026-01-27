@@ -23,10 +23,10 @@ public class TagConfig {
     public static boolean enableTooltip = true;
 
     @Config.LangKey("tag.config.show_fluid_tags")
-    public static boolean showFluidTags = true;
+    public static boolean showFluidTags = false;
 
     @Config.LangKey("tag.config.show_block_tags")
-    public static boolean showBlockTags = true;
+    public static boolean showBlockTags = false;
 
     @Mod.EventBusSubscriber(modid = Tags.MOD_ID)
     private static class EventHandler {

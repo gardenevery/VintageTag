@@ -10,7 +10,6 @@ import net.minecraftforge.fml.relauncher.Side;
 
 @Mod(modid = Tags.MOD_ID, name = Tags.MOD_NAME, version = Tags.VERSION)
 public class TagMod {
-
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
         TagSync.register();

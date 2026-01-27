@@ -18,7 +18,6 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.TextComponentTranslation;
 
 public class TagCommand extends CommandBase {
-
     public final CommandRegistry registry = new CommandRegistry();
 
     public TagCommand() {

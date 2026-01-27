@@ -16,7 +16,6 @@ import it.unimi.dsi.fastutil.objects.Object2ReferenceOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 final class Tag<T> {
-
     private final ImmutableMap<String, ImmutableSet<T>> tagToKeys;
     private final ImmutableMap<T, ImmutableSet<String>> keyToTags;
     private final ImmutableSet<String> tags;
@@ -37,18 +36,6 @@ final class Tag<T> {
         this.associationCount = this.tagToKeys.values().stream()
                 .mapToInt(ImmutableSet::size)
                 .sum();
-    }
-
-    private static <K, V> ImmutableMap<K, ImmutableSet<V>> buildMap(Object2ReferenceOpenHashMap<K, ObjectOpenHashSet<V>> map) {
-        if (map.isEmpty()) {
-            return ImmutableMap.of();
-        }
-
-        ImmutableMap.Builder<K, ImmutableSet<V>> builder = ImmutableMap.builder();
-        for (var entry : map.object2ReferenceEntrySet()) {
-            builder.put(entry.getKey(), ImmutableSet.copyOf(entry.getValue()));
-        }
-        return builder.build();
     }
 
     @Nonnull
@@ -145,6 +132,18 @@ final class Tag<T> {
         return tagToKeys.containsKey(tagName);
     }
 
+    private static <K, V> ImmutableMap<K, ImmutableSet<V>> buildMap(Object2ReferenceOpenHashMap<K, ObjectOpenHashSet<V>> map) {
+        if (map.isEmpty()) {
+            return ImmutableMap.of();
+        }
+
+        ImmutableMap.Builder<K, ImmutableSet<V>> builder = ImmutableMap.builder();
+        for (var entry : map.object2ReferenceEntrySet()) {
+            builder.put(entry.getKey(), ImmutableSet.copyOf(entry.getValue()));
+        }
+        return builder.build();
+    }
+
     static final class MutableTagContainer<T> {
         private final Object2ReferenceOpenHashMap<String, ObjectOpenHashSet<T>> tagToKeys;
         private final Object2ReferenceOpenHashMap<T, ObjectOpenHashSet<String>> keyToTags;
@@ -197,14 +196,14 @@ final class Tag<T> {
             }
         }
 
-        public void clear() {
-            tagToKeys.clear();
-            keyToTags.clear();
-        }
-
         @Nonnull
         public Tag<T> build() {
             return new Tag<>(this);
+        }
+
+        public void clear() {
+            tagToKeys.clear();
+            keyToTags.clear();
         }
     }
 }

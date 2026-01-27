@@ -7,10 +7,10 @@ import javax.annotation.Nonnull;
 import com.gardenevery.vintagetag.Tag.MutableTagContainer;
 
 import net.minecraft.block.Block;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fluids.Fluid;
 
 final class TagManager {
-
     private static final AtomicReference<Tag<ItemKey>> ITEM_SNAPSHOT = new AtomicReference<>(new Tag<>());
     private static final AtomicReference<Tag<Fluid>> FLUID_SNAPSHOT = new AtomicReference<>(new Tag<>());
     private static final AtomicReference<Tag<Block>> BLOCK_SNAPSHOT = new AtomicReference<>(new Tag<>());
@@ -48,6 +48,7 @@ final class TagManager {
             FLUID_CONTAINER.clear();
             BLOCK_CONTAINER.clear();
         }
+        MinecraftForge.EVENT_BUS.post(new TagEvent());
     }
 
     public static void registerItem(Set<ItemKey> itemKeys, String tagName) {

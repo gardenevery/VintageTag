@@ -17,11 +17,12 @@ import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.NonNullList;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.oredict.OreDictionary;
 
 public final class TagHelper {
-
     private TagHelper() {}
 
     /**
@@ -46,21 +47,6 @@ public final class TagHelper {
     @Nonnull
     public static BlockTagHelper block() {
         return BlockTagHelper.INSTANCE;
-    }
-
-    /**
-     * Check if the specified ItemStack matches the specified target ItemStack
-     *
-     * @param input The ItemStack to check, can be null
-     * @param target The ItemStack to match, can be null
-     * @param strict If true, only exact matches will be considered
-     * @return True if the ItemStack matches the target ItemStack
-     */
-    public static boolean matches(@Nonnull ItemStack input, @Nonnull ItemStack target, boolean strict) {
-        if (input.isEmpty() || target.isEmpty()) {
-            return false;
-        }
-        return strict ? ItemKey.of(input).equals(ItemKey.of(target)) : input.getItem().equals(target.getItem());
     }
 
     /**
@@ -191,6 +177,30 @@ public final class TagHelper {
                 result.add(key.toStack());
             }
             return Collections.unmodifiableList(result);
+        }
+
+        /**
+         * Get all ItemStacks associated with the specified tag name as a NonNullList
+         *
+         * @param tagName The tag name to query, can be null
+         * @return A NonNullList of ItemStacks, empty if tagName is null or empty
+         */
+        @Nonnull
+        public NonNullList<ItemStack> keysNonNullList(@Nullable String tagName) {
+            if (tagInvalid(tagName)) {
+                return OreDictionary.EMPTY_LIST;
+            }
+
+            var keys = TagManager.item().getKeysList(tagName);
+            if (keys.isEmpty()) {
+                return OreDictionary.EMPTY_LIST;
+            }
+
+            NonNullList<ItemStack> result = NonNullList.create();
+            for (var key : keys) {
+                result.add(key.toStack());
+            }
+            return result;
         }
 
         /**

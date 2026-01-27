@@ -10,7 +10,6 @@ import net.minecraft.item.ItemStack;
 
 @Desugar
 record ItemKey(Item item, int metadata) {
-
     public ItemKey {
         Objects.requireNonNull(item, "item must not be null");
     }
