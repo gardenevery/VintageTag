@@ -14,7 +14,6 @@ import com.google.common.collect.ImmutableSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 import net.minecraft.block.Block;
-import net.minecraft.block.state.IBlockState;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.NonNullList;
@@ -311,6 +310,19 @@ public final class TagHelper {
         }
 
         /**
+         * Check if the specified ItemStack is tagged
+         *
+         * @param stack The ItemStack to check, can be null
+         * @return true if stack is not null/empty and is tagged
+         */
+        public static boolean isTagged(@Nullable ItemStack stack) {
+            if (stack == null || stack.isEmpty()) {
+                return false;
+            }
+            return TagManager.item().isTagged(ItemKey.of(stack));
+        }
+
+        /**
          * Get the total number of tags defined for items
          *
          * @return The count of unique item tags
@@ -550,6 +562,19 @@ public final class TagHelper {
         }
 
         /**
+         * Check if the specified FluidStack is tagged
+         *
+         * @param stack The FluidStack to check, can be null
+         * @return true if stack is not null/has fluid, and fluid is tagged
+         */
+        public static boolean isTagged(@Nullable FluidStack stack) {
+            if (stack == null || stack.getFluid() == null) {
+                return false;
+            }
+            return TagManager.fluid().isTagged(stack.getFluid());
+        }
+
+        /**
          * Get the total number of tags defined for fluids
          *
          * @return The count of unique fluid tags
@@ -621,28 +646,6 @@ public final class TagHelper {
         }
 
         /**
-         * Get all tags associated with the specified BlockState as a List
-         *
-         * @param blockState The IBlockState to query, can be null
-         * @return An unmodifiable list of tag names, empty if blockState is null
-         */
-        @Nonnull
-        public List<String> tagsList(@Nullable IBlockState blockState) {
-            return blockState == null ? Collections.emptyList() : TagManager.block().getTagsList(blockState.getBlock());
-        }
-
-        /**
-         * Get all tags associated with the specified BlockState
-         *
-         * @param blockState The IBlockState to query, can be null
-         * @return An unmodifiable set of tag names, empty if blockState is null
-         */
-        @Nonnull
-        public Set<String> tags(@Nullable IBlockState blockState) {
-            return blockState == null ? Collections.emptySet() : TagManager.block().getTags(blockState.getBlock());
-        }
-
-        /**
          * Get all tags associated with the specified TileEntity as a List
          *
          * @param blockEntity The TileEntity to query, can be null
@@ -650,7 +653,7 @@ public final class TagHelper {
          */
         @Nonnull
         public List<String> tagsList(@Nullable TileEntity blockEntity) {
-            return blockEntity == null ? Collections.emptyList() : TagManager.block().getTagsList(getBlock(blockEntity));
+            return blockEntity == null ? Collections.emptyList() : TagManager.block().getTagsList(blockEntity.getBlockType());
         }
 
         /**
@@ -661,7 +664,7 @@ public final class TagHelper {
          */
         @Nonnull
         public Set<String> tags(@Nullable TileEntity blockEntity) {
-            return blockEntity == null ? Collections.emptySet() : TagManager.block().getTags(getBlock(blockEntity));
+            return blockEntity == null ? Collections.emptySet() : TagManager.block().getTags(blockEntity.getBlockType());
         }
 
         /**
@@ -757,20 +760,6 @@ public final class TagHelper {
         }
 
         /**
-         * Check if the specified BlockState has the given tag
-         *
-         * @param blockState The IBlockState to check, can be null
-         * @param tagName The tag name to check for, can be null
-         * @return true if blockState is not null, tagName is valid, and block has the tag
-         */
-        public boolean hasTag(@Nullable IBlockState blockState, @Nullable String tagName) {
-            if (blockState == null || tagInvalid(tagName)) {
-                return false;
-            }
-            return TagManager.block().hasTag(blockState.getBlock(), tagName);
-        }
-
-        /**
          * Check if the specified TileEntity's block has the given tag
          *
          * @param blockEntity The TileEntity to check, can be null
@@ -781,7 +770,7 @@ public final class TagHelper {
             if (blockEntity == null || tagInvalid(tagName)) {
                 return false;
             }
-            return TagManager.block().hasTag(getBlock(blockEntity), tagName);
+            return TagManager.block().hasTag(blockEntity.getBlockType(), tagName);
         }
 
         /**
@@ -799,20 +788,6 @@ public final class TagHelper {
         }
 
         /**
-         * Check if the specified BlockState has any of the given tags
-         *
-         * @param blockState The IBlockState to check, can be null
-         * @param tagNames The tag names to check for, can be null or empty
-         * @return true if blockState is not null, tagNames are valid, and block has any of the tags
-         */
-        public boolean hasAnyTag(@Nullable IBlockState blockState, @Nullable String... tagNames) {
-            if (blockState == null || tagInvalid(tagNames)) {
-                return false;
-            }
-            return TagManager.block().hasAnyTag(blockState.getBlock(), tagNames);
-        }
-
-        /**
          * Check if the specified TileEntity's block has any of the given tags
          *
          * @param blockEntity The TileEntity to check, can be null
@@ -823,7 +798,7 @@ public final class TagHelper {
             if (blockEntity == null || tagInvalid(tagNames)) {
                 return false;
             }
-            return TagManager.block().hasAnyTag(getBlock(blockEntity), tagNames);
+            return TagManager.block().hasAnyTag(blockEntity.getBlockType(), tagNames);
         }
 
         /**
@@ -841,20 +816,6 @@ public final class TagHelper {
         }
 
         /**
-         * Check if the specified BlockState has all the given tags
-         *
-         * @param blockState The IBlockState to check, can be null
-         * @param tagNames The tag names to check for, can be null or empty
-         * @return true if blockState is not null, tagNames are valid, and block has all the tags
-         */
-        public boolean hasAllTags(@Nullable IBlockState blockState, @Nullable String... tagNames) {
-            if (blockState == null || tagInvalid(tagNames)) {
-                return false;
-            }
-            return TagManager.block().hasAllTags(blockState.getBlock(), tagNames);
-        }
-
-        /**
          * Check if the specified TileEntity's block has all the given tags
          *
          * @param blockEntity The TileEntity to check, can be null
@@ -865,7 +826,33 @@ public final class TagHelper {
             if (blockEntity == null || tagInvalid(tagNames)) {
                 return false;
             }
-            return TagManager.block().hasAllTags(getBlock(blockEntity), tagNames);
+            return TagManager.block().hasAllTags(blockEntity.getBlockType(), tagNames);
+        }
+
+        /**
+         * Check if the specified Block is tagged
+         *
+         * @param block The Block to check, can be null
+         * @return true if block is not null and is tagged
+         */
+        public static boolean isTagged(@Nullable Block block) {
+            if (block == null) {
+                return false;
+            }
+            return TagManager.block().isTagged(block);
+        }
+
+        /**
+         * Check if the specified TileEntity is tagged
+         *
+         * @param blockEntity The TileEntity to check, can be null
+         * @return true if blockEntity is not null and is tagged
+         */
+        public static boolean isTagged(@Nullable TileEntity blockEntity) {
+            if (blockEntity == null) {
+                return false;
+            }
+            return TagManager.block().isTagged(blockEntity.getBlockType());
         }
 
         /**
@@ -906,10 +893,6 @@ public final class TagHelper {
                 return false;
             }
             return TagManager.block().exists(tagName);
-        }
-
-        private Block getBlock(@Nonnull TileEntity blockEntity) {
-            return blockEntity.getWorld().getBlockState(blockEntity.getPos()).getBlock();
         }
     }
 }

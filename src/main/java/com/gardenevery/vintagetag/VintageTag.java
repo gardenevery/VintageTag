@@ -9,27 +9,27 @@ import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
 import net.minecraftforge.fml.relauncher.Side;
 
 @Mod(modid = Tags.MOD_ID, name = Tags.MOD_NAME, version = Tags.VERSION)
-public class TagMod {
+public class VintageTag {
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
         TagSync.register();
         if (event.getSide() == Side.CLIENT) {
-            ClientTagSync.registerClient();
+            ClientTagSync.register();
         }
     }
 
     @Mod.EventHandler
     public void postInit(FMLPostInitializationEvent event) {
         if (TagConfig.enableTooltip && event.getSide() == Side.CLIENT) {
-            var tooltipEventHandler = new TagTooltip();
-            MinecraftForge.EVENT_BUS.register(tooltipEventHandler);
+            var tooltip = new TagTooltip();
+            MinecraftForge.EVENT_BUS.register(tooltip);
         }
     }
 
     @Mod.EventHandler
     public void onFMLoadComplete(FMLLoadCompleteEvent event) {
         if (TagConfig.enableOreSync) {
-            OreSync.oreDictionarySync();
+            OreSync.sync();
         }
 
         if (TagConfig.enableModScanner) {

@@ -1,5 +1,6 @@
 package com.gardenevery.vintagetag;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -105,8 +106,15 @@ public class TagTooltip {
     }
 
     private static void addSortedTags(List<String> tooltip, Set<String> tags, TextFormatting color) {
-        tags.stream()
-                .sorted()
-                .forEach(tag -> tooltip.add(color + "  " + tag));
+        if (tags.isEmpty()) {
+            return;
+        }
+
+        var tagArray = tags.toArray(new String[0]);
+        Arrays.sort(tagArray);
+
+        for (var tag : tagArray) {
+            tooltip.add(color + "  " + tag);
+        }
     }
 }

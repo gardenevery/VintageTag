@@ -12,14 +12,11 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 
 import com.github.bsideup.jabel.Desugar;
 import com.google.gson.Gson;
@@ -94,10 +91,9 @@ import org.apache.commons.io.IOUtils;
 //}
 final class TagLoader {
     private static final Gson GSON = new Gson();
-    private static final int MAX_DIRECTORY_DEPTH = 3;
     private static volatile boolean isInitialized = false;
     private static final Pattern VALID_FILENAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]+\\.json$", Pattern.CASE_INSENSITIVE);
-    private static final Map<File, List<JarTagData>> CACHED_JAR_TAGS = new Object2ObjectOpenHashMap<>();
+    private static final Map<File, List<JarTagData>> JAR_TAGS_CACHED = new Object2ObjectOpenHashMap<>();
 
     public enum Operation {
         ADD,
@@ -117,7 +113,7 @@ final class TagLoader {
             cacheJarTags(source, mod.getModId());
         }
 
-        CACHED_JAR_TAGS.forEach((jarFile, tagList) -> {
+        JAR_TAGS_CACHED.forEach((jarFile, tagList) -> {
             for (var tagData : tagList) {
                 processTagJson(tagData.jsonObject(), tagData.tagName(), tagData.type());
             }
@@ -130,23 +126,29 @@ final class TagLoader {
     }
 
     private static void cacheJarTags(File jarFile, String modId) {
-        if (CACHED_JAR_TAGS.containsKey(jarFile)) {
+        if (JAR_TAGS_CACHED.containsKey(jarFile)) {
             return;
         }
 
         List<JarTagData> tagList = new ArrayList<>();
 
         try (var zip = new ZipFile(jarFile)) {
-            zip.stream()
-                    .filter(entry -> !entry.isDirectory())
-                    .filter(entry -> entry.getName().startsWith("data/tags/") && entry.getName().endsWith(".json"))
-                    .forEach(entry -> processJarEntry(entry, modId, zip, tagList));
+            var entries = zip.entries();
+            while (entries.hasMoreElements()) {
+                var entry = entries.nextElement();
+                if (!entry.isDirectory()) {
+                    var name = entry.getName();
+                    if (name.startsWith("data/tags/") && name.endsWith(".json")) {
+                        processJarEntry(entry, modId, zip, tagList);
+                    }
+                }
+            }
         } catch (IOException e) {
             TagLog.info("Failed to scan JAR file for tags: {}", jarFile.getName(), e);
         }
 
         if (!tagList.isEmpty()) {
-            CACHED_JAR_TAGS.put(jarFile, tagList);
+            JAR_TAGS_CACHED.put(jarFile, tagList);
         }
     }
 
@@ -168,7 +170,7 @@ final class TagLoader {
             return;
         }
 
-        if (parts.length - 4 > MAX_DIRECTORY_DEPTH) {
+        if (parts.length - 4 > 3) {
             return;
         }
 
@@ -199,13 +201,19 @@ final class TagLoader {
     }
 
     private static void scanTypeDirectory(Path typeDir, TagType type, TagFileProcessor processor) {
-        try (var paths = Files.walk(typeDir, MAX_DIRECTORY_DEPTH)) {
-            paths.filter(Files::isRegularFile)
-                .filter(path -> path.getFileName().toString().endsWith(".json")).forEach(path -> {
-                    var relativePath = typeDir.relativize(path).toString().replace(File.separatorChar, '/');
-                    var tagName = convertPathToTagName(relativePath);
-                    processor.process(path, tagName, type);
-                });
+        try (var paths = Files.walk(typeDir, 3)) {
+            var iterator = paths.iterator();
+            while (iterator.hasNext()) {
+                var path = iterator.next();
+                if (Files.isRegularFile(path)) {
+                    var fileName = path.getFileName().toString();
+                    if (fileName.endsWith(".json")) {
+                        var relativePath = typeDir.relativize(path).toString().replace(File.separatorChar, '/');
+                        var tagName = convertPathToTagName(relativePath);
+                        processor.process(path, tagName, type);
+                    }
+                }
+            }
         } catch (IOException e) {
             TagLog.info("Failed to scan directory: {}", typeDir, e);
         }
@@ -325,41 +333,44 @@ final class TagLoader {
     }
 
     private static Set<ItemKey> createItemKeys(Set<ItemEntry> itemEntries) {
-        return itemEntries.stream().map(entry -> {
-                var id = parseResourceLocation(entry.id());
-                if (id == null) {
-                    return null;
-                }
+        Set<ItemKey> result = new HashSet<>(itemEntries.size());
+        for (var entry : itemEntries) {
+            var resourceLocation = new ResourceLocation(entry.id());
+            var item = ForgeRegistries.ITEMS.getValue(resourceLocation);
+            if (item == null) {
+                continue;
+            }
 
-                var item = ForgeRegistries.ITEMS.getValue(id);
-                if (item == null) {
-                    return null;
-                }
-
-                int metadata = entry.metadata();
-                if (!item.getHasSubtypes() && metadata != 0) {
-                    metadata = 0;
-                }
-                return ItemKey.of(item, metadata);
-            })
-        .filter(Objects::nonNull)
-        .collect(Collectors.toSet());
+            int metadata = entry.metadata();
+            if (!item.getHasSubtypes() && metadata != 0) {
+                metadata = 0;
+            }
+            result.add(ItemKey.of(item, metadata));
+        }
+        return result;
     }
 
     private static Set<Fluid> createFluids(Set<String> fluidNames) {
-        return fluidNames.stream()
-                .map(FluidRegistry::getFluid)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
+        Set<Fluid> result = new HashSet<>(fluidNames.size());
+        for (var name : fluidNames) {
+            var fluid = FluidRegistry.getFluid(name);
+            if (fluid != null) {
+                result.add(fluid);
+            }
+        }
+        return result;
     }
 
     private static Set<Block> createBlocks(Set<String> blockNames) {
-        return blockNames.stream()
-                .map(TagLoader::parseResourceLocation)
-                .filter(Objects::nonNull)
-                .map(ForgeRegistries.BLOCKS::getValue)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
+        Set<Block> result = new HashSet<>(blockNames.size());
+        for (var name : blockNames) {
+            var resourceLocation = new ResourceLocation(name);
+            var block = ForgeRegistries.BLOCKS.getValue(resourceLocation);
+            if (block != null) {
+                result.add(block);
+            }
+        }
+        return result;
     }
 
     private static <T> void applyTagOperation(String tagName, Operation operation, Set<T> items, BiConsumer<Set<T>, String> register,
@@ -367,16 +378,6 @@ final class TagLoader {
         switch (operation) {
             case ADD -> register.accept(items, tagName);
             case REPLACE -> replace.accept(items, tagName);
-        }
-    }
-
-    @Nullable
-    private static ResourceLocation parseResourceLocation(String string) {
-        try {
-            return new ResourceLocation(string);
-        } catch (Exception e) {
-            TagLog.info("Invalid resource location: {}", string, e);
-            return null;
         }
     }
 

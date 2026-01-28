@@ -35,9 +35,9 @@ final class TagManager {
     }
 
     public static void bake() {
-        final Tag<ItemKey> newItemSnapshot = ITEM_CONTAINER.build();
-        final Tag<Fluid> newFluidSnapshot = FLUID_CONTAINER.build();
-        final Tag<Block> newBlockSnapshot = BLOCK_CONTAINER.build();
+        final var newItemSnapshot = ITEM_CONTAINER.build();
+        final var newFluidSnapshot = FLUID_CONTAINER.build();
+        final var newBlockSnapshot = BLOCK_CONTAINER.build();
 
         synchronized (TagManager.class) {
             ITEM_SNAPSHOT.set(newItemSnapshot);
@@ -51,27 +51,27 @@ final class TagManager {
         MinecraftForge.EVENT_BUS.post(new TagEvent());
     }
 
-    public static void registerItem(Set<ItemKey> itemKeys, String tagName) {
+    public static void registerItem(@Nonnull Set<ItemKey> itemKeys, @Nonnull String tagName) {
         ITEM_CONTAINER.register(itemKeys, tagName);
     }
 
-    public static void registerFluid(Set<Fluid> fluids, String tagName) {
+    public static void registerFluid(@Nonnull Set<Fluid> fluids, @Nonnull String tagName) {
         FLUID_CONTAINER.register(fluids, tagName);
     }
 
-    public static void registerBlock(Set<Block> blocks, String tagName) {
+    public static void registerBlock(@Nonnull Set<Block> blocks, @Nonnull String tagName) {
         BLOCK_CONTAINER.register(blocks, tagName);
     }
 
-    public static void replaceItem(Set<ItemKey> itemKeys, String tagName) {
+    public static void replaceItem(@Nonnull Set<ItemKey> itemKeys, @Nonnull String tagName) {
         ITEM_CONTAINER.replace(itemKeys, tagName);
     }
 
-    public static void replaceFluid(Set<Fluid> fluids, String tagName) {
+    public static void replaceFluid(@Nonnull Set<Fluid> fluids, @Nonnull String tagName) {
         FLUID_CONTAINER.replace(fluids, tagName);
     }
 
-    public static void replaceBlock(Set<Block> blocks, String tagName) {
+    public static void replaceBlock(@Nonnull Set<Block> blocks, @Nonnull String tagName) {
         BLOCK_CONTAINER.replace(blocks, tagName);
     }
 }

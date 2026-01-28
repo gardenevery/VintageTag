@@ -88,7 +88,7 @@ public class TagCommand extends CommandBase {
         long startTime = System.currentTimeMillis();
 
         if (TagConfig.enableOreSync) {
-            OreSync.oreDictionarySync();
+            OreSync.sync();
         }
 
         if (TagConfig.enableModScanner) {

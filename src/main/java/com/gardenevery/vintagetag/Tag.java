@@ -1,8 +1,5 @@
 package com.gardenevery.vintagetag;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -32,34 +29,31 @@ final class Tag<T> {
         this.tagToKeys = buildMap(container.tagToKeys);
         this.keyToTags = buildMap(container.keyToTags);
         this.tags = this.tagToKeys.keySet();
-
-        this.associationCount = this.tagToKeys.values().stream()
-                .mapToInt(ImmutableSet::size)
-                .sum();
+        this.associationCount = calculateAssociationCount();
     }
 
     @Nonnull
     public Set<String> getTags(@Nonnull T key) {
         var tags = keyToTags.get(key);
-        return tags == null ? Collections.emptySet() : tags;
+        return tags == null ? ImmutableSet.of() : tags;
     }
 
     @Nonnull
     public List<String> getTagsList(@Nonnull T key) {
         var tags = keyToTags.get(key);
-        return tags == null ? Collections.emptyList() : new ArrayList<>(tags);
+        return tags == null ? ImmutableList.of() : ImmutableList.copyOf(tags);
     }
 
     @Nonnull
     public Set<T> getKeys(@Nonnull String tagName) {
         var keys = tagToKeys.get(tagName);
-        return keys == null ? Collections.emptySet() : keys;
+        return keys == null ? ImmutableSet.of() : keys;
     }
 
     @Nonnull
     public List<T> getKeysList(@Nonnull String tagName) {
         var keys = tagToKeys.get(tagName);
-        return keys == null ? Collections.emptyList() : new ArrayList<>(keys);
+        return keys == null ? ImmutableList.of() : ImmutableList.copyOf(keys);
     }
 
     @Nonnull
@@ -101,7 +95,13 @@ final class Tag<T> {
         if (tags == null) {
             return false;
         }
-        return Arrays.stream(tagNames).anyMatch(tags::contains);
+
+        for (var tagName : tagNames) {
+            if (tags.contains(tagName)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean hasAllTags(@Nonnull T key, @Nonnull String... tagNames) {
@@ -113,7 +113,18 @@ final class Tag<T> {
         if (tags == null) {
             return false;
         }
-        return Arrays.stream(tagNames).allMatch(tags::contains);
+
+        for (var tagName : tagNames) {
+            if (!tags.contains(tagName)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public boolean isTagged(@Nonnull T key) {
+        var tags = keyToTags.get(key);
+        return tags != null && !tags.isEmpty();
     }
 
     public int getTagCount() {
@@ -142,6 +153,14 @@ final class Tag<T> {
             builder.put(entry.getKey(), ImmutableSet.copyOf(entry.getValue()));
         }
         return builder.build();
+    }
+
+    private int calculateAssociationCount() {
+        int total = 0;
+        for (Set<T> keys : this.tagToKeys.values()) {
+            total += keys.size();
+        }
+        return total;
     }
 
     static final class MutableTagContainer<T> {

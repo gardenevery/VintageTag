@@ -9,8 +9,4 @@ final class TagLog {
     public static void info(String message, Object... params) {
         LOGGER.info(message, params);
     }
-
-    public static void error(String message, Object... params) {
-        LOGGER.warn(message, params);
-    }
 }

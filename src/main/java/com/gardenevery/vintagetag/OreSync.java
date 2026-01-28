@@ -1,7 +1,5 @@
 package com.gardenevery.vintagetag;
 
-import java.util.stream.Collectors;
-
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -17,9 +15,9 @@ final class OreSync {
     private static boolean hasSynced = false;
     private static final Object2ObjectMap<String, ObjectSet<ItemKey>> ORE_CACHE = new Object2ObjectOpenHashMap<>();
 
-    public static void oreDictionarySync() {
+    public static void sync() {
         if (hasSynced) {
-            applyCachedTags();
+            applyCachedTags(false);
             return;
         }
 
@@ -55,24 +53,29 @@ final class OreSync {
                 ORE_CACHE.put(oreName, itemKeys);
             }
         }
-        applyCachedTags();
+        applyCachedTags(true);
     }
 
-    private static void applyCachedTags() {
+    private static void applyCachedTags(boolean showLog) {
         int totalItems = 0;
         for (Object2ObjectMap.Entry<String, ObjectSet<ItemKey>> entry : ORE_CACHE.object2ObjectEntrySet()) {
             TagManager.registerItem(entry.getValue(), entry.getKey());
             totalItems += entry.getValue().size();
         }
-        TagLog.info("OreDictionary sync completed, {} tags, {} items", ORE_CACHE.size(), totalItems);
+
+        if (showLog) {
+            TagLog.info("OreDictionary sync completed, {} tags, {} items", ORE_CACHE.size(), totalItems);
+        }
     }
 
     private static ObjectSet<ItemKey> syncWildcardEntry(Item item) {
         NonNullList<ItemStack> subItems = NonNullList.create();
         item.getSubItems(CreativeTabs.SEARCH, subItems);
 
-        return subItems.stream()
-                .map(ItemKey::of)
-                .collect(Collectors.toCollection(ObjectOpenHashSet::new));
+        ObjectSet<ItemKey> result = new ObjectOpenHashSet<>(subItems.size());
+        for (var stack : subItems) {
+            result.add(ItemKey.of(stack));
+        }
+        return result;
     }
 }

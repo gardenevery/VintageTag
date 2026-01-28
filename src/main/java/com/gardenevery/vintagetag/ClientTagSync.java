@@ -1,11 +1,5 @@
 package com.gardenevery.vintagetag;
 
-import java.util.Objects;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-
 import com.gardenevery.vintagetag.TagSync.SyncType;
 import com.gardenevery.vintagetag.TagSync.TagDataSyncMessage;
 
@@ -29,7 +23,7 @@ import net.minecraftforge.fml.common.network.NetworkRegistry;
 @SideOnly(Side.CLIENT)
 final class ClientTagSync {
     @SideOnly(Side.CLIENT)
-    public static void registerClient() {
+    public static void register() {
         if (TagSync.NETWORK == null) {
             TagSync.NETWORK = NetworkRegistry.INSTANCE.newSimpleChannel("VintageTag");
         }
@@ -54,83 +48,90 @@ final class ClientTagSync {
         }
 
         private void processAllTags(TagDataSyncMessage message) {
-            message.tagData.itemTags().object2ObjectEntrySet()
-                    .forEach(entry -> processItemEntries(entry.getKey(), entry.getValue()));
-            message.tagData.fluidTags().object2ObjectEntrySet()
-                    .forEach(entry -> processFluidEntries(entry.getKey(), entry.getValue()));
-            message.tagData.blockTags().object2ObjectEntrySet()
-                    .forEach(entry -> processBlockEntries(entry.getKey(), entry.getValue()));
+            for (var entry : message.tagData.itemTags().object2ObjectEntrySet()) {
+                processItemEntries(entry.getKey(), entry.getValue());
+            }
+
+            for (var entry : message.tagData.fluidTags().object2ObjectEntrySet()) {
+                processFluidEntries(entry.getKey(), entry.getValue());
+            }
+
+            for (var entry : message.tagData.blockTags().object2ObjectEntrySet()) {
+                processBlockEntries(entry.getKey(), entry.getValue());
+            }
         }
 
         private void processItemEntries(String tagName, IntArrayList entries) {
-            processTagEntries(entries, this::transformItemEntries,
-                    results -> TagManager.registerItem(results, tagName));
+            if (entries.isEmpty()) {
+                return;
+            }
+
+            ObjectSet<ItemKey> results = transformItemEntries(entries);
+            if (!results.isEmpty()) {
+                TagManager.registerItem(results, tagName);
+            }
         }
 
         private void processFluidEntries(String tagName, ObjectArrayList<String> entries) {
-            processTagEntries(entries, this::transformFluidEntries,
-                    results -> TagManager.registerFluid(results, tagName));
+            if (entries.isEmpty()) {
+                return;
+            }
+
+            ObjectSet<Fluid> results = transformFluidEntries(entries);
+            if (!results.isEmpty()) {
+                TagManager.registerFluid(results, tagName);
+            }
         }
 
         private void processBlockEntries(String tagName, IntArrayList entries) {
-            processTagEntries(entries, this::transformBlockEntries,
-                    results -> TagManager.registerBlock(results, tagName));
+            if (entries.isEmpty()) {
+                return;
+            }
+
+            ObjectSet<Block> results = transformBlockEntries(entries);
+            if (!results.isEmpty()) {
+                TagManager.registerBlock(results, tagName);
+            }
         }
 
         private ObjectSet<ItemKey> transformItemEntries(IntArrayList entries) {
-            return IntStream.range(0, entries.size() / 2)
-                    .mapToObj(i -> createItemKey(entries.getInt(i * 2), entries.getInt(i * 2 + 1)))
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toCollection(ObjectOpenHashSet::new));
+            ObjectSet<ItemKey> results = new ObjectOpenHashSet<>(entries.size() / 2);
+            for (int i = 0; i < entries.size(); i += 2) {
+                var key = createItemKey(entries.getInt(i), entries.getInt(i + 1));
+                results.add(key);
+            }
+            return results;
         }
 
-        private ItemKey createItemKey(int itemId, int metadata) {
-            var item = Item.getItemById(itemId);
-            return itemId >= 0 ? new ItemKey(item, metadata) : null;
+        private ItemKey createItemKey(int id, int metadata) {
+            if (id < 0) {
+                return null;
+            }
+
+            var item = Item.getItemById(id);
+            return new ItemKey(item, metadata);
         }
 
         private ObjectSet<Fluid> transformFluidEntries(ObjectArrayList<String> entries) {
             ObjectSet<Fluid> results = new ObjectOpenHashSet<>(entries.size());
-            entries.forEach(fluidName -> {
+            for (var fluidName : entries) {
                 var fluid = FluidRegistry.getFluid(fluidName);
                 if (fluid != null) {
                     results.add(fluid);
                 }
-            });
+            }
             return results;
         }
 
         private ObjectSet<Block> transformBlockEntries(IntArrayList entries) {
             ObjectSet<Block> results = new ObjectOpenHashSet<>(entries.size());
-            entries.forEach(blockId -> {
-                var block = Block.getBlockById(blockId);
-                if (blockId >= 0) {
+            for (int id : entries) {
+                if (id >= 0) {
+                    var block = Block.getBlockById(id);
                     results.add(block);
                 }
-            });
+            }
             return results;
-        }
-
-        private <T, R> void processTagEntries(T entries, Function<T, ObjectSet<R>> transformer, Consumer<ObjectSet<R>> registerAction) {
-            if (isEmpty(entries)) {
-                return;
-            }
-
-            var results = transformer.apply(entries);
-            if (!results.isEmpty()) {
-                registerAction.accept(results);
-            }
-        }
-
-        private <T> boolean isEmpty(T collection) {
-            if (collection instanceof IntArrayList intList) {
-                return intList.isEmpty();
-            }
-
-            if (collection instanceof ObjectArrayList<?> objList) {
-                return objList.isEmpty();
-            }
-            return true;
         }
     }
 }
