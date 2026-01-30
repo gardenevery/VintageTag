@@ -32,7 +32,6 @@ public class TagTooltip {
         }
 
         var tooltip = event.getToolTip();
-
         if (!getCachedShiftPressed()) {
             tooltip.add(TextFormatting.GRAY + I18n.format("tag.tooltip.hold_shift"));
             return;
@@ -42,12 +41,10 @@ public class TagTooltip {
 
     private static boolean getCachedShiftPressed() {
         long currentTime = System.currentTimeMillis();
-
         if (currentTime - lastCheckTime >= CHECK_INTERVAL) {
             updateShiftCache();
             lastCheckTime = currentTime;
         }
-
         return cachedShiftState;
     }
 
@@ -63,12 +60,14 @@ public class TagTooltip {
         var itemTags = TagHelper.item().tags(itemStack);
 
         Set<String> fluidTags = Collections.emptySet();
-        if (TagConfig.showFluidTags && itemStack.hasCapability(CapabilityFluidHandler.FLUID_HANDLER_ITEM_CAPABILITY, null)) {
-            var fluidHandler = itemStack.getCapability(CapabilityFluidHandler.FLUID_HANDLER_ITEM_CAPABILITY, null);
-            if (fluidHandler != null) {
-                var fluidStack = fluidHandler.drain(Integer.MAX_VALUE, false);
-                if (fluidStack != null) {
-                    fluidTags = TagHelper.fluid().tags(fluidStack);
+        if (TagConfig.showFluidTags) {
+            if (itemStack.hasCapability(CapabilityFluidHandler.FLUID_HANDLER_ITEM_CAPABILITY, null)) {
+                var fluidHandler = itemStack.getCapability(CapabilityFluidHandler.FLUID_HANDLER_ITEM_CAPABILITY, null);
+                if (fluidHandler != null) {
+                    var fluidStack = fluidHandler.drain(Integer.MAX_VALUE, false);
+                    if (fluidStack != null) {
+                        fluidTags = TagHelper.fluid().tags(fluidStack);
+                    }
                 }
             }
         }
@@ -112,7 +111,6 @@ public class TagTooltip {
 
         var tagArray = tags.toArray(new String[0]);
         Arrays.sort(tagArray);
-
         for (var tag : tagArray) {
             tooltip.add(color + "  " + tag);
         }

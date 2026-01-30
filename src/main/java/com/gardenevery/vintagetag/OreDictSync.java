@@ -11,7 +11,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.NonNullList;
 import net.minecraftforge.oredict.OreDictionary;
 
-final class OreSync {
+final class OreDictSync {
     private static boolean hasSynced = false;
     private static final Object2ObjectMap<String, ObjectSet<ItemKey>> ORE_CACHE = new Object2ObjectOpenHashMap<>();
 
@@ -30,27 +30,27 @@ final class OreSync {
             }
 
             var ores = OreDictionary.getOres(oreName, false);
-            ObjectSet<ItemKey> itemKeys = new ObjectOpenHashSet<>();
+            ObjectSet<ItemKey> keys = new ObjectOpenHashSet<>();
 
-            for (var oreStack : ores) {
-                if (oreStack == null || oreStack.isEmpty()) {
+            for (var stack : ores) {
+                if (stack == null || stack.isEmpty()) {
                     continue;
                 }
 
                 try {
-                    if (oreStack.getMetadata() == OreDictionary.WILDCARD_VALUE && oreStack.getItem().getHasSubtypes()) {
-                        var wildcardKeys = syncWildcardEntry(oreStack.getItem());
-                        itemKeys.addAll(wildcardKeys);
+                    if (stack.getMetadata() == OreDictionary.WILDCARD_VALUE && stack.getItem().getHasSubtypes()) {
+                        var wildcardKeys = syncWildcardEntry(stack.getItem());
+                        keys.addAll(wildcardKeys);
                     } else {
-                        var key = ItemKey.of(oreStack);
-                        itemKeys.add(key);
+                        var key = ItemKey.of(stack);
+                        keys.add(key);
                     }
                 } catch (Exception e) {
                     //
                 }
             }
-            if (!itemKeys.isEmpty()) {
-                ORE_CACHE.put(oreName, itemKeys);
+            if (!keys.isEmpty()) {
+                ORE_CACHE.put(oreName, keys);
             }
         }
         applyCachedTags(true);
@@ -69,13 +69,13 @@ final class OreSync {
     }
 
     private static ObjectSet<ItemKey> syncWildcardEntry(Item item) {
-        NonNullList<ItemStack> subItems = NonNullList.create();
-        item.getSubItems(CreativeTabs.SEARCH, subItems);
+        NonNullList<ItemStack> stacks = NonNullList.create();
+        item.getSubItems(CreativeTabs.SEARCH, stacks);
 
-        ObjectSet<ItemKey> result = new ObjectOpenHashSet<>(subItems.size());
-        for (var stack : subItems) {
-            result.add(ItemKey.of(stack));
+        ObjectSet<ItemKey> keys = new ObjectOpenHashSet<>(stacks.size());
+        for (var stack : stacks) {
+            keys.add(ItemKey.of(stack));
         }
-        return result;
+        return keys;
     }
 }

@@ -15,7 +15,6 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.Item;
 import net.minecraft.block.Block;
-import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
@@ -25,7 +24,7 @@ import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
 import net.minecraftforge.fml.common.network.simpleimpl.SimpleNetworkWrapper;
 import net.minecraftforge.fml.relauncher.Side;
 
-final class TagSync {
+final class NetworkSync {
     public static SimpleNetworkWrapper NETWORK;
     private static final int MAX_PACKET_SIZE = 2 * 1024 * 1024;
     private static final int INVALID_ID = -1;
@@ -37,7 +36,6 @@ final class TagSync {
 
     public static void register() {
         NETWORK = NetworkRegistry.INSTANCE.newSimpleChannel("VintageTag");
-        MinecraftForge.EVENT_BUS.register(new EventHandler());
         NETWORK.registerMessage((message, ctx) -> null, TagDataSyncMessage.class, 0, Side.CLIENT);
     }
 
@@ -176,7 +174,7 @@ final class TagSync {
         @SubscribeEvent
         public void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
             if (event.player instanceof EntityPlayerMP player) {
-                TagSync.sync(player);
+                NetworkSync.sync(player);
             }
         }
     }
@@ -212,9 +210,9 @@ final class TagSync {
             try {
                 tempBuf.writeByte(type.ordinal());
 
-                writeOptionalMap(tempBuf, tagData.itemTags(), this::writeItemTagsMap);
-                writeOptionalMap(tempBuf, tagData.fluidTags(), this::writeFluidTagsMap);
-                writeOptionalMap(tempBuf, tagData.blockTags(), this::writeBlockTagsMap);
+                writeOptionalItemTags(tempBuf, tagData.itemTags());
+                writeOptionalFluidTags(tempBuf, tagData.fluidTags());
+                writeOptionalBlockTags(tempBuf, tagData.blockTags());
 
                 int totalSize = tempBuf.readableBytes();
                 validateSize(totalSize);
@@ -308,52 +306,60 @@ final class TagSync {
             return map;
         }
 
-        private <T> void writeOptionalMap(ByteBuf buf, Object2ObjectMap<String, T> map, MapWriter<T> writer) {
+        private void writeOptionalItemTags(ByteBuf buf, Object2ObjectMap<String, IntArrayList> map) {
             boolean hasMap = map != null && !map.isEmpty();
             buf.writeBoolean(hasMap);
 
             if (hasMap) {
                 buf.writeInt(map.size());
-                writer.write(buf, map);
-            }
-        }
+                for (var entry : map.object2ObjectEntrySet()) {
+                    writeStringSafe(buf, entry.getKey());
+                    var itemEntries = entry.getValue();
+                    int pairCount = itemEntries.size() / 2;
+                    buf.writeInt(pairCount);
 
-        private void writeItemTagsMap(ByteBuf buf, Object2ObjectMap<String, IntArrayList> map) {
-            for (var entry : map.object2ObjectEntrySet()) {
-                writeStringSafe(buf, entry.getKey());
-                var itemEntries = entry.getValue();
-                int pairCount = itemEntries.size() / 2;
-                buf.writeInt(pairCount);
-
-                for (int i = 0; i < pairCount; i++) {
-                    int itemId = itemEntries.getInt(i * 2);
-                    int metadata = itemEntries.getInt(i * 2 + 1);
-                    buf.writeInt(itemId);
-                    buf.writeInt(metadata);
+                    for (int i = 0; i < pairCount; i++) {
+                        int itemId = itemEntries.getInt(i * 2);
+                        int metadata = itemEntries.getInt(i * 2 + 1);
+                        buf.writeInt(itemId);
+                        buf.writeInt(metadata);
+                    }
                 }
             }
         }
 
-        private void writeFluidTagsMap(ByteBuf buf, Object2ObjectMap<String, ObjectArrayList<String>> map) {
-            for (var entry : map.object2ObjectEntrySet()) {
-                writeStringSafe(buf, entry.getKey());
-                var fluidNames = entry.getValue();
-                buf.writeInt(fluidNames.size());
+        private void writeOptionalFluidTags(ByteBuf buf, Object2ObjectMap<String, ObjectArrayList<String>> map) {
+            boolean hasMap = map != null && !map.isEmpty();
+            buf.writeBoolean(hasMap);
 
-                for (var fluidName : fluidNames) {
-                    writeStringSafe(buf, fluidName);
+            if (hasMap) {
+                buf.writeInt(map.size());
+                for (var entry : map.object2ObjectEntrySet()) {
+                    writeStringSafe(buf, entry.getKey());
+                    var fluidNames = entry.getValue();
+                    buf.writeInt(fluidNames.size());
+
+                    for (var fluidName : fluidNames) {
+                        writeStringSafe(buf, fluidName);
+                    }
                 }
             }
         }
 
-        private void writeBlockTagsMap(ByteBuf buf, Object2ObjectMap<String, IntArrayList> map) {
-            for (var entry : map.object2ObjectEntrySet()) {
-                writeStringSafe(buf, entry.getKey());
-                var blockIds = entry.getValue();
-                buf.writeInt(blockIds.size());
+        private void writeOptionalBlockTags(ByteBuf buf, Object2ObjectMap<String, IntArrayList> map) {
+            boolean hasMap = map != null && !map.isEmpty();
+            buf.writeBoolean(hasMap);
 
-                for (int blockId : blockIds) {
-                    buf.writeInt(blockId);
+            if (hasMap) {
+                buf.writeInt(map.size());
+                for (var entry : map.object2ObjectEntrySet()) {
+                    writeStringSafe(buf, entry.getKey());
+                    var blockIds = entry.getValue();
+                    buf.writeInt(blockIds.size());
+
+                    for (int blockId : blockIds) {
+                        buf.writeInt(blockId);
+                    }
                 }
             }
         }
@@ -409,11 +415,6 @@ final class TagSync {
             int length = string.getBytes(StandardCharsets.UTF_8).length;
             buf.writeInt(length);
             ByteBufUtil.writeUtf8(buf, string);
-        }
-
-        @FunctionalInterface
-        private interface MapWriter<T> {
-            void write(ByteBuf buf, Object2ObjectMap<String, T> map);
         }
     }
 

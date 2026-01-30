@@ -86,9 +86,8 @@ public class TagCommand extends CommandBase {
 
     public void executeReload(MinecraftServer server, ICommandSender sender, String[] args) {
         long startTime = System.currentTimeMillis();
-
         if (TagConfig.enableOreSync) {
-            OreSync.sync();
+            OreDictSync.sync();
         }
 
         if (TagConfig.enableModScanner) {
@@ -100,11 +99,10 @@ public class TagCommand extends CommandBase {
         }
 
         TagManager.bake();
-        TagSync.sync(null);
+        NetworkSync.sync(null);
 
         long endTime = System.currentTimeMillis();
         long duration = endTime - startTime;
-
         sender.sendMessage(new TextComponentTranslation("tag.command.reload.success.time", duration, duration / 1000.0));
     }
 

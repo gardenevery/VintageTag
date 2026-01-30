@@ -15,12 +15,7 @@ record ItemKey(Item item, int metadata) {
     }
 
     @Nonnull
-    public static ItemKey of(Item item, int metadata) {
-        return new ItemKey(item, metadata);
-    }
-
-    @Nonnull
-    public static ItemKey of(ItemStack stack) {
+    public static ItemKey of(@Nonnull ItemStack stack) {
         return new ItemKey(stack.getItem(), stack.getHasSubtypes() ? stack.getMetadata() : 0);
     }
 

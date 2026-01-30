@@ -25,6 +25,7 @@ import com.google.gson.JsonObject;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 
 import net.minecraft.block.Block;
+import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidRegistry;
@@ -93,7 +94,7 @@ final class TagLoader {
     private static final Gson GSON = new Gson();
     private static volatile boolean isInitialized = false;
     private static final Pattern VALID_FILENAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]+\\.json$", Pattern.CASE_INSENSITIVE);
-    private static final Map<File, List<JarTagData>> JAR_TAGS_CACHED = new Object2ObjectOpenHashMap<>();
+    private static final Map<File, List<JarTagData>> JAR_TAG_CACHED = new Object2ObjectOpenHashMap<>();
 
     public enum Operation {
         ADD,
@@ -113,7 +114,7 @@ final class TagLoader {
             cacheJarTags(source, mod.getModId());
         }
 
-        JAR_TAGS_CACHED.forEach((jarFile, tagList) -> {
+        JAR_TAG_CACHED.forEach((jarFile, tagList) -> {
             for (var tagData : tagList) {
                 processTagJson(tagData.jsonObject(), tagData.tagName(), tagData.type());
             }
@@ -122,11 +123,11 @@ final class TagLoader {
     }
 
     public static void scanConfigTags() {
-        scanTagDirectory(Paths.get("config", "tags"), TagLoader::processConfigTagFile);
+        scanConfigTagDirectory(Paths.get("config", "tags"));
     }
 
     private static void cacheJarTags(File jarFile, String modId) {
-        if (JAR_TAGS_CACHED.containsKey(jarFile)) {
+        if (JAR_TAG_CACHED.containsKey(jarFile)) {
             return;
         }
 
@@ -148,7 +149,7 @@ final class TagLoader {
         }
 
         if (!tagList.isEmpty()) {
-            JAR_TAGS_CACHED.put(jarFile, tagList);
+            JAR_TAG_CACHED.put(jarFile, tagList);
         }
     }
 
@@ -187,7 +188,7 @@ final class TagLoader {
         }
     }
 
-    private static void scanTagDirectory(Path rootDir, TagFileProcessor processor) {
+    private static void scanConfigTagDirectory(Path rootDir) {
         if (!Files.exists(rootDir) || !Files.isDirectory(rootDir)) {
             return;
         }
@@ -195,12 +196,12 @@ final class TagLoader {
         for (var type : TagType.values()) {
             var typeDir = rootDir.resolve(type.getName());
             if (Files.exists(typeDir) && Files.isDirectory(typeDir)) {
-                scanTypeDirectory(typeDir, type, processor);
+                scanConfigTypeDirectory(typeDir, type);
             }
         }
     }
 
-    private static void scanTypeDirectory(Path typeDir, TagType type, TagFileProcessor processor) {
+    private static void scanConfigTypeDirectory(Path typeDir, TagType type) {
         try (var paths = Files.walk(typeDir, 3)) {
             var iterator = paths.iterator();
             while (iterator.hasNext()) {
@@ -210,7 +211,7 @@ final class TagLoader {
                     if (fileName.endsWith(".json")) {
                         var relativePath = typeDir.relativize(path).toString().replace(File.separatorChar, '/');
                         var tagName = convertPathToTagName(relativePath);
-                        processor.process(path, tagName, type);
+                        processConfigTagFile(path, tagName, type);
                     }
                 }
             }
@@ -221,8 +222,8 @@ final class TagLoader {
 
     private static void processConfigTagFile(Path file, String tagName, TagType type) {
         try {
-             byte[] bytes = Files.readAllBytes(file);
-             var json = new String(bytes, StandardCharsets.UTF_8);
+            byte[] bytes = Files.readAllBytes(file);
+            var json = new String(bytes, StandardCharsets.UTF_8);
 
             var jsonObject = GSON.fromJson(json, JsonObject.class);
 
@@ -260,7 +261,12 @@ final class TagLoader {
         if (itemKeys.isEmpty()) {
             return;
         }
-        applyTagOperation(tagName, operation, itemKeys, TagManager::registerItem, TagManager::replaceItem);
+
+        if (operation == Operation.ADD) {
+            TagManager.registerItem(itemKeys, tagName);
+        } else {
+            TagManager.replaceItem(itemKeys, tagName);
+        }
     }
 
     private static void processFluidTag(String tagName, Operation operation, JsonObject jsonObject) {
@@ -273,7 +279,12 @@ final class TagLoader {
         if (fluids.isEmpty()) {
             return;
         }
-        applyTagOperation(tagName, operation, fluids, TagManager::registerFluid, TagManager::replaceFluid);
+
+        if (operation == Operation.ADD) {
+            TagManager.registerFluid(fluids, tagName);
+        } else {
+            TagManager.replaceFluid(fluids, tagName);
+        }
     }
 
     private static void processBlockTag(String tagName, Operation operation, JsonObject jsonObject) {
@@ -286,7 +297,12 @@ final class TagLoader {
         if (blocks.isEmpty()) {
             return;
         }
-        applyTagOperation(tagName, operation, blocks, TagManager::registerBlock, TagManager::replaceBlock);
+
+        if (operation == Operation.ADD) {
+            TagManager.registerBlock(blocks, tagName);
+        } else {
+            TagManager.replaceBlock(blocks, tagName);
+        }
     }
 
     private static Set<ItemEntry> parseItemEntries(JsonObject jsonObject) {
@@ -341,11 +357,15 @@ final class TagLoader {
                 continue;
             }
 
-            int metadata = entry.metadata();
-            if (!item.getHasSubtypes() && metadata != 0) {
-                metadata = 0;
+            if (entry.metadata() < 0) {
+                continue;
             }
-            result.add(ItemKey.of(item, metadata));
+
+            var stack = new ItemStack(item, 1, entry.metadata());
+            if (stack.isEmpty()) {
+                continue;
+            }
+            result.add(ItemKey.of(stack));
         }
         return result;
     }
@@ -371,14 +391,6 @@ final class TagLoader {
             }
         }
         return result;
-    }
-
-    private static <T> void applyTagOperation(String tagName, Operation operation, Set<T> items, BiConsumer<Set<T>, String> register,
-                                              BiConsumer<Set<T>, String> replace) {
-        switch (operation) {
-            case ADD -> register.accept(items, tagName);
-            case REPLACE -> replace.accept(items, tagName);
-        }
     }
 
     @Nonnull
@@ -411,16 +423,6 @@ final class TagLoader {
 
     private static boolean isValidJsonFileName(String fileName) {
         return VALID_FILENAME_PATTERN.matcher(fileName).matches();
-    }
-
-    @FunctionalInterface
-    private interface TagFileProcessor {
-        void process(Path file, String tagName, TagType type);
-    }
-
-    @FunctionalInterface
-    private interface BiConsumer<T, U> {
-        void accept(T t, U u);
     }
 
     @Desugar

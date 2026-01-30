@@ -19,7 +19,6 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.NonNullList;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.oredict.OreDictionary;
 
 public final class TagHelper {
     private TagHelper() {}
@@ -88,6 +87,7 @@ public final class TagHelper {
      */
     public static final class ItemTagHelper {
         private static final ItemTagHelper INSTANCE = new ItemTagHelper();
+        private static final NonNullList<ItemStack> EMPTY = NonNullList.create();
 
         private ItemTagHelper() {}
 
@@ -146,12 +146,12 @@ public final class TagHelper {
             }
 
             var keys = TagManager.item().getKeys(tagName);
-            Set<ItemStack> result = new ObjectOpenHashSet<>();
+            Set<ItemStack> stacks = new ObjectOpenHashSet<>();
 
             for (var key : keys) {
-                result.add(key.toStack());
+                stacks.add(key.toStack());
             }
-            return result;
+            return stacks;
         }
 
         /**
@@ -171,11 +171,11 @@ public final class TagHelper {
                 return Collections.emptyList();
             }
 
-            List<ItemStack> result = new ArrayList<>(keys.size());
+            List<ItemStack> stacks = new ArrayList<>(keys.size());
             for (var key : keys) {
-                result.add(key.toStack());
+                stacks.add(key.toStack());
             }
-            return Collections.unmodifiableList(result);
+            return Collections.unmodifiableList(stacks);
         }
 
         /**
@@ -187,19 +187,19 @@ public final class TagHelper {
         @Nonnull
         public NonNullList<ItemStack> keysNonNullList(@Nullable String tagName) {
             if (tagInvalid(tagName)) {
-                return OreDictionary.EMPTY_LIST;
+                return EMPTY;
             }
 
             var keys = TagManager.item().getKeysList(tagName);
             if (keys.isEmpty()) {
-                return OreDictionary.EMPTY_LIST;
+                return EMPTY;
             }
 
-            NonNullList<ItemStack> result = NonNullList.create();
+            NonNullList<ItemStack> stacks = NonNullList.create();
             for (var key : keys) {
-                result.add(key.toStack());
+                stacks.add(key.toStack());
             }
-            return result;
+            return stacks;
         }
 
         /**
@@ -214,11 +214,11 @@ public final class TagHelper {
                 return Collections.emptyList();
             }
 
-            List<ItemStack> result = new ArrayList<>(keys.size());
+            List<ItemStack> stacks = new ArrayList<>(keys.size());
             for (var key : keys) {
-                result.add(key.toStack());
+                stacks.add(key.toStack());
             }
-            return Collections.unmodifiableList(result);
+            return Collections.unmodifiableList(stacks);
         }
 
         /**
@@ -229,12 +229,12 @@ public final class TagHelper {
         @Nonnull
         public Set<ItemStack> allKeys() {
             var keys = TagManager.item().getAllKeys();
-            Set<ItemStack> result = new ObjectOpenHashSet<>();
+            Set<ItemStack> stacks = new ObjectOpenHashSet<>();
 
             for (var key : keys) {
-                result.add(key.toStack());
+                stacks.add(key.toStack());
             }
-            return result;
+            return stacks;
         }
 
         /**
@@ -244,14 +244,14 @@ public final class TagHelper {
          */
         @Nonnull
         public ImmutableMap<String, ImmutableSet<ItemStack>> allEntries() {
-            ImmutableMap<String, ImmutableSet<ItemKey>> itemKeyMap = TagManager.item().getAllEntries();
-            if (itemKeyMap.isEmpty()) {
+            ImmutableMap<String, ImmutableSet<ItemKey>> keyMap = TagManager.item().getAllEntries();
+            if (keyMap.isEmpty()) {
                 return ImmutableMap.of();
             }
 
             ImmutableMap.Builder<String, ImmutableSet<ItemStack>> builder = ImmutableMap.builder();
 
-            for (Map.Entry<String, ImmutableSet<ItemKey>> entry : itemKeyMap.entrySet()) {
+            for (Map.Entry<String, ImmutableSet<ItemKey>> entry : keyMap.entrySet()) {
                 var keys = entry.getValue();
                 ImmutableSet.Builder<ItemStack> itemStackBuilder = ImmutableSet.builder();
 
@@ -274,7 +274,6 @@ public final class TagHelper {
             if (stack == null || stack.isEmpty() || tagInvalid(tagName)) {
                 return false;
             }
-
             var key = ItemKey.of(stack);
             return TagManager.item().hasTag(key, tagName);
         }
@@ -290,7 +289,6 @@ public final class TagHelper {
             if (stack == null || stack.isEmpty() || tagInvalid(tagNames)) {
                 return false;
             }
-
             var key = ItemKey.of(stack);
             return TagManager.item().hasAnyTag(key, tagNames);
         }
@@ -315,7 +313,7 @@ public final class TagHelper {
          * @param stack The ItemStack to check, can be null
          * @return true if stack is not null/empty and is tagged
          */
-        public static boolean isTagged(@Nullable ItemStack stack) {
+        public boolean isTagged(@Nullable ItemStack stack) {
             if (stack == null || stack.isEmpty()) {
                 return false;
             }
@@ -430,11 +428,11 @@ public final class TagHelper {
                 return Collections.emptyList();
             }
 
-            List<FluidStack> result = new ArrayList<>(keys.size());
+            List<FluidStack> stacks = new ArrayList<>(keys.size());
             for (var key : keys) {
-                result.add(new FluidStack(key, 1000));
+                stacks.add(new FluidStack(key, 1000));
             }
-            return Collections.unmodifiableList(result);
+            return Collections.unmodifiableList(stacks);
         }
 
         /**
@@ -450,12 +448,12 @@ public final class TagHelper {
             }
 
             var keys = TagManager.fluid().getKeys(tagName);
-            Set<FluidStack> result = new ObjectOpenHashSet<>();
+            Set<FluidStack> stacks = new ObjectOpenHashSet<>();
 
             for (var key : keys) {
-                result.add(new FluidStack(key, 1000));
+                stacks.add(new FluidStack(key, 1000));
             }
-            return result;
+            return stacks;
         }
 
         /**
@@ -470,11 +468,11 @@ public final class TagHelper {
                 return Collections.emptyList();
             }
 
-            List<FluidStack> result = new ArrayList<>(keys.size());
+            List<FluidStack> stacks = new ArrayList<>(keys.size());
             for (var key : keys) {
-                result.add(new FluidStack(key, 1000));
+                stacks.add(new FluidStack(key, 1000));
             }
-            return Collections.unmodifiableList(result);
+            return Collections.unmodifiableList(stacks);
         }
 
         /**
@@ -567,7 +565,7 @@ public final class TagHelper {
          * @param stack The FluidStack to check, can be null
          * @return true if stack is not null/has fluid, and fluid is tagged
          */
-        public static boolean isTagged(@Nullable FluidStack stack) {
+        public boolean isTagged(@Nullable FluidStack stack) {
             if (stack == null || stack.getFluid() == null) {
                 return false;
             }
@@ -835,7 +833,7 @@ public final class TagHelper {
          * @param block The Block to check, can be null
          * @return true if block is not null and is tagged
          */
-        public static boolean isTagged(@Nullable Block block) {
+        public boolean isTagged(@Nullable Block block) {
             if (block == null) {
                 return false;
             }
@@ -848,7 +846,7 @@ public final class TagHelper {
          * @param blockEntity The TileEntity to check, can be null
          * @return true if blockEntity is not null and is tagged
          */
-        public static boolean isTagged(@Nullable TileEntity blockEntity) {
+        public boolean isTagged(@Nullable TileEntity blockEntity) {
             if (blockEntity == null) {
                 return false;
             }
