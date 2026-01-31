@@ -280,66 +280,52 @@ final class TagLoader {
     }
 
     private static void processItemTag(String tagName, Operation operation, JsonObject jsonObject) {
-        var itemEntries = parseItemEntries(jsonObject);
-        if (itemEntries.isEmpty()) {
-            return;
-        }
+        var parseResult = parseItemEntries(jsonObject);
+        var itemKeys = createItemKeys(parseResult.directEntries());
 
-        var itemKeys = createItemKeys(itemEntries);
-        if (itemKeys.isEmpty()) {
-            return;
-        }
+        var tagReferences = parseResult.tagReferences();
 
         if (operation == Operation.ADD) {
-            TagManager.registerItem(itemKeys, tagName);
+            TagManager.registerItem(itemKeys, tagName, tagReferences);
         } else {
-            TagManager.replaceItem(itemKeys, tagName);
+            TagManager.replaceItem(itemKeys, tagName, tagReferences);
         }
     }
 
     private static void processFluidTag(String tagName, Operation operation, JsonObject jsonObject) {
-        var fluidNames = parseStringEntries(jsonObject);
-        if (fluidNames.isEmpty()) {
-            return;
-        }
+        var parseResult = parseFluidEntries(jsonObject);
+        var fluids = createFluids(parseResult.directEntries());
 
-        var fluids = createFluids(fluidNames);
-        if (fluids.isEmpty()) {
-            return;
-        }
+        var tagReferences = parseResult.tagReferences();
 
         if (operation == Operation.ADD) {
-            TagManager.registerFluid(fluids, tagName);
+            TagManager.registerFluid(fluids, tagName, tagReferences);
         } else {
-            TagManager.replaceFluid(fluids, tagName);
+            TagManager.replaceFluid(fluids, tagName, tagReferences);
         }
     }
 
     private static void processBlockTag(String tagName, Operation operation, JsonObject jsonObject) {
-        var blockNames = parseStringEntries(jsonObject);
-        if (blockNames.isEmpty()) {
-            return;
-        }
+        var parseResult = parseBlockEntries(jsonObject);
+        var blocks = createBlocks(parseResult.directEntries());
 
-        var blocks = createBlocks(blockNames);
-        if (blocks.isEmpty()) {
-            return;
-        }
+        var tagReferences = parseResult.tagReferences();
 
         if (operation == Operation.ADD) {
-            TagManager.registerBlock(blocks, tagName);
+            TagManager.registerBlock(blocks, tagName, tagReferences);
         } else {
-            TagManager.replaceBlock(blocks, tagName);
+            TagManager.replaceBlock(blocks, tagName, tagReferences);
         }
     }
 
-    private static Set<ItemEntry> parseItemEntries(JsonObject jsonObject) {
+    private static ItemParseResult parseItemEntries(JsonObject jsonObject) {
         var valuesArray = jsonObject.getAsJsonArray("values");
         if (valuesArray == null) {
-            return Collections.emptySet();
+            return new ItemParseResult(Collections.emptySet(), Collections.emptySet());
         }
 
-        Set<ItemEntry> entries = new HashSet<>();
+        Set<ItemEntry> directEntries = new HashSet<>();
+        Set<String> tagReferences = new HashSet<>();
 
         for (var element : valuesArray) {
             try {
@@ -350,37 +336,79 @@ final class TagLoader {
                     }
 
                     var id = itemObj.get("id").getAsString();
+
+                    if (id.startsWith("#")) {
+                        tagReferences.add(id.substring(1));
+                        continue;
+                    }
+
                     int metadata = itemObj.has("metadata") && itemObj.get("metadata").isJsonPrimitive() ?
                             itemObj.get("metadata").getAsInt() : 0;
 
-                    entries.add(new ItemEntry(id, metadata));
+                    directEntries.add(new ItemEntry(id, metadata));
                 } else if (element.isJsonPrimitive()) {
-                    var id = element.getAsString();
-                    entries.add(new ItemEntry(id, 0));
+                    var value = element.getAsString();
+
+                    if (value.startsWith("#")) {
+                        tagReferences.add(value.substring(1));
+                    } else {
+                        directEntries.add(new ItemEntry(value, 0));
+                    }
                 }
             } catch (Exception e) {
                 //
             }
         }
 
-        return entries;
+        return new ItemParseResult(directEntries, tagReferences);
     }
 
-    private static Set<String> parseStringEntries(JsonObject jsonObject) {
+    private static FluidParseResult parseFluidEntries(JsonObject jsonObject) {
         var valuesArray = jsonObject.getAsJsonArray("values");
         if (valuesArray == null) {
-            return Collections.emptySet();
+            return new FluidParseResult(Collections.emptySet(), Collections.emptySet());
         }
 
-        Set<String> entries = new HashSet<>();
+        Set<String> directEntries = new HashSet<>();
+        Set<String> tagReferences = new HashSet<>();
 
         for (var element : valuesArray) {
             if (element.isJsonPrimitive()) {
-                entries.add(element.getAsString());
+                var value = element.getAsString();
+
+                if (value.startsWith("#")) {
+                    tagReferences.add(value.substring(1));
+                } else {
+                    directEntries.add(value);
+                }
             }
         }
 
-        return entries;
+        return new FluidParseResult(directEntries, tagReferences);
+    }
+
+    private static BlockParseResult parseBlockEntries(JsonObject jsonObject) {
+        var valuesArray = jsonObject.getAsJsonArray("values");
+        if (valuesArray == null) {
+            return new BlockParseResult(Collections.emptySet(), Collections.emptySet());
+        }
+
+        Set<String> directEntries = new HashSet<>();
+        Set<String> tagReferences = new HashSet<>();
+
+        for (var element : valuesArray) {
+            if (element.isJsonPrimitive()) {
+                var value = element.getAsString();
+
+                if (value.startsWith("#")) {
+                    tagReferences.add(value.substring(1));
+                } else {
+                    directEntries.add(value);
+                }
+            }
+        }
+
+        return new BlockParseResult(directEntries, tagReferences);
     }
 
     private static Set<ItemKey> createItemKeys(Set<ItemEntry> itemEntries) {
@@ -478,4 +506,13 @@ final class TagLoader {
 
     @Desugar
     private record JarTagData(String modId, String tagName, TagType type, JsonObject jsonObject) {}
+
+    @Desugar
+    private record ItemParseResult(Set<ItemEntry> directEntries, Set<String> tagReferences) {}
+
+    @Desugar
+    private record FluidParseResult(Set<String> directEntries, Set<String> tagReferences) {}
+
+    @Desugar
+    private record BlockParseResult(Set<String> directEntries, Set<String> tagReferences) {}
 }

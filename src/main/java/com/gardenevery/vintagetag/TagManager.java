@@ -101,13 +101,6 @@ final class TagManager {
 
     public static void replaceItem(
             @Nonnull Set<ItemKey> itemKeys,
-            @Nonnull String tagName
-    ) {
-        ITEM_CONTAINER.replace(itemKeys, tagName, Collections.emptySet());
-    }
-
-    public static void replaceItem(
-            @Nonnull Set<ItemKey> itemKeys,
             @Nonnull String tagName,
             @Nonnull Set<String> tagInclude
     ) {
@@ -116,24 +109,10 @@ final class TagManager {
 
     public static void replaceFluid(
             @Nonnull Set<Fluid> fluids,
-            @Nonnull String tagName
-    ) {
-        FLUID_CONTAINER.replace(fluids, tagName, Collections.emptySet());
-    }
-
-    public static void replaceFluid(
-            @Nonnull Set<Fluid> fluids,
             @Nonnull String tagName,
             @Nonnull Set<String> tagInclude
     ) {
         FLUID_CONTAINER.replace(fluids, tagName, tagInclude);
-    }
-
-    public static void replaceBlock(
-            @Nonnull Set<Block> blocks,
-            @Nonnull String tagName
-    ) {
-        BLOCK_CONTAINER.replace(blocks, tagName, Collections.emptySet());
     }
 
     public static void replaceBlock(
