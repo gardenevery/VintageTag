@@ -61,6 +61,11 @@ import org.apache.commons.io.IOUtils;
  * <p>
  * The format for fluid tags and block tags is "mod:name"
  * <p>
+ * <strong>Tag References:</strong> The tag system supports referencing other tags within the "values" array.
+ * Prefix a tag name with "#" to include all entries from that tag. For example, "#minecraft:stones" will
+ * include all items/blocks/fluids from the "minecraft:stones" tag. This allows for hierarchical tag organization
+ * and reduces duplication. Note: Circular references should be avoided.
+ * <p>
  * OreSync will automatically synchronize the contents of the mineral dictionary to the tag system
  */
 
@@ -80,14 +85,16 @@ import org.apache.commons.io.IOUtils;
 //   "replace": true,
 //   "values": [
 //     { "id": "minecraft:stone", "metadata": 1 },
-//     "minecraft:grass"
+//     "minecraft:grass",
+//     "#minecraft:stones"  // Reference to another tag
 //   ]
 // }
 //
 // fluid/block tag:
 // {
 //   "values": [
-//     "water"
+//     "water",
+//     "#forge:lava"  // Reference to another fluid tag
 //   ]
 // }
 final class TagLoader {
