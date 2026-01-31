@@ -21,6 +21,7 @@ import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
 
 public final class TagHelper {
+
     private TagHelper() {}
 
     /**
@@ -86,6 +87,7 @@ public final class TagHelper {
      * Helper class for item tag operations
      */
     public static final class ItemTagHelper {
+
         private static final ItemTagHelper INSTANCE = new ItemTagHelper();
         private static final NonNullList<ItemStack> EMPTY = NonNullList.create();
 
@@ -365,20 +367,10 @@ public final class TagHelper {
      * Helper class for fluid tag operations
      */
     public static final class FluidTagHelper {
+
         private static final FluidTagHelper INSTANCE = new FluidTagHelper();
 
         private FluidTagHelper() {}
-
-        /**
-         * Get all tags associated with the specified FluidStack as a List
-         *
-         * @param stack The FluidStack to query, can be null
-         * @return An unmodifiable list of tag names, empty if stack is null or has no fluid
-         */
-        @Nonnull
-        public List<String> tagsList(@Nullable FluidStack stack) {
-            return (stack == null || stack.getFluid() == null) ? Collections.emptyList() : TagManager.fluid().getTagsList(stack.getFluid());
-        }
 
         /**
          * Get all tags associated with the specified FluidStack
@@ -389,6 +381,17 @@ public final class TagHelper {
         @Nonnull
         public Set<String> tags(@Nullable FluidStack stack) {
             return (stack == null || stack.getFluid() == null) ? Collections.emptySet() : TagManager.fluid().getTags(stack.getFluid());
+        }
+
+        /**
+         * Get all tags associated with the specified FluidStack as a List
+         *
+         * @param stack The FluidStack to query, can be null
+         * @return An unmodifiable list of tag names, empty if stack is null or has no fluid
+         */
+        @Nonnull
+        public List<String> tagsList(@Nullable FluidStack stack) {
+            return (stack == null || stack.getFluid() == null) ? Collections.emptyList() : TagManager.fluid().getTagsList(stack.getFluid());
         }
 
         /**
@@ -617,6 +620,7 @@ public final class TagHelper {
      * Helper class for block tag operations
      */
     public static final class BlockTagHelper {
+
         private static final BlockTagHelper INSTANCE = new BlockTagHelper();
 
         private BlockTagHelper() {}

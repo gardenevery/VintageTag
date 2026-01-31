@@ -10,10 +10,12 @@ import net.minecraftforge.fml.relauncher.Side;
 
 @Mod(modid = Tags.MOD_ID, name = Tags.MOD_NAME, version = Tags.VERSION)
 public class VintageTag {
+
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
         NetworkSync.register();
         MinecraftForge.EVENT_BUS.register(new NetworkSync.EventHandler());
+
         if (event.getSide() == Side.CLIENT) {
             ClientNetworkSync.register();
         }
@@ -29,19 +31,24 @@ public class VintageTag {
 
     @Mod.EventHandler
     public void onFMLoadComplete(FMLLoadCompleteEvent event) {
+        boolean hasTasks = false;
+
         if (TagConfig.enableOreSync) {
             OreDictSync.sync();
+            hasTasks = true;
         }
 
         if (TagConfig.enableModScanner) {
             TagLoader.scanModTags();
+            hasTasks = true;
         }
 
         if (TagConfig.enableConfigScanner) {
             TagLoader.scanConfigTags();
+            hasTasks = true;
         }
 
-        if (TagConfig.enableOreSync || TagConfig.enableModScanner || TagConfig.enableConfigScanner) {
+        if (hasTasks) {
             TagManager.bake();
         }
     }

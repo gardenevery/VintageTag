@@ -10,13 +10,19 @@ import net.minecraft.item.ItemStack;
 
 @Desugar
 record ItemKey(Item item, int metadata) {
+
     public ItemKey {
         Objects.requireNonNull(item, "item must not be null");
     }
 
     @Nonnull
     public static ItemKey of(@Nonnull ItemStack stack) {
-        return new ItemKey(stack.getItem(), stack.getHasSubtypes() ? stack.getMetadata() : 0);
+        Objects.requireNonNull(stack, "stack must not be null");
+
+        return new ItemKey(
+                stack.getItem(),
+                stack.getHasSubtypes() ? stack.getMetadata() : 0
+        );
     }
 
     @Nonnull

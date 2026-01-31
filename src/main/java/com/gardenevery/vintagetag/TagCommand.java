@@ -18,6 +18,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.TextComponentTranslation;
 
 public class TagCommand extends CommandBase {
+
     public final CommandRegistry registry = new CommandRegistry();
 
     public TagCommand() {
@@ -38,23 +39,35 @@ public class TagCommand extends CommandBase {
     }
 
     @Override
-    public void execute(@Nonnull MinecraftServer server, @Nonnull ICommandSender sender, String[] args) {
+    public void execute(
+            @Nonnull MinecraftServer server,
+            @Nonnull ICommandSender sender,
+            String[] args
+    ) {
         if (args.length == 0) {
             showHelp(sender);
             return;
         }
+
         registry.execute(server, sender, args);
     }
 
     @Nonnull
     @Override
-    public List<String> getTabCompletions(@Nonnull MinecraftServer server, @Nonnull ICommandSender sender, @Nonnull String[] args,
-                                          BlockPos targetPos) {
+    public List<String> getTabCompletions(
+            @Nonnull MinecraftServer server,
+            @Nonnull ICommandSender sender,
+            @Nonnull String[] args,
+            BlockPos targetPos
+    ) {
         return registry.getSuggestions(args);
     }
 
     @Override
-    public boolean checkPermission(@Nonnull MinecraftServer server, @Nonnull ICommandSender sender) {
+    public boolean checkPermission(
+            @Nonnull MinecraftServer server,
+            @Nonnull ICommandSender sender
+    ) {
         return true;
     }
 
@@ -71,21 +84,46 @@ public class TagCommand extends CommandBase {
     public void executeInfo(MinecraftServer server, ICommandSender sender, String[] args) {
         sender.sendMessage(new TextComponentTranslation("tag.command.statistics.title"));
 
-        sender.sendMessage(new TextComponentTranslation("tag.command.statistics.items",
-                TagHelper.item().tagCount(), TagHelper.item().associationCount(), TagHelper.item().keyCount()));
+        sender.sendMessage(
+                new TextComponentTranslation(
+                        "tag.command.statistics.items",
+                        TagHelper.item().tagCount(),
+                        TagHelper.item().associationCount(),
+                        TagHelper.item().keyCount()
+                )
+        );
 
-        sender.sendMessage(new TextComponentTranslation("tag.command.statistics.fluids",
-                TagHelper.fluid().tagCount(), TagHelper.fluid().associationCount(), TagHelper.fluid().keyCount()));
+        sender.sendMessage(
+                new TextComponentTranslation(
+                        "tag.command.statistics.fluids",
+                        TagHelper.fluid().tagCount(),
+                        TagHelper.fluid().associationCount(),
+                        TagHelper.fluid().keyCount()
+                )
+        );
 
-        sender.sendMessage(new TextComponentTranslation("tag.command.statistics.blocks",
-                TagHelper.block().tagCount(), TagHelper.block().associationCount(), TagHelper.block().keyCount()));
+        sender.sendMessage(
+                new TextComponentTranslation(
+                        "tag.command.statistics.blocks",
+                        TagHelper.block().tagCount(),
+                        TagHelper.block().associationCount(),
+                        TagHelper.block().keyCount()
+                )
+        );
 
-        sender.sendMessage(new TextComponentTranslation("tag.command.statistics.total",
-                TagHelper.tagCount(), TagHelper.associationCount(), TagHelper.keyCount()));
+        sender.sendMessage(
+                new TextComponentTranslation(
+                        "tag.command.statistics.total",
+                        TagHelper.tagCount(),
+                        TagHelper.associationCount(),
+                        TagHelper.keyCount()
+                )
+        );
     }
 
     public void executeReload(MinecraftServer server, ICommandSender sender, String[] args) {
         long startTime = System.currentTimeMillis();
+
         if (TagConfig.enableOreSync) {
             OreDictSync.sync();
         }
@@ -103,7 +141,14 @@ public class TagCommand extends CommandBase {
 
         long endTime = System.currentTimeMillis();
         long duration = endTime - startTime;
-        sender.sendMessage(new TextComponentTranslation("tag.command.reload.success.time", duration, duration / 1000.0));
+
+        sender.sendMessage(
+                new TextComponentTranslation(
+                        "tag.command.reload.success.time",
+                        duration,
+                        duration / 1000.0
+                )
+        );
     }
 
     public boolean hasPermission(ICommandSender sender, int level) {
@@ -133,6 +178,7 @@ public class TagCommand extends CommandBase {
                 sender.sendMessage(new TextComponentTranslation("tag.command.no_permission"));
                 return;
             }
+
             cmd.execute(server, sender, Arrays.copyOfRange(args, 1, args.length));
         }
 
@@ -140,6 +186,7 @@ public class TagCommand extends CommandBase {
             if (args.length == 1) {
                 return getListOfStringsMatchingLastWord(args, commandNames);
             }
+
             return Collections.emptyList();
         }
 
@@ -155,6 +202,7 @@ public class TagCommand extends CommandBase {
 
     @Desugar
     public record RegisteredCommand(String name, int level, CommandExecutor executor) {
+
         public void execute(MinecraftServer server, ICommandSender sender, String[] args) {
             executor.execute(server, sender, args);
         }

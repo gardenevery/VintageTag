@@ -3,6 +3,7 @@ package com.gardenevery.vintagetag;
 import javax.annotation.Nullable;
 
 public enum TagType {
+
     ITEM("item"),
     FLUID("fluid"),
     BLOCK("block");

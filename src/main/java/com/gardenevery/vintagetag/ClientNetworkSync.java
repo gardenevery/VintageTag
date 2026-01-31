@@ -23,16 +23,23 @@ import net.minecraftforge.fml.common.network.NetworkRegistry;
 
 @SideOnly(Side.CLIENT)
 final class ClientNetworkSync {
+
     @SideOnly(Side.CLIENT)
     public static void register() {
         if (NetworkSync.NETWORK == null) {
             NetworkSync.NETWORK = NetworkRegistry.INSTANCE.newSimpleChannel("VintageTag");
         }
-        NetworkSync.NETWORK.registerMessage(TagDataSyncHandler.class, TagDataSyncMessage.class, 0, Side.CLIENT);
+        NetworkSync.NETWORK.registerMessage(
+                TagDataSyncHandler.class,
+                TagDataSyncMessage.class,
+                0,
+                Side.CLIENT
+        );
     }
 
     @SideOnly(Side.CLIENT)
     public static class TagDataSyncHandler implements IMessageHandler<TagDataSyncMessage, IMessage> {
+
         @Override
         public IMessage onMessage(TagDataSyncMessage message, MessageContext ctx) {
             Minecraft.getMinecraft().addScheduledTask(() -> processClientSync(message));
@@ -40,9 +47,15 @@ final class ClientNetworkSync {
         }
 
         private void processClientSync(TagDataSyncMessage message) {
-            if (message == null || message.tagData == null || message.type == null || message.type == SyncType.NONE) {
+            if (
+                    message == null ||
+                            message.tagData == null ||
+                            message.type == null ||
+                            message.type == SyncType.NONE
+            ) {
                 return;
             }
+
             processAllTags(message);
             TagManager.bake();
         }
@@ -96,10 +109,14 @@ final class ClientNetworkSync {
 
         private ObjectSet<ItemKey> transformItemEntries(IntArrayList entries) {
             ObjectSet<ItemKey> keys = new ObjectOpenHashSet<>(entries.size() / 2);
+
             for (int i = 0; i < entries.size(); i += 2) {
                 var key = createItemKey(entries.getInt(i), entries.getInt(i + 1));
-                keys.add(key);
+                if (key != null) {
+                    keys.add(key);
+                }
             }
+
             return keys;
         }
 
@@ -115,23 +132,27 @@ final class ClientNetworkSync {
 
         private ObjectSet<Fluid> transformFluidEntries(ObjectArrayList<String> entries) {
             ObjectSet<Fluid> fluids = new ObjectOpenHashSet<>(entries.size());
+
             for (var fluidName : entries) {
                 var fluid = FluidRegistry.getFluid(fluidName);
                 if (fluid != null) {
                     fluids.add(fluid);
                 }
             }
+
             return fluids;
         }
 
         private ObjectSet<Block> transformBlockEntries(IntArrayList entries) {
             ObjectSet<Block> blocks = new ObjectOpenHashSet<>(entries.size());
+
             for (int id : entries) {
                 if (id >= 0) {
                     var block = Block.getBlockById(id);
                     blocks.add(block);
                 }
             }
+
             return blocks;
         }
     }

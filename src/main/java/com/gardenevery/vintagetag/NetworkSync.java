@@ -25,6 +25,7 @@ import net.minecraftforge.fml.common.network.simpleimpl.SimpleNetworkWrapper;
 import net.minecraftforge.fml.relauncher.Side;
 
 final class NetworkSync {
+
     public static SimpleNetworkWrapper NETWORK;
     private static final int MAX_PACKET_SIZE = 2 * 1024 * 1024;
     private static final int INVALID_ID = -1;
@@ -36,7 +37,12 @@ final class NetworkSync {
 
     public static void register() {
         NETWORK = NetworkRegistry.INSTANCE.newSimpleChannel("VintageTag");
-        NETWORK.registerMessage((message, ctx) -> null, TagDataSyncMessage.class, 0, Side.CLIENT);
+        NETWORK.registerMessage(
+                (message, ctx) -> null,
+                TagDataSyncMessage.class,
+                0,
+                Side.CLIENT
+        );
     }
 
     public static void sync(@Nullable EntityPlayerMP player) {
@@ -58,7 +64,11 @@ final class NetworkSync {
     }
 
     private static TagData collectTagData() {
-        return new TagData(collectItemTags(), collectFluidTags(), collectBlockTags());
+        return new TagData(
+                collectItemTags(),
+                collectFluidTags(),
+                collectBlockTags()
+        );
     }
 
     private static Object2ObjectMap<String, IntArrayList> collectItemTags() {
@@ -89,6 +99,7 @@ final class NetworkSync {
                 }
             }
         }
+
         return itemTags;
     }
 
@@ -119,6 +130,7 @@ final class NetworkSync {
                 }
             }
         }
+
         return fluidTags;
     }
 
@@ -149,6 +161,7 @@ final class NetworkSync {
                 }
             }
         }
+
         return blockTags;
     }
 
@@ -171,6 +184,7 @@ final class NetworkSync {
     }
 
     public static class EventHandler {
+
         @SubscribeEvent
         public void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
             if (event.player instanceof EntityPlayerMP player) {
@@ -180,6 +194,7 @@ final class NetworkSync {
     }
 
     public static class TagDataSyncMessage implements IMessage {
+
         public SyncType type;
         public TagData tagData;
 
@@ -207,9 +222,9 @@ final class NetworkSync {
         @Override
         public void toBytes(ByteBuf buf) {
             var tempBuf = buf.alloc().buffer();
+
             try {
                 tempBuf.writeByte(type.ordinal());
-
                 writeOptionalItemTags(tempBuf, tagData.itemTags());
                 writeOptionalFluidTags(tempBuf, tagData.fluidTags());
                 writeOptionalBlockTags(tempBuf, tagData.blockTags());
@@ -241,6 +256,7 @@ final class NetworkSync {
             validateCount(tagCount);
 
             var map = new Object2ObjectOpenHashMap<String, IntArrayList>(tagCount);
+
             for (int i = 0; i < tagCount; i++) {
                 var tagName = readStringSafe(buf);
                 int entryCount = buf.readInt();
@@ -253,8 +269,10 @@ final class NetworkSync {
                     entries.add(itemId);
                     entries.add(metadata);
                 }
+
                 map.put(tagName, entries);
             }
+
             return map;
         }
 
@@ -267,6 +285,7 @@ final class NetworkSync {
             validateCount(tagCount);
 
             var map = new Object2ObjectOpenHashMap<String, ObjectArrayList<String>>(tagCount);
+
             for (int i = 0; i < tagCount; i++) {
                 var tagName = readStringSafe(buf);
                 int entryCount = buf.readInt();
@@ -277,8 +296,10 @@ final class NetworkSync {
                     var fluidName = readStringSafe(buf);
                     fluidNames.add(fluidName);
                 }
+
                 map.put(tagName, fluidNames);
             }
+
             return map;
         }
 
@@ -291,6 +312,7 @@ final class NetworkSync {
             validateCount(tagCount);
 
             var map = new Object2ObjectOpenHashMap<String, IntArrayList>(tagCount);
+
             for (int i = 0; i < tagCount; i++) {
                 var tagName = readStringSafe(buf);
                 int entryCount = buf.readInt();
@@ -301,8 +323,10 @@ final class NetworkSync {
                     int blockId = buf.readInt();
                     blockIds.add(blockId);
                 }
+
                 map.put(tagName, blockIds);
             }
+
             return map;
         }
 
@@ -312,6 +336,7 @@ final class NetworkSync {
 
             if (hasMap) {
                 buf.writeInt(map.size());
+
                 for (var entry : map.object2ObjectEntrySet()) {
                     writeStringSafe(buf, entry.getKey());
                     var itemEntries = entry.getValue();
@@ -328,12 +353,16 @@ final class NetworkSync {
             }
         }
 
-        private void writeOptionalFluidTags(ByteBuf buf, Object2ObjectMap<String, ObjectArrayList<String>> map) {
+        private void writeOptionalFluidTags(
+                ByteBuf buf,
+                Object2ObjectMap<String, ObjectArrayList<String>> map
+        ) {
             boolean hasMap = map != null && !map.isEmpty();
             buf.writeBoolean(hasMap);
 
             if (hasMap) {
                 buf.writeInt(map.size());
+
                 for (var entry : map.object2ObjectEntrySet()) {
                     writeStringSafe(buf, entry.getKey());
                     var fluidNames = entry.getValue();
@@ -352,6 +381,7 @@ final class NetworkSync {
 
             if (hasMap) {
                 buf.writeInt(map.size());
+
                 for (var entry : map.object2ObjectEntrySet()) {
                     writeStringSafe(buf, entry.getKey());
                     var blockIds = entry.getValue();
@@ -366,7 +396,13 @@ final class NetworkSync {
 
         private void validateSize(int size) {
             if (size > MAX_PACKET_SIZE) {
-                throw new IllegalArgumentException(String.format("Packet too large: %d bytes, max allowed: %d", size, MAX_PACKET_SIZE));
+                throw new IllegalArgumentException(
+                        String.format(
+                                "Packet too large: %d bytes, max allowed: %d",
+                                size,
+                                MAX_PACKET_SIZE
+                        )
+                );
             }
         }
 
@@ -380,20 +416,29 @@ final class NetworkSync {
             if (ordinal < 0 || ordinal >= SyncType.values().length) {
                 return SyncType.NONE;
             }
+
             return SyncType.values()[ordinal];
         }
 
         private String readStringSafe(ByteBuf buf) {
             int length = buf.readInt();
+
             if (length < 0) {
                 throw new IllegalArgumentException("Negative string length: " + length);
             }
+
             if (length == 0) {
                 return "";
             }
 
             if (buf.readableBytes() < length) {
-                throw new IllegalArgumentException(String.format("Not enough bytes for string: need %d, have %d", length, buf.readableBytes()));
+                throw new IllegalArgumentException(
+                        String.format(
+                                "Not enough bytes for string: need %d, have %d",
+                                length,
+                                buf.readableBytes()
+                        )
+                );
             }
 
             byte[] bytes = new byte[length];
@@ -402,12 +447,7 @@ final class NetworkSync {
         }
 
         private void writeStringSafe(ByteBuf buf, String string) {
-            if (string == null) {
-                buf.writeInt(0);
-                return;
-            }
-
-            if (string.isEmpty()) {
+            if (string == null || string.isEmpty()) {
                 buf.writeInt(0);
                 return;
             }
@@ -419,9 +459,12 @@ final class NetworkSync {
     }
 
     @Desugar
-    public record TagData(Object2ObjectMap<String, IntArrayList> itemTags,
-                          Object2ObjectMap<String, ObjectArrayList<String>> fluidTags,
-                          Object2ObjectMap<String, IntArrayList> blockTags) {
+    public record TagData(
+            Object2ObjectMap<String, IntArrayList> itemTags,
+            Object2ObjectMap<String, ObjectArrayList<String>> fluidTags,
+            Object2ObjectMap<String, IntArrayList> blockTags
+    ) {
+
         public TagData(
                 Object2ObjectMap<String, IntArrayList> itemTags,
                 Object2ObjectMap<String, ObjectArrayList<String>> fluidTags,

@@ -9,6 +9,7 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 @Config(modid = Tags.MOD_ID)
 @Config.LangKey("tag.config.title")
 public class TagConfig {
+
     @Config.LangKey("tag.config.ore_sync")
     public static boolean enableOreSync = true;
 
@@ -30,6 +31,7 @@ public class TagConfig {
 
     @Mod.EventBusSubscriber(modid = Tags.MOD_ID)
     private static class EventHandler {
+
         @SubscribeEvent
         public static void onConfigChanged(ConfigChangedEvent.OnConfigChangedEvent event) {
             if (event.getModID().equals(Tags.MOD_ID)) {

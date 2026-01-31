@@ -1,10 +1,12 @@
 package com.gardenevery.vintagetag;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import javax.annotation.Nonnull;
 
+import com.github.bsideup.jabel.Desugar;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -25,12 +27,17 @@ final class Tag<T> {
         this.associationCount = 0;
     }
 
-    private Tag(MutableTagContainer<T> container) {
-        this.tagToKeys = buildMap(container.tagToKeys);
-        this.keyToTags = buildMap(container.keyToTags);
-        this.tags = this.tagToKeys.keySet();
+    private Tag(
+            ImmutableMap<String, ImmutableSet<T>> tagToKeys,
+            ImmutableMap<T, ImmutableSet<String>> keyToTags,
+            ImmutableSet<String> tags
+    ) {
+        this.tagToKeys = tagToKeys;
+        this.keyToTags = keyToTags;
+        this.tags = tags;
         this.associationCount = calculateAssociationCount();
     }
+
 
     @Nonnull
     public Set<String> getTags(@Nonnull T key) {
@@ -127,6 +134,10 @@ final class Tag<T> {
         return tags != null && !tags.isEmpty();
     }
 
+    public boolean exists(@Nonnull String tagName) {
+        return tags.contains(tagName);
+    }
+
     public int getTagCount() {
         return tags.size();
     }
@@ -139,25 +150,9 @@ final class Tag<T> {
         return associationCount;
     }
 
-    public boolean exists(@Nonnull String tagName) {
-        return tagToKeys.containsKey(tagName);
-    }
-
-    private static <K, V> ImmutableMap<K, ImmutableSet<V>> buildMap(Object2ReferenceOpenHashMap<K, ObjectOpenHashSet<V>> map) {
-        if (map.isEmpty()) {
-            return ImmutableMap.of();
-        }
-
-        ImmutableMap.Builder<K, ImmutableSet<V>> builder = ImmutableMap.builder();
-        for (var entry : map.object2ReferenceEntrySet()) {
-            builder.put(entry.getKey(), ImmutableSet.copyOf(entry.getValue()));
-        }
-        return builder.build();
-    }
-
     private int calculateAssociationCount() {
         int total = 0;
-        for (Set<T> keys : this.tagToKeys.values()) {
+        for (Set<T> keys : tagToKeys.values()) {
             total += keys.size();
         }
         return total;
@@ -165,32 +160,51 @@ final class Tag<T> {
 
     static final class MutableTagContainer<T> {
         private final Object2ReferenceOpenHashMap<String, ObjectOpenHashSet<T>> tagToKeys;
+        private final Object2ReferenceOpenHashMap<String, ObjectOpenHashSet<String>> tagInclusions;
         private final Object2ReferenceOpenHashMap<T, ObjectOpenHashSet<String>> keyToTags;
 
         public MutableTagContainer() {
             this.tagToKeys = new Object2ReferenceOpenHashMap<>();
+            this.tagInclusions = new Object2ReferenceOpenHashMap<>();
             this.keyToTags = new Object2ReferenceOpenHashMap<>();
         }
 
-        public void register(@Nonnull Set<T> keys, @Nonnull String tagName) {
+        public void register(
+                @Nonnull Set<T> keys,
+                @Nonnull String tagName,
+                @Nonnull Set<String> tagInclude
+        ) {
             Objects.requireNonNull(keys, "keys must not be null");
             Objects.requireNonNull(tagName, "tagName must not be null");
+            Objects.requireNonNull(tagInclude, "tagInclude must not be null");
 
-            if (keys.isEmpty()) {
+            if (keys.isEmpty() && tagInclude.isEmpty()) {
                 return;
             }
 
-            var keySet = tagToKeys.computeIfAbsent(tagName, k -> new ObjectOpenHashSet<>());
-            keySet.addAll(keys);
+            if (!keys.isEmpty()) {
+                var keySet = tagToKeys.computeIfAbsent(tagName, k -> new ObjectOpenHashSet<>());
+                keySet.addAll(keys);
 
-            for (T key : keys) {
-                keyToTags.computeIfAbsent(key, k -> new ObjectOpenHashSet<>()).add(tagName);
+                for (T key : keys) {
+                    keyToTags.computeIfAbsent(key, k -> new ObjectOpenHashSet<>()).add(tagName);
+                }
+            }
+
+            if (!tagInclude.isEmpty()) {
+                var tagSet = tagInclusions.computeIfAbsent(tagName, k -> new ObjectOpenHashSet<>());
+                tagSet.addAll(tagInclude);
             }
         }
 
-        public void replace(@Nonnull Set<T> keys, @Nonnull String tagName) {
+        public void replace(
+                @Nonnull Set<T> keys,
+                @Nonnull String tagName,
+                @Nonnull Set<String> tagInclude
+        ) {
             Objects.requireNonNull(keys, "keys must not be null");
             Objects.requireNonNull(tagName, "tagName must not be null");
+            Objects.requireNonNull(tagInclude, "tagInclude must not be null");
 
             var existingKeys = tagToKeys.remove(tagName);
             if (existingKeys != null) {
@@ -205,24 +219,129 @@ final class Tag<T> {
                 }
             }
 
-            if (!keys.isEmpty()) {
-                var keySet = tagToKeys.computeIfAbsent(tagName, k -> new ObjectOpenHashSet<>());
-                keySet.addAll(keys);
-
-                for (T key : keys) {
-                    keyToTags.computeIfAbsent(key, k -> new ObjectOpenHashSet<>()).add(tagName);
-                }
-            }
+            tagInclusions.remove(tagName);
+            register(keys, tagName, tagInclude);
         }
 
         @Nonnull
         public Tag<T> build() {
-            return new Tag<>(this);
+            ExpandedMaps<T> expanded = expandMaps();
+            return new Tag<>(expanded.tagToKeys, expanded.keyToTags, expanded.allTags);
         }
 
         public void clear() {
             tagToKeys.clear();
+            tagInclusions.clear();
             keyToTags.clear();
         }
+
+        private ExpandedMaps<T> expandMaps() {
+            Set<String> visited = new HashSet<>();
+            Set<String> visiting = new HashSet<>();
+
+            Object2ReferenceOpenHashMap<String, ObjectOpenHashSet<T>> expandedTagToKeys =
+                    new Object2ReferenceOpenHashMap<>();
+            Object2ReferenceOpenHashMap<T, ObjectOpenHashSet<String>> expandedKeyToTags =
+                    new Object2ReferenceOpenHashMap<>();
+
+            for (var entry : tagToKeys.object2ReferenceEntrySet()) {
+                var tag = entry.getKey();
+                ObjectOpenHashSet<T> keys = entry.getValue();
+                expandedTagToKeys.put(tag, new ObjectOpenHashSet<>(keys));
+
+                for (T key : keys) {
+                    expandedKeyToTags.computeIfAbsent(key, k -> new ObjectOpenHashSet<>()).add(tag);
+                }
+            }
+
+            for (var tag : tagToKeys.keySet()) {
+                if (!visited.contains(tag)) {
+                    expandTagReferences(
+                            tag,
+                            visited,
+                            visiting,
+                            expandedTagToKeys,
+                            expandedKeyToTags
+                    );
+                }
+            }
+
+            ObjectOpenHashSet<String> allTags = new ObjectOpenHashSet<>();
+            allTags.addAll(tagToKeys.keySet());
+            allTags.addAll(tagInclusions.keySet());
+
+            ImmutableMap.Builder<String, ImmutableSet<T>> tagToKeysBuilder = ImmutableMap.builder();
+            for (var entry : expandedTagToKeys.object2ReferenceEntrySet()) {
+                tagToKeysBuilder.put(entry.getKey(), ImmutableSet.copyOf(entry.getValue()));
+            }
+
+            ImmutableMap.Builder<T, ImmutableSet<String>> keyToTagsBuilder = ImmutableMap.builder();
+            for (var entry : expandedKeyToTags.object2ReferenceEntrySet()) {
+                keyToTagsBuilder.put(entry.getKey(), ImmutableSet.copyOf(entry.getValue()));
+            }
+
+            return new ExpandedMaps<>(
+                    tagToKeysBuilder.build(),
+                    keyToTagsBuilder.build(),
+                    ImmutableSet.copyOf(allTags)
+            );
+        }
+
+        private void expandTagReferences(
+                String tag,
+                Set<String> visited,
+                Set<String> visiting,
+                Object2ReferenceOpenHashMap<String, ObjectOpenHashSet<T>> expandedTagToKeys,
+                Object2ReferenceOpenHashMap<T, ObjectOpenHashSet<String>> expandedKeyToTags
+        ) {
+            if (visiting.contains(tag)) {
+                return;
+            }
+
+            if (visited.contains(tag)) {
+                return;
+            }
+
+            visiting.add(tag);
+
+            var referencedTags = tagInclusions.get(tag);
+            if (referencedTags != null) {
+                for (var referencedTag : referencedTags) {
+                    expandTagReferences(
+                            referencedTag,
+                            visited,
+                            visiting,
+                            expandedTagToKeys,
+                            expandedKeyToTags
+                    );
+
+                    var referencedKeys = expandedTagToKeys.get(referencedTag);
+                    if (referencedKeys != null && !referencedKeys.isEmpty()) {
+                        var currentKeys = expandedTagToKeys.computeIfAbsent(
+                                tag,
+                                k -> new ObjectOpenHashSet<>()
+                        );
+                        currentKeys.addAll(referencedKeys);
+
+                        for (T key : referencedKeys) {
+                            expandedKeyToTags.computeIfAbsent(
+                                    key,
+                                    k -> new ObjectOpenHashSet<>()
+                            ).add(tag);
+                        }
+                    }
+                }
+            }
+
+            visiting.remove(tag);
+            visited.add(tag);
+        }
+
+        @Desugar
+        private record ExpandedMaps<T>(
+                ImmutableMap<String, ImmutableSet<T>> tagToKeys,
+                ImmutableMap<T, ImmutableSet<String>> keyToTags,
+                ImmutableSet<String> allTags
+        ) {}
     }
 }
