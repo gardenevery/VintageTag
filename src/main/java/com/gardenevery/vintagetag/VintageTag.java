@@ -11,50 +11,50 @@ import net.minecraftforge.fml.relauncher.Side;
 @Mod(modid = Tags.MOD_ID, name = Tags.MOD_NAME, version = Tags.VERSION)
 public class VintageTag {
 
-    @Mod.EventHandler
-    public void preInit(FMLPreInitializationEvent event) {
-        NetworkSync.register();
-        MinecraftForge.EVENT_BUS.register(new NetworkSync.EventHandler());
+	@Mod.EventHandler
+	public void preInit(FMLPreInitializationEvent event) {
+		NetworkSync.register();
+		MinecraftForge.EVENT_BUS.register(new NetworkSync.EventHandler());
 
-        if (event.getSide() == Side.CLIENT) {
-            ClientNetworkSync.register();
-        }
-    }
+		if (event.getSide() == Side.CLIENT) {
+			ClientNetworkSync.register();
+		}
+	}
 
-    @Mod.EventHandler
-    public void postInit(FMLPostInitializationEvent event) {
-        if (TagConfig.enableTooltip && event.getSide() == Side.CLIENT) {
-            var tooltip = new TagTooltip();
-            MinecraftForge.EVENT_BUS.register(tooltip);
-        }
-    }
+	@Mod.EventHandler
+	public void postInit(FMLPostInitializationEvent event) {
+		if (TagConfig.enableTooltip && event.getSide() == Side.CLIENT) {
+			var tooltip = new TagTooltip();
+			MinecraftForge.EVENT_BUS.register(tooltip);
+		}
+	}
 
-    @Mod.EventHandler
-    public void onFMLoadComplete(FMLLoadCompleteEvent event) {
-        boolean hasTasks = false;
+	@Mod.EventHandler
+	public void onFMLoadComplete(FMLLoadCompleteEvent event) {
+		boolean hasTasks = false;
 
-        if (TagConfig.enableOreSync) {
-            OreDictSync.sync();
-            hasTasks = true;
-        }
+		if (TagConfig.enableOreSync) {
+			OreDictSync.sync();
+			hasTasks = true;
+		}
 
-        if (TagConfig.enableModScanner) {
-            TagLoader.scanModTags();
-            hasTasks = true;
-        }
+		if (TagConfig.enableModScanner) {
+			TagLoader.scanModTags();
+			hasTasks = true;
+		}
 
-        if (TagConfig.enableConfigScanner) {
-            TagLoader.scanConfigTags();
-            hasTasks = true;
-        }
+		if (TagConfig.enableConfigScanner) {
+			TagLoader.scanConfigTags();
+			hasTasks = true;
+		}
 
-        if (hasTasks) {
-            TagManager.bake();
-        }
-    }
+		if (hasTasks) {
+			TagManager.bake();
+		}
+	}
 
-    @Mod.EventHandler
-    public void onServerStarting(FMLServerStartingEvent event) {
-        event.registerServerCommand(new TagCommand());
-    }
+	@Mod.EventHandler
+	public void onServerStarting(FMLServerStartingEvent event) {
+		event.registerServerCommand(new TagCommand());
+	}
 }

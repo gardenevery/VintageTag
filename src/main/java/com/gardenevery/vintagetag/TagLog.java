@@ -5,9 +5,9 @@ import org.apache.logging.log4j.Logger;
 
 final class TagLog {
 
-    private static final Logger LOGGER = LogManager.getLogger("VintageTag");
+	private static final Logger LOGGER = LogManager.getLogger("VintageTag");
 
-    public static void info(String message, Object... params) {
-        LOGGER.info(message, params);
-    }
+	public static void info(String message, Object... params) {
+		LOGGER.info(message, params);
+	}
 }

@@ -24,136 +24,126 @@ import net.minecraftforge.fml.common.network.NetworkRegistry;
 @SideOnly(Side.CLIENT)
 final class ClientNetworkSync {
 
-    @SideOnly(Side.CLIENT)
-    public static void register() {
-        if (NetworkSync.NETWORK == null) {
-            NetworkSync.NETWORK = NetworkRegistry.INSTANCE.newSimpleChannel("VintageTag");
-        }
-        NetworkSync.NETWORK.registerMessage(
-                TagDataSyncHandler.class,
-                TagDataSyncMessage.class,
-                0,
-                Side.CLIENT
-        );
-    }
+	@SideOnly(Side.CLIENT)
+	public static void register() {
+		if (NetworkSync.NETWORK == null) {
+			NetworkSync.NETWORK = NetworkRegistry.INSTANCE.newSimpleChannel("VintageTag");
+		}
+		NetworkSync.NETWORK.registerMessage(TagDataSyncHandler.class, TagDataSyncMessage.class, 0, Side.CLIENT);
+	}
 
-    @SideOnly(Side.CLIENT)
-    public static class TagDataSyncHandler implements IMessageHandler<TagDataSyncMessage, IMessage> {
+	@SideOnly(Side.CLIENT)
+	public static class TagDataSyncHandler implements IMessageHandler<TagDataSyncMessage, IMessage> {
 
-        @Override
-        public IMessage onMessage(TagDataSyncMessage message, MessageContext ctx) {
-            Minecraft.getMinecraft().addScheduledTask(() -> processClientSync(message));
-            return null;
-        }
+		@Override
+		public IMessage onMessage(TagDataSyncMessage message, MessageContext ctx) {
+			Minecraft.getMinecraft().addScheduledTask(() -> processClientSync(message));
+			return null;
+		}
 
-        private void processClientSync(TagDataSyncMessage message) {
-            if (
-                    message == null ||
-                            message.tagData == null ||
-                            message.type == null ||
-                            message.type == SyncType.NONE
-            ) {
-                return;
-            }
+		private void processClientSync(TagDataSyncMessage message) {
+			if (message == null || message.tagData == null || message.type == null || message.type == SyncType.NONE) {
+				return;
+			}
 
-            processAllTags(message);
-            TagManager.bake();
-        }
+			processAllTags(message);
+			TagManager.bake();
+		}
 
-        private void processAllTags(TagDataSyncMessage message) {
-            for (var itemEntry : message.tagData.itemTags().object2ObjectEntrySet()) {
-                processItemEntries(itemEntry.getKey(), itemEntry.getValue());
-            }
+		private void processAllTags(TagDataSyncMessage message) {
+			for (var itemEntry : message.tagData.itemTags().object2ObjectEntrySet()) {
+				processItemEntries(itemEntry.getKey(), itemEntry.getValue());
+			}
 
-            for (var fluidEntry : message.tagData.fluidTags().object2ObjectEntrySet()) {
-                processFluidEntries(fluidEntry.getKey(), fluidEntry.getValue());
-            }
+			for (var fluidEntry : message.tagData.fluidTags().object2ObjectEntrySet()) {
+				processFluidEntries(fluidEntry.getKey(), fluidEntry.getValue());
+			}
 
-            for (var blockEntry : message.tagData.blockTags().object2ObjectEntrySet()) {
-                processBlockEntries(blockEntry.getKey(), blockEntry.getValue());
-            }
-        }
+			for (var blockEntry : message.tagData.blockTags().object2ObjectEntrySet()) {
+				processBlockEntries(blockEntry.getKey(), blockEntry.getValue());
+			}
+		}
 
-        private void processItemEntries(String tagName, IntArrayList entries) {
-            if (entries.isEmpty()) {
-                return;
-            }
+		private void processItemEntries(String tagName, IntArrayList entries) {
+			if (entries.isEmpty()) {
+				return;
+			}
 
-            ObjectSet<ItemKey> keys = transformItemEntries(entries);
-            if (!keys.isEmpty()) {
-                TagManager.registerItem(keys, tagName);
-            }
-        }
+			ObjectSet<ItemKey> keys = transformItemEntries(entries);
+			if (!keys.isEmpty()) {
+				TagManager.registerItem(keys, tagName);
+			}
+		}
 
-        private void processFluidEntries(String tagName, ObjectArrayList<String> entries) {
-            if (entries.isEmpty()) {
-                return;
-            }
+		private void processFluidEntries(String tagName, ObjectArrayList<String> entries) {
+			if (entries.isEmpty()) {
+				return;
+			}
 
-            ObjectSet<Fluid> fluids = transformFluidEntries(entries);
-            if (!fluids.isEmpty()) {
-                TagManager.registerFluid(fluids, tagName);
-            }
-        }
+			ObjectSet<Fluid> fluids = transformFluidEntries(entries);
+			if (!fluids.isEmpty()) {
+				TagManager.registerFluid(fluids, tagName);
+			}
+		}
 
-        private void processBlockEntries(String tagName, IntArrayList entries) {
-            if (entries.isEmpty()) {
-                return;
-            }
+		private void processBlockEntries(String tagName, IntArrayList entries) {
+			if (entries.isEmpty()) {
+				return;
+			}
 
-            ObjectSet<Block> blocks = transformBlockEntries(entries);
-            if (!blocks.isEmpty()) {
-                TagManager.registerBlock(blocks, tagName);
-            }
-        }
+			ObjectSet<Block> blocks = transformBlockEntries(entries);
+			if (!blocks.isEmpty()) {
+				TagManager.registerBlock(blocks, tagName);
+			}
+		}
 
-        private ObjectSet<ItemKey> transformItemEntries(IntArrayList entries) {
-            ObjectSet<ItemKey> keys = new ObjectOpenHashSet<>(entries.size() / 2);
+		private ObjectSet<ItemKey> transformItemEntries(IntArrayList entries) {
+			ObjectSet<ItemKey> keys = new ObjectOpenHashSet<>(entries.size() / 2);
 
-            for (int i = 0; i < entries.size(); i += 2) {
-                var key = createItemKey(entries.getInt(i), entries.getInt(i + 1));
-                if (key != null) {
-                    keys.add(key);
-                }
-            }
+			for (int i = 0; i < entries.size(); i += 2) {
+				var key = createItemKey(entries.getInt(i), entries.getInt(i + 1));
+				if (key != null) {
+					keys.add(key);
+				}
+			}
 
-            return keys;
-        }
+			return keys;
+		}
 
-        private ItemKey createItemKey(int id, int metadata) {
-            if (id < 0) {
-                return null;
-            }
+		private ItemKey createItemKey(int id, int metadata) {
+			if (id < 0) {
+				return null;
+			}
 
-            var item = Item.getItemById(id);
-            var stack = new ItemStack(item, 1, metadata);
-            return ItemKey.of(stack);
-        }
+			var item = Item.getItemById(id);
+			var stack = new ItemStack(item, 1, metadata);
+			return ItemKey.of(stack);
+		}
 
-        private ObjectSet<Fluid> transformFluidEntries(ObjectArrayList<String> entries) {
-            ObjectSet<Fluid> fluids = new ObjectOpenHashSet<>(entries.size());
+		private ObjectSet<Fluid> transformFluidEntries(ObjectArrayList<String> entries) {
+			ObjectSet<Fluid> fluids = new ObjectOpenHashSet<>(entries.size());
 
-            for (var fluidName : entries) {
-                var fluid = FluidRegistry.getFluid(fluidName);
-                if (fluid != null) {
-                    fluids.add(fluid);
-                }
-            }
+			for (var fluidName : entries) {
+				var fluid = FluidRegistry.getFluid(fluidName);
+				if (fluid != null) {
+					fluids.add(fluid);
+				}
+			}
 
-            return fluids;
-        }
+			return fluids;
+		}
 
-        private ObjectSet<Block> transformBlockEntries(IntArrayList entries) {
-            ObjectSet<Block> blocks = new ObjectOpenHashSet<>(entries.size());
+		private ObjectSet<Block> transformBlockEntries(IntArrayList entries) {
+			ObjectSet<Block> blocks = new ObjectOpenHashSet<>(entries.size());
 
-            for (int id : entries) {
-                if (id >= 0) {
-                    var block = Block.getBlockById(id);
-                    blocks.add(block);
-                }
-            }
+			for (int id : entries) {
+				if (id >= 0) {
+					var block = Block.getBlockById(id);
+					blocks.add(block);
+				}
+			}
 
-            return blocks;
-        }
-    }
+			return blocks;
+		}
+	}
 }

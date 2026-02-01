@@ -21,130 +21,121 @@ import org.lwjgl.input.Keyboard;
 @SideOnly(Side.CLIENT)
 public class TagTooltip {
 
-    private static boolean cachedShiftState = false;
-    private static long lastCheckTime = 0;
-    private static final long CHECK_INTERVAL = 50;
+	private static boolean cachedShiftState = false;
+	private static long lastCheckTime = 0;
+	private static final long CHECK_INTERVAL = 50;
 
-    @SubscribeEvent
-    public void onItemTooltip(ItemTooltipEvent event) {
-        var stack = event.getItemStack();
-        if (stack.isEmpty()) {
-            return;
-        }
+	@SubscribeEvent
+	public void onItemTooltip(ItemTooltipEvent event) {
+		var stack = event.getItemStack();
+		if (stack.isEmpty()) {
+			return;
+		}
 
-        var tooltip = event.getToolTip();
-        if (!getCachedShiftPressed()) {
-            tooltip.add(TextFormatting.GRAY + I18n.format("tag.tooltip.hold_shift"));
-            return;
-        }
+		var tooltip = event.getToolTip();
+		if (!getCachedShiftPressed()) {
+			tooltip.add(TextFormatting.GRAY + I18n.format("tag.tooltip.hold_shift"));
+			return;
+		}
 
-        addTagsToTooltip(stack, tooltip);
-    }
+		addTagsToTooltip(stack, tooltip);
+	}
 
-    private static boolean getCachedShiftPressed() {
-        long currentTime = System.currentTimeMillis();
+	private static boolean getCachedShiftPressed() {
+		long currentTime = System.currentTimeMillis();
 
-        if (currentTime - lastCheckTime >= CHECK_INTERVAL) {
-            updateShiftCache();
-            lastCheckTime = currentTime;
-        }
+		if (currentTime - lastCheckTime >= CHECK_INTERVAL) {
+			updateShiftCache();
+			lastCheckTime = currentTime;
+		}
 
-        return cachedShiftState;
-    }
+		return cachedShiftState;
+	}
 
-    private static void updateShiftCache() {
-        if (Keyboard.isCreated()) {
-            cachedShiftState =
-                    Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) ||
-                            Keyboard.isKeyDown(Keyboard.KEY_RSHIFT);
-        } else {
-            cachedShiftState = false;
-        }
-    }
+	private static void updateShiftCache() {
+		if (Keyboard.isCreated()) {
+			cachedShiftState = Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT);
+		} else {
+			cachedShiftState = false;
+		}
+	}
 
-    private static void addTagsToTooltip(ItemStack itemStack, List<String> tooltip) {
-        var itemTags = TagHelper.item().tags(itemStack);
+	private static void addTagsToTooltip(ItemStack itemStack, List<String> tooltip) {
+		var itemTags = TagHelper.item().tags(itemStack);
 
-        Set<String> fluidTags = Collections.emptySet();
-        if (TagConfig.showFluidTags) {
-            fluidTags = getFluidTags(itemStack);
-        }
+		Set<String> fluidTags = Collections.emptySet();
+		if (TagConfig.showFluidTags) {
+			fluidTags = getFluidTags(itemStack);
+		}
 
-        Set<String> blockTags = Collections.emptySet();
-        if (TagConfig.showBlockTags) {
-            blockTags = getBlockTags(itemStack);
-        }
+		Set<String> blockTags = Collections.emptySet();
+		if (TagConfig.showBlockTags) {
+			blockTags = getBlockTags(itemStack);
+		}
 
-        boolean hasItemTags = !itemTags.isEmpty();
-        boolean hasFluidTags = !fluidTags.isEmpty();
-        boolean hasBlockTags = !blockTags.isEmpty();
+		boolean hasItemTags = !itemTags.isEmpty();
+		boolean hasFluidTags = !fluidTags.isEmpty();
+		boolean hasBlockTags = !blockTags.isEmpty();
 
-        if (!hasItemTags && !hasFluidTags && !hasBlockTags) {
-            tooltip.add(TextFormatting.GRAY + "No tags");
-            return;
-        }
+		if (!hasItemTags && !hasFluidTags && !hasBlockTags) {
+			tooltip.add(TextFormatting.GRAY + "No tags");
+			return;
+		}
 
-        tooltip.add("Tags:");
+		tooltip.add("Tags:");
 
-        if (hasItemTags) {
-            addSortedTags(tooltip, itemTags, TextFormatting.WHITE);
-        }
+		if (hasItemTags) {
+			addSortedTags(tooltip, itemTags, TextFormatting.WHITE);
+		}
 
-        if (hasFluidTags) {
-            addSortedTags(tooltip, fluidTags, TextFormatting.BLUE);
-        }
+		if (hasFluidTags) {
+			addSortedTags(tooltip, fluidTags, TextFormatting.BLUE);
+		}
 
-        if (hasBlockTags) {
-            addSortedTags(tooltip, blockTags, TextFormatting.YELLOW);
-        }
-    }
+		if (hasBlockTags) {
+			addSortedTags(tooltip, blockTags, TextFormatting.YELLOW);
+		}
+	}
 
-    private static Set<String> getFluidTags(ItemStack itemStack) {
-        if (!itemStack.hasCapability(CapabilityFluidHandler.FLUID_HANDLER_ITEM_CAPABILITY, null)) {
-            return Collections.emptySet();
-        }
+	private static Set<String> getFluidTags(ItemStack itemStack) {
+		if (!itemStack.hasCapability(CapabilityFluidHandler.FLUID_HANDLER_ITEM_CAPABILITY, null)) {
+			return Collections.emptySet();
+		}
 
-        var fluidHandler = itemStack.getCapability(
-                CapabilityFluidHandler.FLUID_HANDLER_ITEM_CAPABILITY,
-                null
-        );
+		var fluidHandler = itemStack.getCapability(CapabilityFluidHandler.FLUID_HANDLER_ITEM_CAPABILITY, null);
 
-        if (fluidHandler == null) {
-            return Collections.emptySet();
-        }
+		if (fluidHandler == null) {
+			return Collections.emptySet();
+		}
 
-        var fluidStack = fluidHandler.drain(Integer.MAX_VALUE, false);
-        if (fluidStack == null) {
-            return Collections.emptySet();
-        }
+		var fluidStack = fluidHandler.drain(Integer.MAX_VALUE, false);
+		if (fluidStack == null) {
+			return Collections.emptySet();
+		}
 
-        return TagHelper.fluid().tags(fluidStack);
-    }
+		return TagHelper.fluid().tags(fluidStack);
+	}
 
-    private static Set<String> getBlockTags(ItemStack itemStack) {
-        var block = Block.getBlockFromItem(itemStack.getItem());
+	private static Set<String> getBlockTags(ItemStack itemStack) {
+		var block = Block.getBlockFromItem(itemStack.getItem());
 
-        if (block == Blocks.AIR) {
-            return Collections.emptySet();
-        }
+		if (block == Blocks.AIR) {
+			return Collections.emptySet();
+		}
 
-        return TagHelper.block().tags(block);
-    }
+		return TagHelper.block().tags(block);
+	}
 
-    private static void addSortedTags(
-            List<String> tooltip,
-            Set<String> tags,
-            TextFormatting color
-    ) {
-        if (tags.isEmpty()) {
-            return;
-        }
+	private static void addSortedTags(List<String> tooltip, Set<String> tags, TextFormatting color) {
+		if (tags.isEmpty()) {
+			return;
+		}
 
-        var tagArray = tags.toArray(new String[0]);
-        Arrays.sort(tagArray);
+		var tagArray = tags.toArray(new String[0]);
+		Arrays.sort(tagArray);
 
-        for (var tag : tagArray) {
-            tooltip.add(color + "  " + tag);
-        }
-    }
+		for (var tag : tagArray) {
+			tooltip.add(color + "  " + tag);
+		}
+	}
 }
