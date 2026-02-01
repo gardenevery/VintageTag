@@ -348,5 +348,6 @@ apply from: 'gradle/scripts/extra.gradle'
 spotless {
     java {
         eclipse()
+        target 'src/**/*.java'
     }
 }
