@@ -6,23 +6,23 @@ public enum TagType {
 
 	ITEM("item"), FLUID("fluid"), BLOCK("block");
 
-	private final String typeName;
+	private final String name;
 
-	TagType(String typeName) {
-		this.typeName = typeName;
+	TagType(String name) {
+		this.name = name;
 	}
 
 	public String getName() {
-		return typeName;
+		return name;
 	}
 
 	@Nullable
-	public static TagType getType(String typeName) {
-		if (typeName == null) {
+	public static TagType getType(String name) {
+		if (name == null) {
 			return null;
 		}
 
-		return switch (typeName) {
+		return switch (name) {
 			case "item" -> ITEM;
 			case "fluid" -> FLUID;
 			case "block" -> BLOCK;

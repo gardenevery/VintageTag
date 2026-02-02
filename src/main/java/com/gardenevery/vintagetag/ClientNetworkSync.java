@@ -6,20 +6,19 @@ import com.gardenevery.vintagetag.NetworkSync.TagDataSyncMessage;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import it.unimi.dsi.fastutil.objects.ObjectSet;
 
+import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.item.Item;
-import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidRegistry;
+import net.minecraftforge.fml.common.network.NetworkRegistry;
 import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
 import net.minecraftforge.fml.common.network.simpleimpl.IMessageHandler;
 import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
-import net.minecraftforge.fml.common.network.NetworkRegistry;
 
 @SideOnly(Side.CLIENT)
 final class ClientNetworkSync {
@@ -69,7 +68,7 @@ final class ClientNetworkSync {
 				return;
 			}
 
-			ObjectSet<ItemKey> keys = transformItemEntries(entries);
+			var keys = transformItemEntries(entries);
 			if (!keys.isEmpty()) {
 				TagManager.registerItem(keys, tagName);
 			}
@@ -80,7 +79,7 @@ final class ClientNetworkSync {
 				return;
 			}
 
-			ObjectSet<Fluid> fluids = transformFluidEntries(entries);
+			var fluids = transformFluidEntries(entries);
 			if (!fluids.isEmpty()) {
 				TagManager.registerFluid(fluids, tagName);
 			}
@@ -91,14 +90,14 @@ final class ClientNetworkSync {
 				return;
 			}
 
-			ObjectSet<Block> blocks = transformBlockEntries(entries);
+			var blocks = transformBlockEntries(entries);
 			if (!blocks.isEmpty()) {
 				TagManager.registerBlock(blocks, tagName);
 			}
 		}
 
-		private ObjectSet<ItemKey> transformItemEntries(IntArrayList entries) {
-			ObjectSet<ItemKey> keys = new ObjectOpenHashSet<>(entries.size() / 2);
+		private ObjectOpenHashSet<ItemKey> transformItemEntries(IntArrayList entries) {
+			ObjectOpenHashSet<ItemKey> keys = new ObjectOpenHashSet<>(entries.size() / 2);
 
 			for (int i = 0; i < entries.size(); i += 2) {
 				var key = createItemKey(entries.getInt(i), entries.getInt(i + 1));
@@ -120,8 +119,8 @@ final class ClientNetworkSync {
 			return ItemKey.of(stack);
 		}
 
-		private ObjectSet<Fluid> transformFluidEntries(ObjectArrayList<String> entries) {
-			ObjectSet<Fluid> fluids = new ObjectOpenHashSet<>(entries.size());
+		private ObjectOpenHashSet<Fluid> transformFluidEntries(ObjectArrayList<String> entries) {
+			ObjectOpenHashSet<Fluid> fluids = new ObjectOpenHashSet<>(entries.size());
 
 			for (var fluidName : entries) {
 				var fluid = FluidRegistry.getFluid(fluidName);
@@ -133,8 +132,8 @@ final class ClientNetworkSync {
 			return fluids;
 		}
 
-		private ObjectSet<Block> transformBlockEntries(IntArrayList entries) {
-			ObjectSet<Block> blocks = new ObjectOpenHashSet<>(entries.size());
+		private ObjectOpenHashSet<Block> transformBlockEntries(IntArrayList entries) {
+			ObjectOpenHashSet<Block> blocks = new ObjectOpenHashSet<>(entries.size());
 
 			for (int id : entries) {
 				if (id >= 0) {

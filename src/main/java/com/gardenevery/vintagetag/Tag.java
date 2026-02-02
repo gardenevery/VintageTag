@@ -1,11 +1,7 @@
 package com.gardenevery.vintagetag;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import javax.annotation.Nonnull;
 
@@ -14,20 +10,24 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
-import it.unimi.dsi.fastutil.objects.Object2ReferenceOpenHashMap;
+import com.google.common.collect.Maps;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayFIFOQueue;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 final class Tag<T> {
 	private final ImmutableMap<String, ImmutableSet<T>> tagToKeys;
 	private final ImmutableMap<T, ImmutableSet<String>> keyToTags;
 	private final ImmutableSet<String> tags;
-	private final int associationCount;
+	private Integer associationCount = null;
 
 	public Tag() {
 		this.tagToKeys = ImmutableMap.of();
 		this.keyToTags = ImmutableMap.of();
 		this.tags = ImmutableSet.of();
-		this.associationCount = 0;
+		this.associationCount = null;
 	}
 
 	private Tag(ImmutableMap<String, ImmutableSet<T>> tagToKeys, ImmutableMap<T, ImmutableSet<String>> keyToTags,
@@ -35,7 +35,6 @@ final class Tag<T> {
 		this.tagToKeys = tagToKeys;
 		this.keyToTags = keyToTags;
 		this.tags = tags;
-		this.associationCount = calculateAssociationCount();
 	}
 
 	@Nonnull
@@ -69,7 +68,7 @@ final class Tag<T> {
 
 	@Nonnull
 	public List<String> getAllTagsList() {
-		return ImmutableList.copyOf(tags);
+		return tags.asList();
 	}
 
 	@Nonnull
@@ -83,8 +82,8 @@ final class Tag<T> {
 	}
 
 	@Nonnull
-	public ImmutableMap<String, ImmutableSet<T>> getAllEntries() {
-		return tagToKeys;
+	public Map<String, Set<T>> getAllEntries() {
+		return Maps.transformValues(tagToKeys, set -> set);
 	}
 
 	public boolean hasTag(@Nonnull T key, @Nonnull String tagName) {
@@ -93,10 +92,6 @@ final class Tag<T> {
 	}
 
 	public boolean hasAnyTag(@Nonnull T key, @Nonnull String... tagNames) {
-		if (tagNames.length == 0) {
-			return false;
-		}
-
 		var tags = keyToTags.get(key);
 		if (tags == null) {
 			return false;
@@ -111,10 +106,6 @@ final class Tag<T> {
 	}
 
 	public boolean hasAllTags(@Nonnull T key, @Nonnull String... tagNames) {
-		if (tagNames.length == 0) {
-			return false;
-		}
-
 		var tags = keyToTags.get(key);
 		if (tags == null) {
 			return false;
@@ -146,41 +137,40 @@ final class Tag<T> {
 	}
 
 	public int getAssociationCount() {
-		return associationCount;
-	}
-
-	private int calculateAssociationCount() {
-		int total = 0;
-		for (Set<T> keys : tagToKeys.values()) {
-			total += keys.size();
+		var count = this.associationCount;
+		if (count == null) {
+			count = 0;
+			for (var keys : tagToKeys.values()) {
+				count += keys.size();
+			}
+			this.associationCount = count;
 		}
-		return total;
-	}
-
-	private enum ProcessingState {
-		UNPROCESSED, PROCESSING, PROCESSED
+		return count;
 	}
 
 	static final class MutableTagContainer<T> {
-		private final Object2ReferenceOpenHashMap<String, ObjectOpenHashSet<T>> tagToKeys;
-		private final Object2ReferenceOpenHashMap<String, ObjectOpenHashSet<String>> tagInclusions;
-		private final Object2ReferenceOpenHashMap<T, ObjectOpenHashSet<String>> keyToTags;
+		private final Object2ObjectOpenHashMap<String, ObjectOpenHashSet<T>> tagToKeys;
+		private final Object2ObjectOpenHashMap<String, ObjectOpenHashSet<String>> tagInclusions;
+		private final Object2ObjectOpenHashMap<T, ObjectOpenHashSet<String>> keyToTags;
 
 		public MutableTagContainer() {
-			this.tagToKeys = new Object2ReferenceOpenHashMap<>();
-			this.tagInclusions = new Object2ReferenceOpenHashMap<>();
-			this.keyToTags = new Object2ReferenceOpenHashMap<>();
+			this.tagToKeys = new Object2ObjectOpenHashMap<>();
+			this.tagInclusions = new Object2ObjectOpenHashMap<>();
+			this.keyToTags = new Object2ObjectOpenHashMap<>();
+		}
+
+		public void register(@Nonnull Set<T> keys, @Nonnull String tagName) {
+			if (!keys.isEmpty()) {
+				var keySet = tagToKeys.computeIfAbsent(tagName, k -> new ObjectOpenHashSet<>());
+				keySet.addAll(keys);
+
+				for (T key : keys) {
+					keyToTags.computeIfAbsent(key, k -> new ObjectOpenHashSet<>()).add(tagName);
+				}
+			}
 		}
 
 		public void register(@Nonnull Set<T> keys, @Nonnull String tagName, @Nonnull Set<String> tagInclude) {
-			Objects.requireNonNull(keys, "keys must not be null");
-			Objects.requireNonNull(tagName, "tagName must not be null");
-			Objects.requireNonNull(tagInclude, "tagInclude must not be null");
-
-			if (keys.isEmpty() && tagInclude.isEmpty()) {
-				return;
-			}
-
 			if (!keys.isEmpty()) {
 				var keySet = tagToKeys.computeIfAbsent(tagName, k -> new ObjectOpenHashSet<>());
 				keySet.addAll(keys);
@@ -197,10 +187,6 @@ final class Tag<T> {
 		}
 
 		public void replace(@Nonnull Set<T> keys, @Nonnull String tagName, @Nonnull Set<String> tagInclude) {
-			Objects.requireNonNull(keys, "keys must not be null");
-			Objects.requireNonNull(tagName, "tagName must not be null");
-			Objects.requireNonNull(tagInclude, "tagInclude must not be null");
-
 			var existingKeys = tagToKeys.remove(tagName);
 			if (existingKeys != null) {
 				for (T key : existingKeys) {
@@ -220,7 +206,7 @@ final class Tag<T> {
 
 		@Nonnull
 		public Tag<T> build() {
-			ExpandedMaps<T> expanded = expandMapsWithoutRecursion();
+			var expanded = expandMaps();
 			return new Tag<>(expanded.tagToKeys, expanded.keyToTags, expanded.allTags);
 		}
 
@@ -230,139 +216,143 @@ final class Tag<T> {
 			keyToTags.clear();
 		}
 
-		private ExpandedMaps<T> expandMapsWithoutRecursion() {
-			Object2ReferenceOpenHashMap<String, ObjectOpenHashSet<T>> expandedTagToKeys = new Object2ReferenceOpenHashMap<>();
-			Object2ReferenceOpenHashMap<T, ObjectOpenHashSet<String>> expandedKeyToTags = new Object2ReferenceOpenHashMap<>();
+		private ExpandedMaps<T> expandMaps() {
+			if (tagInclusions.isEmpty()) {
+				return buildDirectMaps();
+			}
 
-			for (var entry : tagToKeys.object2ReferenceEntrySet()) {
+			Object2ObjectOpenHashMap<String, ObjectOpenHashSet<T>> workingTagToKeys = new Object2ObjectOpenHashMap<>(
+					tagToKeys.size() + tagInclusions.size());
+			Object2ObjectOpenHashMap<T, ObjectOpenHashSet<String>> workingKeyToTags = new Object2ObjectOpenHashMap<>(
+					keyToTags.size());
+
+			for (var entry : tagToKeys.object2ObjectEntrySet()) {
 				var tag = entry.getKey();
 				var keys = entry.getValue();
-				expandedTagToKeys.put(tag, new ObjectOpenHashSet<>(keys));
+				workingTagToKeys.put(tag, new ObjectOpenHashSet<>(keys));
 
 				for (T key : keys) {
-					expandedKeyToTags.computeIfAbsent(key, k -> new ObjectOpenHashSet<>()).add(tag);
+					workingKeyToTags.computeIfAbsent(key, k -> new ObjectOpenHashSet<>()).add(tag);
 				}
 			}
 
-			processTagInclusionsIteratively(expandedTagToKeys, expandedKeyToTags);
+			for (var tag : tagInclusions.keySet()) {
+				workingTagToKeys.putIfAbsent(tag, new ObjectOpenHashSet<>());
+			}
 
+			processInclusions(workingTagToKeys, workingKeyToTags);
+			return build(workingTagToKeys, workingKeyToTags);
+		}
+
+		private ExpandedMaps<T> buildDirectMaps() {
 			ObjectOpenHashSet<String> allTags = new ObjectOpenHashSet<>();
 			allTags.addAll(tagToKeys.keySet());
-			allTags.addAll(tagInclusions.keySet());
 
 			ImmutableMap.Builder<String, ImmutableSet<T>> tagToKeysBuilder = ImmutableMap.builder();
-			for (var entry : expandedTagToKeys.object2ReferenceEntrySet()) {
+			ImmutableMap.Builder<T, ImmutableSet<String>> keyToTagsBuilder = ImmutableMap.builder();
+
+			for (var entry : tagToKeys.object2ObjectEntrySet()) {
 				if (!entry.getValue().isEmpty()) {
 					tagToKeysBuilder.put(entry.getKey(), ImmutableSet.copyOf(entry.getValue()));
 				}
 			}
 
-			ImmutableMap.Builder<T, ImmutableSet<String>> keyToTagsBuilder = ImmutableMap.builder();
-			for (var entry : expandedKeyToTags.object2ReferenceEntrySet()) {
+			for (var entry : keyToTags.object2ObjectEntrySet()) {
 				keyToTagsBuilder.put(entry.getKey(), ImmutableSet.copyOf(entry.getValue()));
 			}
 
 			return new ExpandedMaps<>(tagToKeysBuilder.build(), keyToTagsBuilder.build(), ImmutableSet.copyOf(allTags));
 		}
 
-		private void processTagInclusionsIteratively(
-				Object2ReferenceOpenHashMap<String, ObjectOpenHashSet<T>> expandedTagToKeys,
-				Object2ReferenceOpenHashMap<T, ObjectOpenHashSet<String>> expandedKeyToTags) {
+		private void processInclusions(Object2ObjectOpenHashMap<String, ObjectOpenHashSet<T>> workingTagToKeys,
+				Object2ObjectOpenHashMap<T, ObjectOpenHashSet<String>> workingKeyToTags) {
 
-			Map<String, ProcessingState> state = new HashMap<>();
+			Object2IntOpenHashMap<String> inDegree = new Object2IntOpenHashMap<>();
+			inDegree.defaultReturnValue(0);
 
-			for (var tag : tagToKeys.keySet()) {
-				state.put(tag, ProcessingState.UNPROCESSED);
+			Object2ObjectOpenHashMap<String, ObjectOpenHashSet<String>> adjacency = new Object2ObjectOpenHashMap<>();
+
+			for (var tag : workingTagToKeys.keySet()) {
+				inDegree.put(tag, 0);
+				adjacency.put(tag, new ObjectOpenHashSet<>());
 			}
-			for (var tag : tagInclusions.keySet()) {
-				state.putIfAbsent(tag, ProcessingState.UNPROCESSED);
-			}
 
-			for (var tag : state.keySet()) {
-				if (state.get(tag) == ProcessingState.UNPROCESSED) {
-					processTagInclusionIteratively(tag, state, expandedTagToKeys, expandedKeyToTags);
-				}
-			}
-		}
+			for (var entry : tagInclusions.object2ObjectEntrySet()) {
+				var tag = entry.getKey();
+				var dependencies = entry.getValue();
 
-		private void processTagInclusionIteratively(String startTag, Map<String, ProcessingState> state,
-				Object2ReferenceOpenHashMap<String, ObjectOpenHashSet<T>> expandedTagToKeys,
-				Object2ReferenceOpenHashMap<T, ObjectOpenHashSet<String>> expandedKeyToTags) {
-
-			Deque<ProcessingFrame> stack = new ArrayDeque<>();
-			stack.push(new ProcessingFrame(startTag, null));
-
-			while (!stack.isEmpty()) {
-				var frame = stack.peek();
-				var currentTag = frame.tag();
-
-				var currentState = state.getOrDefault(currentTag, ProcessingState.UNPROCESSED);
-
-				if (currentState == ProcessingState.PROCESSED) {
-					stack.pop();
-					if (frame.parentTag() != null) {
-						inheritKeysFromTag(frame.parentTag(), currentTag, expandedTagToKeys, expandedKeyToTags);
-					}
+				if (!adjacency.containsKey(tag)) {
 					continue;
 				}
 
-				if (currentState == ProcessingState.PROCESSING) {
-					state.put(currentTag, ProcessingState.PROCESSED);
-					stack.pop();
-					if (frame.parentTag() != null) {
-						inheritKeysFromTag(frame.parentTag(), currentTag, expandedTagToKeys, expandedKeyToTags);
+				for (var dep : dependencies) {
+					if (adjacency.containsKey(dep)) {
+						adjacency.get(dep).add(tag);
+						inDegree.addTo(tag, 1);
 					}
-					continue;
 				}
+			}
 
-				state.put(currentTag, ProcessingState.PROCESSING);
+			ObjectArrayFIFOQueue<String> queue = new ObjectArrayFIFOQueue<>();
+			for (var entry : inDegree.object2IntEntrySet()) {
+				if (entry.getIntValue() == 0) {
+					queue.enqueue(entry.getKey());
+				}
+			}
 
-				var dependencies = tagInclusions.get(currentTag);
-				if (dependencies != null && !dependencies.isEmpty()) {
-					for (var dependency : dependencies) {
-						if (dependency.equals(currentTag)) {
-							continue;
-						}
+			ObjectArrayList<String> topologicalOrder = new ObjectArrayList<>();
+			while (!queue.isEmpty()) {
+				var current = queue.dequeue();
+				topologicalOrder.add(current);
 
-						state.putIfAbsent(dependency, ProcessingState.UNPROCESSED);
-
-						if (state.get(dependency) == ProcessingState.PROCESSING) {
-							continue;
-						}
-
-						stack.push(new ProcessingFrame(dependency, currentTag));
+				for (var neighbor : adjacency.get(current)) {
+					int newDegree = inDegree.getInt(neighbor) - 1;
+					inDegree.put(neighbor, newDegree);
+					if (newDegree == 0) {
+						queue.enqueue(neighbor);
 					}
-				} else {
-					state.put(currentTag, ProcessingState.PROCESSED);
-					stack.pop();
+				}
+			}
 
-					if (frame.parentTag() != null) {
-						inheritKeysFromTag(frame.parentTag(), currentTag, expandedTagToKeys, expandedKeyToTags);
+			for (var tag : topologicalOrder) {
+				var dependencies = tagInclusions.get(tag);
+				if (dependencies != null) {
+					var currentKeys = workingTagToKeys.get(tag);
+
+					for (var dep : dependencies) {
+						var depKeys = workingTagToKeys.get(dep);
+						if (depKeys != null && !depKeys.isEmpty()) {
+							for (T key : depKeys) {
+								if (currentKeys.add(key)) {
+									workingKeyToTags.computeIfAbsent(key, k -> new ObjectOpenHashSet<>()).add(tag);
+								}
+							}
+						}
 					}
 				}
 			}
 		}
 
-		private void inheritKeysFromTag(String targetTag, String sourceTag,
-				Object2ReferenceOpenHashMap<String, ObjectOpenHashSet<T>> expandedTagToKeys,
-				Object2ReferenceOpenHashMap<T, ObjectOpenHashSet<String>> expandedKeyToTags) {
+		private ExpandedMaps<T> build(Object2ObjectOpenHashMap<String, ObjectOpenHashSet<T>> workingTagToKeys,
+				Object2ObjectOpenHashMap<T, ObjectOpenHashSet<String>> workingKeyToTags) {
 
-			var sourceKeys = expandedTagToKeys.get(sourceTag);
-			if (sourceKeys == null || sourceKeys.isEmpty()) {
-				return;
+			ImmutableMap.Builder<String, ImmutableSet<T>> tagToKeysBuilder = ImmutableMap.builder();
+			ImmutableMap.Builder<T, ImmutableSet<String>> keyToTagsBuilder = ImmutableMap.builder();
+
+			ObjectOpenHashSet<String> allTags = new ObjectOpenHashSet<>();
+
+			for (var entry : workingTagToKeys.object2ObjectEntrySet()) {
+				if (!entry.getValue().isEmpty()) {
+					tagToKeysBuilder.put(entry.getKey(), ImmutableSet.copyOf(entry.getValue()));
+				}
+				allTags.add(entry.getKey());
 			}
 
-			var targetKeys = expandedTagToKeys.computeIfAbsent(targetTag, k -> new ObjectOpenHashSet<>());
-
-			targetKeys.addAll(sourceKeys);
-
-			for (T key : sourceKeys) {
-				expandedKeyToTags.computeIfAbsent(key, k -> new ObjectOpenHashSet<>()).add(targetTag);
+			for (var entry : workingKeyToTags.object2ObjectEntrySet()) {
+				keyToTagsBuilder.put(entry.getKey(), ImmutableSet.copyOf(entry.getValue()));
 			}
-		}
 
-		@Desugar
-		private record ProcessingFrame(String tag, String parentTag) {
+			return new ExpandedMaps<>(tagToKeysBuilder.build(), keyToTagsBuilder.build(), ImmutableSet.copyOf(allTags));
 		}
 
 		@Desugar

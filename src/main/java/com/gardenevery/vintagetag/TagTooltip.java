@@ -20,7 +20,6 @@ import org.lwjgl.input.Keyboard;
 
 @SideOnly(Side.CLIENT)
 public class TagTooltip {
-
 	private static boolean cachedShiftState = false;
 	private static long lastCheckTime = 0;
 	private static final long CHECK_INTERVAL = 50;

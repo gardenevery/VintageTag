@@ -1,16 +1,14 @@
 package com.gardenevery.vintagetag;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.List;
-import java.util.ArrayList;
+import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
-
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 import net.minecraft.block.Block;
@@ -184,7 +182,7 @@ public final class TagHelper {
 				return Collections.emptyList();
 			}
 
-			List<ItemStack> stacks = new ArrayList<>(keys.size());
+			List<ItemStack> stacks = new ObjectArrayList<>(keys.size());
 			for (var key : keys) {
 				stacks.add(key.toStack());
 			}
@@ -228,7 +226,7 @@ public final class TagHelper {
 				return Collections.emptyList();
 			}
 
-			List<ItemStack> stacks = new ArrayList<>(keys.size());
+			List<ItemStack> stacks = new ObjectArrayList<>(keys.size());
 			for (var key : keys) {
 				stacks.add(key.toStack());
 			}
@@ -257,24 +255,11 @@ public final class TagHelper {
 		 * @return An unmodifiable map of tag name to immutable set of ItemStacks
 		 */
 		@Nonnull
-		public ImmutableMap<String, ImmutableSet<ItemStack>> allEntries() {
-			ImmutableMap<String, ImmutableSet<ItemKey>> keyMap = TagManager.item().getAllEntries();
-			if (keyMap.isEmpty()) {
-				return ImmutableMap.of();
-			}
+		public Map<String, Set<ItemStack>> allEntries() {
+			var keyMap = TagManager.item().getAllEntries();
 
-			ImmutableMap.Builder<String, ImmutableSet<ItemStack>> builder = ImmutableMap.builder();
-
-			for (Map.Entry<String, ImmutableSet<ItemKey>> entry : keyMap.entrySet()) {
-				var keys = entry.getValue();
-				ImmutableSet.Builder<ItemStack> itemStackBuilder = ImmutableSet.builder();
-
-				for (var key : keys) {
-					itemStackBuilder.add(key.toStack());
-				}
-				builder.put(entry.getKey(), itemStackBuilder.build());
-			}
-			return builder.build();
+			return keyMap.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
+					entry -> entry.getValue().stream().map(ItemKey::toStack).collect(Collectors.toSet())));
 		}
 
 		/**
@@ -397,6 +382,18 @@ public final class TagHelper {
 		}
 
 		/**
+		 * Get all tags associated with the specified Fluid
+		 *
+		 * @param fluid
+		 *            The Fluid to query, can be null
+		 * @return An unmodifiable set of tag names, empty if fluid is null
+		 */
+		@Nonnull
+		public Set<String> tags(@Nullable Fluid fluid) {
+			return (fluid == null) ? Collections.emptySet() : TagManager.fluid().getTags(fluid);
+		}
+
+		/**
 		 * Get all tags associated with the specified FluidStack
 		 *
 		 * @param stack
@@ -409,6 +406,18 @@ public final class TagHelper {
 			return (stack == null || stack.getFluid() == null)
 					? Collections.emptySet()
 					: TagManager.fluid().getTags(stack.getFluid());
+		}
+
+		/**
+		 * Get all tags associated with the specified Fluid as a List
+		 *
+		 * @param fluid
+		 *            The Fluid to query, can be null
+		 * @return An unmodifiable list of tag names, empty if fluid is null
+		 */
+		@Nonnull
+		public List<String> tagsList(@Nullable Fluid fluid) {
+			return (fluid == null) ? Collections.emptyList() : TagManager.fluid().getTagsList(fluid);
 		}
 
 		/**
@@ -427,16 +436,6 @@ public final class TagHelper {
 		}
 
 		/**
-		 * Get all tags defined for fluids as a List
-		 *
-		 * @return An unmodifiable list of all fluid tag names
-		 */
-		@Nonnull
-		public List<String> allTagsList() {
-			return TagManager.fluid().getAllTagsList();
-		}
-
-		/**
 		 * Get all tags defined for fluids
 		 *
 		 * @return An unmodifiable set of all fluid tag names
@@ -447,114 +446,89 @@ public final class TagHelper {
 		}
 
 		/**
-		 * Get all FluidStacks associated with the specified tag name as a List
+		 * Get all tags defined for fluids as a List
 		 *
-		 * @param tagName
-		 *            The tag name to query, can be null
-		 * @return An unmodifiable list of FluidStacks (1000mb each), empty if tagName
-		 *         is null or empty
+		 * @return An unmodifiable list of all fluid tag names
 		 */
 		@Nonnull
-		public List<FluidStack> keysList(@Nullable String tagName) {
-			if (tagInvalid(tagName)) {
-				return Collections.emptyList();
-			}
-
-			var keys = TagManager.fluid().getKeysList(tagName);
-			if (keys.isEmpty()) {
-				return Collections.emptyList();
-			}
-
-			List<FluidStack> stacks = new ArrayList<>(keys.size());
-			for (var key : keys) {
-				stacks.add(new FluidStack(key, 1000));
-			}
-			return Collections.unmodifiableList(stacks);
+		public List<String> allTagsList() {
+			return TagManager.fluid().getAllTagsList();
 		}
 
 		/**
-		 * Get all FluidStacks associated with the specified tag name
+		 * Get all Fluids that have the given tag
 		 *
 		 * @param tagName
-		 *            The tag name to query, can be null
-		 * @return An unmodifiable set of FluidStacks (1000mb each), empty if tagName is
-		 *         null or empty
+		 *            The tag name to check for, can be null
+		 * @return An unmodifiable set of Fluids, empty if tagName is null or invalid
 		 */
 		@Nonnull
-		public Set<FluidStack> keys(@Nullable String tagName) {
+		public Set<Fluid> keys(@Nullable String tagName) {
 			if (tagInvalid(tagName)) {
 				return Collections.emptySet();
 			}
-
-			var keys = TagManager.fluid().getKeys(tagName);
-			Set<FluidStack> stacks = new ObjectOpenHashSet<>();
-
-			for (var key : keys) {
-				stacks.add(new FluidStack(key, 1000));
-			}
-			return stacks;
+			return TagManager.fluid().getKeys(tagName);
 		}
 
 		/**
-		 * Get all FluidStacks that have at least one tag as a List
+		 * Get all Fluids that have the given tag as a List
 		 *
-		 * @return An unmodifiable list of all tagged FluidStacks (1000mb each)
+		 * @param tagName
+		 *            The tag name to check for, can be null
+		 * @return An unmodifiable list of Fluids, empty if tagName is null or invalid
 		 */
 		@Nonnull
-		public List<FluidStack> allKeysList() {
-			var keys = TagManager.fluid().getAllKeysList();
-			if (keys.isEmpty()) {
+		public List<Fluid> keysList(@Nullable String tagName) {
+			if (tagInvalid(tagName)) {
 				return Collections.emptyList();
 			}
-
-			List<FluidStack> stacks = new ArrayList<>(keys.size());
-			for (var key : keys) {
-				stacks.add(new FluidStack(key, 1000));
-			}
-			return Collections.unmodifiableList(stacks);
+			return TagManager.fluid().getKeysList(tagName);
 		}
 
 		/**
-		 * Get all FluidStacks that have at least one tag
+		 * Get all Fluids that have at least one tag
 		 *
-		 * @return An unmodifiable set of all tagged FluidStacks (1000mb each)
+		 * @return An unmodifiable set of all tagged Fluids
 		 */
 		@Nonnull
-		public Set<FluidStack> allKeys() {
-			var keys = TagManager.fluid().getAllKeys();
-			Set<FluidStack> result = new ObjectOpenHashSet<>();
-
-			for (var key : keys) {
-				result.add(new FluidStack(key, 1000));
-			}
-			return result;
+		public Set<Fluid> allKeys() {
+			return TagManager.fluid().getAllKeys();
 		}
 
 		/**
-		 * Get all fluid tag entries with their associated FluidStacks
+		 * Get all Fluids that have at least one tag as a List
 		 *
-		 * @return An unmodifiable map of tag name to immutable set of FluidStacks
-		 *         (1000mb each)
+		 * @return An unmodifiable list of all tagged Fluids
 		 */
 		@Nonnull
-		public ImmutableMap<String, ImmutableSet<FluidStack>> allEntries() {
-			ImmutableMap<String, ImmutableSet<Fluid>> fluidMap = TagManager.fluid().getAllEntries();
-			if (fluidMap.isEmpty()) {
-				return ImmutableMap.of();
+		public List<Fluid> allKeysList() {
+			return TagManager.fluid().getAllKeysList();
+		}
+
+		/**
+		 * Get all fluid tag entries with their associated Fluids
+		 *
+		 * @return An unmodifiable map of tag name to immutable set of Fluids
+		 */
+		@Nonnull
+		public Map<String, Set<Fluid>> allEntries() {
+			return TagManager.fluid().getAllEntries();
+		}
+
+		/**
+		 * Check if the specified Fluid has the given tag
+		 *
+		 * @param fluid
+		 *            The Fluid to check, can be null
+		 * @param tagName
+		 *            The tag name to check for, can be null
+		 * @return true if fluid is not null, tagName is valid, and fluid has the tag
+		 */
+		public boolean hasTag(@Nullable Fluid fluid, @Nullable String tagName) {
+			if (fluid == null || tagInvalid(tagName)) {
+				return false;
 			}
-
-			ImmutableMap.Builder<String, ImmutableSet<FluidStack>> builder = ImmutableMap.builder();
-
-			for (Map.Entry<String, ImmutableSet<Fluid>> entry : fluidMap.entrySet()) {
-				var fluids = entry.getValue();
-				ImmutableSet.Builder<FluidStack> fluidStackBuilder = ImmutableSet.builder();
-
-				for (var fluid : fluids) {
-					fluidStackBuilder.add(new FluidStack(fluid, 1000));
-				}
-				builder.put(entry.getKey(), fluidStackBuilder.build());
-			}
-			return builder.build();
+			return TagManager.fluid().hasTag(fluid, tagName);
 		}
 
 		/**
@@ -575,6 +549,23 @@ public final class TagHelper {
 		}
 
 		/**
+		 * Check if the specified Fluid has any of the given tags
+		 *
+		 * @param fluid
+		 *            The Fluid to check, can be null
+		 * @param tagNames
+		 *            The tag names to check for, can be null or empty
+		 * @return true if fluid is not null, tagNames are valid, and fluid has any of
+		 *         the tags
+		 */
+		public boolean hasAnyTag(@Nullable Fluid fluid, @Nullable String... tagNames) {
+			if (fluid == null || tagInvalid(tagNames)) {
+				return false;
+			}
+			return TagManager.fluid().hasAnyTag(fluid, tagNames);
+		}
+
+		/**
 		 * Check if the specified FluidStack has any of the given tags
 		 *
 		 * @param stack
@@ -592,6 +583,23 @@ public final class TagHelper {
 		}
 
 		/**
+		 * Check if the specified Fluid has all the given tags
+		 *
+		 * @param fluid
+		 *            The Fluid to check, can be null
+		 * @param tagNames
+		 *            The tag names to check for, can be null or empty
+		 * @return true if fluid is not null, tagNames are valid, and fluid has all the
+		 *         tags
+		 */
+		public boolean hasAllTags(@Nullable Fluid fluid, @Nullable String... tagNames) {
+			if (fluid == null || tagInvalid(tagNames)) {
+				return false;
+			}
+			return TagManager.fluid().hasAllTags(fluid, tagNames);
+		}
+
+		/**
 		 * Check if the specified FluidStack has all the given tags
 		 *
 		 * @param stack
@@ -606,6 +614,20 @@ public final class TagHelper {
 				return false;
 			}
 			return TagManager.fluid().hasAllTags(stack.getFluid(), tagNames);
+		}
+
+		/**
+		 * Check if the specified Fluid is tagged
+		 *
+		 * @param fluid
+		 *            The Fluid to check, can be null
+		 * @return true if fluid is not null, and fluid is tagged
+		 */
+		public boolean isTagged(@Nullable Fluid fluid) {
+			if (fluid == null) {
+				return false;
+			}
+			return TagManager.fluid().isTagged(fluid);
 		}
 
 		/**
@@ -802,7 +824,7 @@ public final class TagHelper {
 		 * @return An unmodifiable map of tag name to immutable set of Blocks
 		 */
 		@Nonnull
-		public ImmutableMap<String, ImmutableSet<Block>> allEntries() {
+		public Map<String, Set<Block>> allEntries() {
 			return TagManager.block().getAllEntries();
 		}
 

@@ -1,24 +1,18 @@
 package com.gardenevery.vintagetag;
 
-import java.util.Arrays;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import javax.annotation.Nonnull;
-
 import com.github.bsideup.jabel.Desugar;
-
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.TextComponentTranslation;
 
-public class TagCommand extends CommandBase {
+import javax.annotation.Nonnull;
+import java.util.*;
 
+public class TagCommand extends CommandBase {
 	public final CommandRegistry registry = new CommandRegistry();
 
 	public TagCommand() {
@@ -116,8 +110,8 @@ public class TagCommand extends CommandBase {
 	}
 
 	public class CommandRegistry {
-		private final Map<String, RegisteredCommand> commands = new HashMap<>();
-		private final List<String> commandNames = new ArrayList<>();
+		private final Map<String, RegisteredCommand> commands = new Object2ObjectOpenHashMap<>();
+		private final List<String> commandNames = new ObjectArrayList<>();
 
 		public void register(String name, int level, CommandExecutor executor) {
 			var cmd = new RegisteredCommand(name, level, executor);

@@ -3,7 +3,6 @@ package com.gardenevery.vintagetag;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import it.unimi.dsi.fastutil.objects.ObjectSet;
 
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.item.Item;
@@ -12,9 +11,8 @@ import net.minecraft.util.NonNullList;
 import net.minecraftforge.oredict.OreDictionary;
 
 final class OreDictSync {
-
 	private static boolean hasSynced = false;
-	private static final Object2ObjectMap<String, ObjectSet<ItemKey>> ORE_CACHE = new Object2ObjectOpenHashMap<>();
+	private static final Object2ObjectMap<String, ObjectOpenHashSet<ItemKey>> ORE_CACHE = new Object2ObjectOpenHashMap<>();
 
 	public static void sync() {
 		if (hasSynced) {
@@ -42,7 +40,7 @@ final class OreDictSync {
 
 	private static void syncSingleOreDictionaryTag(String oreName) {
 		var ores = OreDictionary.getOres(oreName, false);
-		ObjectSet<ItemKey> keys = new ObjectOpenHashSet<>();
+		ObjectOpenHashSet<ItemKey> keys = new ObjectOpenHashSet<>();
 
 		for (var stack : ores) {
 			if (stack == null || stack.isEmpty()) {
@@ -61,7 +59,7 @@ final class OreDictSync {
 		}
 	}
 
-	private static void processItemStack(ItemStack stack, ObjectSet<ItemKey> keys) {
+	private static void processItemStack(ItemStack stack, ObjectOpenHashSet<ItemKey> keys) {
 		if (stack.getMetadata() == OreDictionary.WILDCARD_VALUE && stack.getItem().getHasSubtypes()) {
 			var wildcardKeys = syncWildcardEntry(stack.getItem());
 			keys.addAll(wildcardKeys);
@@ -75,7 +73,7 @@ final class OreDictSync {
 		int totalTags = ORE_CACHE.size();
 		int totalItems = 0;
 
-		for (Object2ObjectMap.Entry<String, ObjectSet<ItemKey>> entry : ORE_CACHE.object2ObjectEntrySet()) {
+		for (Object2ObjectMap.Entry<String, ObjectOpenHashSet<ItemKey>> entry : ORE_CACHE.object2ObjectEntrySet()) {
 			TagManager.registerItem(entry.getValue(), entry.getKey());
 			totalItems += entry.getValue().size();
 		}
@@ -85,11 +83,11 @@ final class OreDictSync {
 		}
 	}
 
-	private static ObjectSet<ItemKey> syncWildcardEntry(Item item) {
+	private static ObjectOpenHashSet<ItemKey> syncWildcardEntry(Item item) {
 		NonNullList<ItemStack> stacks = NonNullList.create();
 		item.getSubItems(CreativeTabs.SEARCH, stacks);
 
-		ObjectSet<ItemKey> keys = new ObjectOpenHashSet<>(stacks.size());
+		ObjectOpenHashSet<ItemKey> keys = new ObjectOpenHashSet<>(stacks.size());
 
 		for (var stack : stacks) {
 			keys.add(ItemKey.of(stack));

@@ -17,8 +17,6 @@ record ItemKey(Item item, int metadata) {
 
 	@Nonnull
 	public static ItemKey of(@Nonnull ItemStack stack) {
-		Objects.requireNonNull(stack, "stack must not be null");
-
 		return new ItemKey(stack.getItem(), stack.getHasSubtypes() ? stack.getMetadata() : 0);
 	}
 

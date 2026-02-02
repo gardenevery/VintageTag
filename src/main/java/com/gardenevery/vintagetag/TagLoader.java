@@ -11,7 +11,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
@@ -31,6 +30,7 @@ import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
+
 import org.apache.commons.io.IOUtils;
 
 /**
@@ -104,12 +104,11 @@ import org.apache.commons.io.IOUtils;
 // ]
 // }
 final class TagLoader {
-
 	private static final Gson GSON = new Gson();
 	private static boolean isInitialized = false;
 	private static final Pattern VALID_FILENAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]+\\.json$",
 			Pattern.CASE_INSENSITIVE);
-	private static final Map<File, List<JarTagData>> JAR_TAG_CACHED = new Object2ObjectOpenHashMap<>();
+	private static final Object2ObjectOpenHashMap<File, List<JarTagData>> JAR_TAG_CACHED = new Object2ObjectOpenHashMap<>();
 
 	private enum Operation {
 		ADD, REPLACE
