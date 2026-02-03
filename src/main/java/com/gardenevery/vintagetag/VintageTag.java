@@ -23,6 +23,10 @@ public class VintageTag {
 
 	@Mod.EventHandler
 	public void postInit(FMLPostInitializationEvent event) {
+		TagLoader.scanModTags();
+		TagManager.copyModTags();
+		TagManager.clear();
+
 		if (TagConfig.enableTooltip && event.getSide() == Side.CLIENT) {
 			var tooltip = new TagTooltip();
 			MinecraftForge.EVENT_BUS.register(tooltip);
@@ -31,22 +35,63 @@ public class VintageTag {
 
 	@Mod.EventHandler
 	public void onFMLoadComplete(FMLLoadCompleteEvent event) {
-		boolean hasTasks = false;
+		boolean hasTasks;
 
-		if (TagConfig.enableOreSync) {
-			OreDictSync.sync();
-			hasTasks = true;
-		}
+		OreDictSync.sync();
+		TagManager.copyOreTags();
+		TagLoader.scanModTags();
+		TagManager.copyOreAndModTags();
+		TagManager.clear();
 
-		if (TagConfig.enableModScanner) {
-			TagLoader.scanModTags();
-			hasTasks = true;
-		}
+		int tasks = 0;
+		if (TagConfig.enableOreSync)
+			tasks |= 1;
+		if (TagConfig.enableModScanner)
+			tasks |= 2;
+		if (TagConfig.enableConfigScanner)
+			tasks |= 4;
 
-		if (TagConfig.enableConfigScanner) {
-			TagLoader.scanConfigTags();
-			hasTasks = true;
-		}
+		hasTasks = switch (tasks) {
+			case 1 -> {
+				TagManager.applyOreTags();
+				yield true;
+			}
+
+			case 2 -> {
+				TagManager.applyModTags();
+				yield true;
+			}
+
+			case 3 -> {
+				TagManager.applyOreAndModTags();
+				yield true;
+			}
+
+			case 4 -> {
+				TagLoader.scanConfigTags();
+				yield true;
+			}
+
+			case 5 -> {
+				TagManager.applyOreTags();
+				TagLoader.scanConfigTags();
+				yield true;
+			}
+
+			case 6 -> {
+				TagManager.applyModTags();
+				TagLoader.scanConfigTags();
+				yield true;
+			}
+
+			case 7 -> {
+				TagManager.applyOreAndModTags();
+				TagLoader.scanConfigTags();
+				yield true;
+			}
+			default -> false;
+
+		};
 
 		if (hasTasks) {
 			TagManager.bake();

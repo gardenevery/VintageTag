@@ -1,16 +1,22 @@
 package com.gardenevery.vintagetag;
 
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import javax.annotation.Nonnull;
+
 import com.github.bsideup.jabel.Desugar;
+
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.TextComponentTranslation;
-
-import javax.annotation.Nonnull;
-import java.util.*;
 
 public class TagCommand extends CommandBase {
 	public final CommandRegistry registry = new CommandRegistry();
@@ -83,16 +89,48 @@ public class TagCommand extends CommandBase {
 	public void executeReload(MinecraftServer server, ICommandSender sender, String[] args) {
 		long startTime = System.currentTimeMillis();
 
-		if (TagConfig.enableOreSync) {
-			OreDictSync.sync();
-		}
+		int tasks = 0;
+		if (TagConfig.enableOreSync)
+			tasks |= 1;
+		if (TagConfig.enableModScanner)
+			tasks |= 2;
+		if (TagConfig.enableConfigScanner)
+			tasks |= 4;
 
-		if (TagConfig.enableModScanner) {
-			TagLoader.scanModTags();
-		}
+		switch (tasks) {
+			case 0 :
+				break;
 
-		if (TagConfig.enableConfigScanner) {
-			TagLoader.scanConfigTags();
+			case 1 :
+				TagManager.applyOreTags();
+				break;
+
+			case 2 :
+				TagManager.applyModTags();
+				break;
+
+			case 3 :
+				TagManager.applyOreAndModTags();
+				break;
+
+			case 4 :
+				TagLoader.scanConfigTags();
+				break;
+
+			case 5 :
+				TagManager.applyOreTags();
+				TagLoader.scanConfigTags();
+				break;
+
+			case 6 :
+				TagManager.applyModTags();
+				TagLoader.scanConfigTags();
+				break;
+
+			case 7 :
+				TagManager.applyOreAndModTags();
+				TagLoader.scanConfigTags();
+				break;
 		}
 
 		TagManager.bake();
