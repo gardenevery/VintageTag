@@ -190,31 +190,6 @@ public final class TagHelper {
 		}
 
 		/**
-		 * Get all ItemStacks associated with the specified tag name as a NonNullList
-		 *
-		 * @param tagName
-		 *            The tag name to query, can be null
-		 * @return A NonNullList of ItemStacks, empty if tagName is null or empty
-		 */
-		@Nonnull
-		public NonNullList<ItemStack> keysNonNullList(@Nullable String tagName) {
-			if (tagInvalid(tagName)) {
-				return EMPTY;
-			}
-
-			var keys = TagManager.item().getKeysList(tagName);
-			if (keys.isEmpty()) {
-				return EMPTY;
-			}
-
-			NonNullList<ItemStack> stacks = NonNullList.create();
-			for (var key : keys) {
-				stacks.add(key.toStack());
-			}
-			return stacks;
-		}
-
-		/**
 		 * Get all ItemStacks that have at least one tag as a List
 		 *
 		 * @return An unmodifiable list of all tagged ItemStacks
