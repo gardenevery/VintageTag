@@ -14,7 +14,6 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.NonNullList;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
 
@@ -89,7 +88,6 @@ public final class TagHelper {
 	public static final class ItemTagHelper {
 
 		private static final ItemTagHelper INSTANCE = new ItemTagHelper();
-		private static final NonNullList<ItemStack> EMPTY = NonNullList.create();
 
 		private ItemTagHelper() {
 		}
