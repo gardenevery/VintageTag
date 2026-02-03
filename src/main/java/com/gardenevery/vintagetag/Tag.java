@@ -3,6 +3,7 @@ package com.gardenevery.vintagetag;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 import javax.annotation.Nonnull;
 
 import com.github.bsideup.jabel.Desugar;
@@ -147,6 +148,59 @@ final class Tag<T> {
 		return count;
 	}
 
+	private abstract static class MapBuilder<T> {
+		abstract void processTagEntry(String tag, ObjectOpenHashSet<T> keys);
+		abstract void processKeyEntry(T key, ObjectOpenHashSet<String> tags);
+		abstract void collectTag(String tag);
+
+		MutableTagContainer.ExpandedMaps<T> buildFrom(Object2ObjectOpenHashMap<String, ObjectOpenHashSet<T>> tagToKeys,
+				Object2ObjectOpenHashMap<T, ObjectOpenHashSet<String>> keyToTags) {
+
+			for (var entry : tagToKeys.object2ObjectEntrySet()) {
+				var keySet = entry.getValue();
+				if (!keySet.isEmpty()) {
+					processTagEntry(entry.getKey(), keySet);
+				}
+				collectTag(entry.getKey());
+			}
+
+			for (var entry : keyToTags.object2ObjectEntrySet()) {
+				processKeyEntry(entry.getKey(), entry.getValue());
+			}
+
+			return buildResult();
+		}
+
+		abstract MutableTagContainer.ExpandedMaps<T> buildResult();
+	}
+
+	private static class ImmutableMapBuilder<T> extends MapBuilder<T> {
+		private final ImmutableMap.Builder<String, ImmutableSet<T>> tagToKeysBuilder = ImmutableMap.builder();
+		private final ImmutableMap.Builder<T, ImmutableSet<String>> keyToTagsBuilder = ImmutableMap.builder();
+		private final ImmutableSet.Builder<String> allTagsBuilder = ImmutableSet.builder();
+
+		@Override
+		void processTagEntry(String tag, ObjectOpenHashSet<T> keys) {
+			tagToKeysBuilder.put(tag, ImmutableSet.copyOf(keys));
+		}
+
+		@Override
+		void processKeyEntry(T key, ObjectOpenHashSet<String> tags) {
+			keyToTagsBuilder.put(key, ImmutableSet.copyOf(tags));
+		}
+
+		@Override
+		void collectTag(String tag) {
+			allTagsBuilder.add(tag);
+		}
+
+		@Override
+		MutableTagContainer.ExpandedMaps<T> buildResult() {
+			return new MutableTagContainer.ExpandedMaps<>(tagToKeysBuilder.build(), keyToTagsBuilder.build(),
+					allTagsBuilder.build());
+		}
+	}
+
 	static final class MutableTagContainer<T> {
 		private final Object2ObjectOpenHashMap<String, ObjectOpenHashSet<T>> tagToKeys;
 		private final Object2ObjectOpenHashMap<String, ObjectOpenHashSet<String>> tagInclusions;
@@ -217,43 +271,36 @@ final class Tag<T> {
 		}
 
 		private Tag<T> buildDirect() {
-			ImmutableMap.Builder<String, ImmutableSet<T>> tagToKeysBuilder = ImmutableMap.builder();
-			ImmutableMap.Builder<T, ImmutableSet<String>> keyToTagsBuilder = ImmutableMap.builder();
-
-			var allTags = ImmutableSet.copyOf(tagToKeys.keySet());
-
-			for (var entry : tagToKeys.object2ObjectEntrySet()) {
-				if (!entry.getValue().isEmpty()) {
-					tagToKeysBuilder.put(entry.getKey(), ImmutableSet.copyOf(entry.getValue()));
-				}
-			}
-
-			for (var entry : keyToTags.object2ObjectEntrySet()) {
-				keyToTagsBuilder.put(entry.getKey(), ImmutableSet.copyOf(entry.getValue()));
-			}
-
-			return new Tag<>(tagToKeysBuilder.build(), keyToTagsBuilder.build(), allTags);
+			var result = buildMapsFrom(tagToKeys, keyToTags);
+			return new Tag<>(result.tagToKeys(), result.keyToTags(), result.allTags());
 		}
 
-		public void copyFrom(MutableTagContainer<T> other) {
-			for (var entry : other.tagToKeys.object2ObjectEntrySet()) {
-				var keys = entry.getValue();
-				if (!keys.isEmpty()) {
-					this.tagToKeys.put(entry.getKey(), new ObjectOpenHashSet<>(keys));
+		private ExpandedMaps<T> buildDirectMaps() {
+			return buildMapsFrom(tagToKeys, keyToTags);
+		}
+
+		private static <K, V> void copyMap(Object2ObjectOpenHashMap<K, ObjectOpenHashSet<V>> source,
+				Object2ObjectOpenHashMap<K, ObjectOpenHashSet<V>> target, Predicate<ObjectOpenHashSet<V>> filter) {
+
+			for (var entry : source.object2ObjectEntrySet()) {
+				var value = entry.getValue();
+				if (filter.test(value)) {
+					target.put(entry.getKey(), new ObjectOpenHashSet<>(value));
 				}
 			}
+		}
 
-			for (var entry : other.keyToTags.object2ObjectEntrySet()) {
-				this.keyToTags.put(entry.getKey(), new ObjectOpenHashSet<>(entry.getValue()));
-			}
+		private ExpandedMaps<T> buildMapsFrom(Object2ObjectOpenHashMap<String, ObjectOpenHashSet<T>> tagToKeys,
+				Object2ObjectOpenHashMap<T, ObjectOpenHashSet<String>> keyToTags) {
 
-			for (var entry : other.tagInclusions.object2ObjectEntrySet()) {
-				var inclusions = entry.getValue();
-				if (!inclusions.isEmpty()) {
-					this.tagInclusions.put(entry.getKey(), new ObjectOpenHashSet<>(inclusions));
-				}
-			}
-			needsExpansion = other.needsExpansion;
+			return new ImmutableMapBuilder<T>().buildFrom(tagToKeys, keyToTags);
+		}
+
+		public void copyTo(MutableTagContainer<T> other) {
+			copyMap(this.tagToKeys, other.tagToKeys, set -> !set.isEmpty());
+			copyMap(this.keyToTags, other.keyToTags, set -> true);
+			copyMap(this.tagInclusions, other.tagInclusions, set -> !set.isEmpty());
+			other.needsExpansion = this.needsExpansion;
 		}
 
 		public void clear() {
@@ -268,49 +315,34 @@ final class Tag<T> {
 				return buildDirectMaps();
 			}
 
+			var workingMaps = createWorkingMaps();
+			processInclusionsOptimized(workingMaps.tagToKeys, workingMaps.keyToTags);
+			return buildMapsFrom(workingMaps.tagToKeys, workingMaps.keyToTags);
+		}
+
+		private WorkingMaps<T> createWorkingMaps() {
 			Object2ObjectOpenHashMap<String, ObjectOpenHashSet<T>> workingTagToKeys = new Object2ObjectOpenHashMap<>(
 					Math.max(tagToKeys.size() + tagInclusions.size(), 16));
 			Object2ObjectOpenHashMap<T, ObjectOpenHashSet<String>> workingKeyToTags = new Object2ObjectOpenHashMap<>(
 					Math.max(keyToTags.size(), 16));
 
-			for (var entry : tagToKeys.object2ObjectEntrySet()) {
-				var tag = entry.getKey();
-				var keys = entry.getValue();
-				if (!keys.isEmpty()) {
-					workingTagToKeys.put(tag, new ObjectOpenHashSet<>(keys));
-
-					for (T key : keys) {
-						workingKeyToTags.computeIfAbsent(key, k -> new ObjectOpenHashSet<>(4)).add(tag);
-					}
-				}
-			}
+			copyToWorkingMaps(workingTagToKeys, workingKeyToTags);
 
 			for (var tag : tagInclusions.keySet()) {
 				workingTagToKeys.putIfAbsent(tag, new ObjectOpenHashSet<>());
 			}
 
-			processInclusionsOptimized(workingTagToKeys, workingKeyToTags);
-
-			return buildImmutableMaps(workingTagToKeys, workingKeyToTags);
+			return new WorkingMaps<>(workingTagToKeys, workingKeyToTags);
 		}
 
-		private ExpandedMaps<T> buildDirectMaps() {
-			ImmutableMap.Builder<String, ImmutableSet<T>> tagToKeysBuilder = ImmutableMap.builder();
-			ImmutableMap.Builder<T, ImmutableSet<String>> keyToTagsBuilder = ImmutableMap.builder();
+		private void copyToWorkingMaps(Object2ObjectOpenHashMap<String, ObjectOpenHashSet<T>> workingTagToKeys,
+				Object2ObjectOpenHashMap<T, ObjectOpenHashSet<String>> workingKeyToTags) {
 
-			var allTags = ImmutableSet.copyOf(tagToKeys.keySet());
+			copyMap(this.tagToKeys, workingTagToKeys, set -> !set.isEmpty());
 
-			for (var entry : tagToKeys.object2ObjectEntrySet()) {
-				if (!entry.getValue().isEmpty()) {
-					tagToKeysBuilder.put(entry.getKey(), ImmutableSet.copyOf(entry.getValue()));
-				}
+			for (var entry : this.keyToTags.object2ObjectEntrySet()) {
+				workingKeyToTags.put(entry.getKey(), new ObjectOpenHashSet<>(entry.getValue()));
 			}
-
-			for (var entry : keyToTags.object2ObjectEntrySet()) {
-				keyToTagsBuilder.put(entry.getKey(), ImmutableSet.copyOf(entry.getValue()));
-			}
-
-			return new ExpandedMaps<>(tagToKeysBuilder.build(), keyToTagsBuilder.build(), allTags);
 		}
 
 		private void processInclusionsOptimized(Object2ObjectOpenHashMap<String, ObjectOpenHashSet<T>> workingTagToKeys,
@@ -391,27 +423,9 @@ final class Tag<T> {
 			}
 		}
 
-		private ExpandedMaps<T> buildImmutableMaps(
-				Object2ObjectOpenHashMap<String, ObjectOpenHashSet<T>> workingTagToKeys,
-				Object2ObjectOpenHashMap<T, ObjectOpenHashSet<String>> workingKeyToTags) {
-
-			ImmutableMap.Builder<String, ImmutableSet<T>> tagToKeysBuilder = ImmutableMap.builder();
-			ImmutableMap.Builder<T, ImmutableSet<String>> keyToTagsBuilder = ImmutableMap.builder();
-			ImmutableSet.Builder<String> allTagsBuilder = ImmutableSet.builder();
-
-			for (var entry : workingTagToKeys.object2ObjectEntrySet()) {
-				var keySet = entry.getValue();
-				if (!keySet.isEmpty()) {
-					tagToKeysBuilder.put(entry.getKey(), ImmutableSet.copyOf(keySet));
-				}
-				allTagsBuilder.add(entry.getKey());
-			}
-
-			for (var entry : workingKeyToTags.object2ObjectEntrySet()) {
-				keyToTagsBuilder.put(entry.getKey(), ImmutableSet.copyOf(entry.getValue()));
-			}
-
-			return new ExpandedMaps<>(tagToKeysBuilder.build(), keyToTagsBuilder.build(), allTagsBuilder.build());
+		@Desugar
+		private record WorkingMaps<T>(Object2ObjectOpenHashMap<String, ObjectOpenHashSet<T>> tagToKeys,
+				Object2ObjectOpenHashMap<T, ObjectOpenHashSet<String>> keyToTags) {
 		}
 
 		@Desugar
