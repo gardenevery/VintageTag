@@ -21,8 +21,6 @@ import com.github.bsideup.jabel.Desugar;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-
 import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
@@ -105,46 +103,28 @@ import org.apache.commons.io.IOUtils;
 // }
 final class TagLoader {
 	private static final Gson GSON = new Gson();
-	private static boolean isInitialized = false;
 	private static final Pattern VALID_FILENAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]+\\.json$",
 			Pattern.CASE_INSENSITIVE);
-	private static final Object2ObjectOpenHashMap<File, List<JarTagData>> JAR_TAG_CACHED = new Object2ObjectOpenHashMap<>();
 
 	private enum Operation {
 		ADD, REPLACE
 	}
 
 	public static void scanModTags() {
-		if (isInitialized) {
-			return;
-		}
-
 		for (var mod : Loader.instance().getModList()) {
 			var source = mod.getSource();
 			if (source == null || !source.isFile() || !source.getName().endsWith(".jar")) {
 				continue;
 			}
-			cacheJarTags(source, mod.getModId());
+			processJarTags(source);
 		}
-
-		JAR_TAG_CACHED.forEach((jarFile, tagList) -> {
-			for (var tagData : tagList) {
-				processTagJson(tagData.jsonObject(), tagData.tagName(), tagData.type());
-			}
-		});
-
-		isInitialized = true;
 	}
 
 	public static void scanConfigTags() {
 		scanConfigTagDirectory(Paths.get("config", "tags"));
 	}
 
-	private static void cacheJarTags(File jarFile, String modId) {
-		if (JAR_TAG_CACHED.containsKey(jarFile)) {
-			return;
-		}
-
+	private static void processJarTags(File jarFile) {
 		List<JarTagData> tagList = new ArrayList<>();
 
 		try (var zip = new ZipFile(jarFile)) {
@@ -156,7 +136,7 @@ final class TagLoader {
 					var name = entry.getName();
 
 					if (name.startsWith("data/tags/") && name.endsWith(".json")) {
-						processJarEntry(entry, modId, zip, tagList);
+						processJarEntry(entry, zip, tagList);
 					}
 				}
 			}
@@ -164,12 +144,12 @@ final class TagLoader {
 			TagLog.info("Failed to scan JAR file for tags: {}", jarFile.getName(), e);
 		}
 
-		if (!tagList.isEmpty()) {
-			JAR_TAG_CACHED.put(jarFile, tagList);
+		for (var tagData : tagList) {
+			processTagJson(tagData.jsonObject(), tagData.tagName(), tagData.type());
 		}
 	}
 
-	private static void processJarEntry(ZipEntry entry, String modId, ZipFile zip, List<JarTagData> tagList) {
+	private static void processJarEntry(ZipEntry entry, ZipFile zip, List<JarTagData> tagList) {
 		var entryName = entry.getName();
 		var parts = entryName.split("/");
 
@@ -198,7 +178,7 @@ final class TagLoader {
 			var jsonObject = GSON.fromJson(json, JsonObject.class);
 
 			if (jsonObject != null) {
-				tagList.add(new JarTagData(modId, tagName, tagType, jsonObject));
+				tagList.add(new JarTagData(tagName, tagType, jsonObject));
 			}
 		} catch (IOException e) {
 			TagLog.info("Failed to read tag entry from JAR: {}", entryName, e);
@@ -500,7 +480,7 @@ final class TagLoader {
 	}
 
 	@Desugar
-	private record JarTagData(String modId, String tagName, TagType type, JsonObject jsonObject) {
+	private record JarTagData(String tagName, TagType type, JsonObject jsonObject) {
 	}
 
 	@Desugar

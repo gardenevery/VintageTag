@@ -39,17 +39,17 @@ final class TagManager {
 		return BLOCK_TAG_SNAPSHOT;
 	}
 
-	public static void copyOreTags() {
+	public static void saveOreTags() {
 		ITEM_TAG_CONTAINER.copyTo(ORE_DICT_TAG_CACHE);
 	}
 
-	public static void copyModTags() {
+	public static void saveModTags() {
 		ITEM_TAG_CONTAINER.copyTo(MOD_ITEM_TAG_CACHE);
 		FLUID_TAG_CONTAINER.copyTo(MOD_FLUID_TAG_CACHE);
 		BLOCK_TAG_CONTAINER.copyTo(MOD_BLOCK_TAG_CACHE);
 	}
 
-	public static void copyOreAndModTags() {
+	public static void saveOreAndModTags() {
 		ITEM_TAG_CONTAINER.copyTo(ORE_DICT_AND_MOD_TAG_CACHE);
 	}
 

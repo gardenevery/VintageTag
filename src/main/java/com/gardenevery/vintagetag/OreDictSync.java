@@ -1,7 +1,5 @@
 package com.gardenevery.vintagetag;
 
-import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 import net.minecraft.creativetab.CreativeTabs;
@@ -11,34 +9,31 @@ import net.minecraft.util.NonNullList;
 import net.minecraftforge.oredict.OreDictionary;
 
 final class OreDictSync {
-	private static boolean hasSynced = false;
-	private static final Object2ObjectMap<String, ObjectOpenHashSet<ItemKey>> ORE_CACHE = new Object2ObjectOpenHashMap<>();
-
 	public static void sync() {
-		if (hasSynced) {
-			applyCachedTags(false);
-			return;
-		}
-
-		hasSynced = true;
 		syncAllOreDictionaryTags();
 	}
 
 	private static void syncAllOreDictionaryTags() {
 		var oreNames = OreDictionary.getOreNames();
+		int totalTags = 0;
+		int totalItems = 0;
 
 		for (var oreName : oreNames) {
 			if (oreName == null || oreName.isEmpty()) {
 				continue;
 			}
 
-			syncSingleOreDictionaryTag(oreName);
+			int itemsInTag = syncSingleOreDictionaryTag(oreName);
+			if (itemsInTag > 0) {
+				totalTags++;
+				totalItems += itemsInTag;
+			}
 		}
 
-		applyCachedTags(true);
+		TagLog.info("OreDictionary sync completed, {} tags, {} items", totalTags, totalItems);
 	}
 
-	private static void syncSingleOreDictionaryTag(String oreName) {
+	private static int syncSingleOreDictionaryTag(String oreName) {
 		var ores = OreDictionary.getOres(oreName, false);
 		ObjectOpenHashSet<ItemKey> keys = new ObjectOpenHashSet<>();
 
@@ -55,8 +50,11 @@ final class OreDictSync {
 		}
 
 		if (!keys.isEmpty()) {
-			ORE_CACHE.put(oreName, keys);
+			TagManager.registerItem(keys, oreName);
+			return keys.size();
 		}
+
+		return 0;
 	}
 
 	private static void processItemStack(ItemStack stack, ObjectOpenHashSet<ItemKey> keys) {
@@ -66,20 +64,6 @@ final class OreDictSync {
 		} else {
 			var key = ItemKey.of(stack);
 			keys.add(key);
-		}
-	}
-
-	private static void applyCachedTags(boolean showLog) {
-		int totalTags = ORE_CACHE.size();
-		int totalItems = 0;
-
-		for (Object2ObjectMap.Entry<String, ObjectOpenHashSet<ItemKey>> entry : ORE_CACHE.object2ObjectEntrySet()) {
-			TagManager.registerItem(entry.getValue(), entry.getKey());
-			totalItems += entry.getValue().size();
-		}
-
-		if (showLog) {
-			TagLog.info("OreDictionary sync completed, {} tags, {} items", totalTags, totalItems);
 		}
 	}
 

@@ -24,7 +24,7 @@ public class VintageTag {
 	@Mod.EventHandler
 	public void postInit(FMLPostInitializationEvent event) {
 		TagLoader.scanModTags();
-		TagManager.copyModTags();
+		TagManager.saveModTags();
 		TagManager.clear();
 
 		if (TagConfig.enableTooltip && event.getSide() == Side.CLIENT) {
@@ -38,9 +38,9 @@ public class VintageTag {
 		boolean hasTasks;
 
 		OreDictSync.sync();
-		TagManager.copyOreTags();
+		TagManager.saveOreTags();
 		TagLoader.scanModTags();
-		TagManager.copyOreAndModTags();
+		TagManager.saveOreAndModTags();
 		TagManager.clear();
 
 		int tasks = 0;
