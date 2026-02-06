@@ -1,7 +1,5 @@
 package com.gardenevery.vintagetag;
 
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 import javax.annotation.Nonnull;
@@ -10,7 +8,6 @@ import com.github.bsideup.jabel.Desugar;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Maps;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
@@ -38,25 +35,25 @@ final class Tag<T> {
 	}
 
 	@Nonnull
-	public Set<String> getTags(@Nonnull T key) {
+	public ImmutableSet<String> getTags(@Nonnull T key) {
 		var tags = keyToTags.get(key);
 		return tags == null ? ImmutableSet.of() : tags;
 	}
 
 	@Nonnull
-	public List<String> getTagsList(@Nonnull T key) {
+	public ImmutableList<String> getTagsList(@Nonnull T key) {
 		var tags = keyToTags.get(key);
 		return tags == null ? ImmutableList.of() : ImmutableList.copyOf(tags);
 	}
 
 	@Nonnull
-	public Set<T> getKeys(@Nonnull String tagName) {
+	public ImmutableSet<T> getKeys(@Nonnull String tagName) {
 		var keys = tagToKeys.get(tagName);
 		return keys == null ? ImmutableSet.of() : keys;
 	}
 
 	@Nonnull
-	public List<T> getKeysList(@Nonnull String tagName) {
+	public ImmutableList<T> getKeysList(@Nonnull String tagName) {
 		var keys = tagToKeys.get(tagName);
 		return keys == null ? ImmutableList.of() : ImmutableList.copyOf(keys);
 	}
@@ -67,7 +64,7 @@ final class Tag<T> {
 	}
 
 	@Nonnull
-	public List<String> getAllTagsList() {
+	public ImmutableList<String> getAllTagsList() {
 		return tags.asList();
 	}
 
@@ -77,13 +74,13 @@ final class Tag<T> {
 	}
 
 	@Nonnull
-	public List<T> getAllKeysList() {
+	public ImmutableList<T> getAllKeysList() {
 		return ImmutableList.copyOf(keyToTags.keySet());
 	}
 
 	@Nonnull
-	public Map<String, Set<T>> getAllEntries() {
-		return Maps.transformValues(tagToKeys, set -> set);
+	public ImmutableMap<String, ImmutableSet<T>> getAllEntries() {
+		return tagToKeys;
 	}
 
 	public boolean hasTag(@Nonnull T key, @Nonnull String tagName) {

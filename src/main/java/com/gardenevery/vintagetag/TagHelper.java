@@ -74,6 +74,21 @@ public final class TagHelper {
 		return TagManager.item().getKeyCount() + TagManager.fluid().getKeyCount() + TagManager.block().getKeyCount();
 	}
 
+	/**
+	 * Check if a tag exists
+	 *
+	 * @param tagName
+	 *            The tag name to check, can be null
+	 * @return true if the tag exists, false otherwise
+	 */
+	public boolean exists(@Nullable String tagName) {
+		if (tagInvalid(tagName)) {
+			return false;
+		}
+		return TagManager.item().exists(tagName) || TagManager.fluid().exists(tagName)
+				|| TagManager.block().exists(tagName);
+	}
+
 	private static boolean tagInvalid(@Nullable String tagName) {
 		return tagName == null || tagName.isEmpty();
 	}
@@ -485,7 +500,7 @@ public final class TagHelper {
 		 */
 		@Nonnull
 		public Map<String, Set<Fluid>> allEntries() {
-			return TagManager.fluid().getAllEntries();
+			return Collections.unmodifiableMap(TagManager.fluid().getAllEntries());
 		}
 
 		/**
@@ -798,7 +813,7 @@ public final class TagHelper {
 		 */
 		@Nonnull
 		public Map<String, Set<Block>> allEntries() {
-			return TagManager.block().getAllEntries();
+			return Collections.unmodifiableMap(TagManager.block().getAllEntries());
 		}
 
 		/**
