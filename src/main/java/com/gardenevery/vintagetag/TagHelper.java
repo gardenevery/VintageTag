@@ -12,6 +12,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 import net.minecraft.block.Block;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraftforge.fluids.Fluid;
@@ -108,6 +109,20 @@ public final class TagHelper {
 		}
 
 		/**
+		 * Get all tags associated with the specified Item
+		 *
+		 * @param item
+		 *            The Item to query, can be null
+		 * @return An unmodifiable set of tag names, empty if item is null
+		 */
+		@Nonnull
+		public Set<String> tags(@Nullable Item item) {
+			return (item == null)
+					? Collections.emptySet()
+					: TagManager.item().getTags(ItemKey.of(item));
+		}
+
+		/**
 		 * Get all tags associated with the specified ItemStack
 		 *
 		 * @param stack
@@ -119,6 +134,20 @@ public final class TagHelper {
 			return (stack == null || stack.isEmpty())
 					? Collections.emptySet()
 					: TagManager.item().getTags(ItemKey.of(stack));
+		}
+
+		/**
+		 * Get all tags associated with the specified Item as a List
+		 *
+		 * @param item
+		 *            The Item to query, can be null
+		 * @return An unmodifiable list of tag names, empty if item is null
+		 */
+		@Nonnull
+		public List<String> tagsList(@Nullable Item item) {
+			return (item == null)
+					? Collections.emptyList()
+					: TagManager.item().getTagsList(ItemKey.of(item));
 		}
 
 		/**
@@ -136,16 +165,6 @@ public final class TagHelper {
 		}
 
 		/**
-		 * Get all tags defined for items as a List
-		 *
-		 * @return An unmodifiable list of all item tag names
-		 */
-		@Nonnull
-		public List<String> allTagsList() {
-			return TagManager.item().getAllTagsList();
-		}
-
-		/**
 		 * Get all tags defined for items
 		 *
 		 * @return An unmodifiable set of all item tag names
@@ -153,6 +172,16 @@ public final class TagHelper {
 		@Nonnull
 		public Set<String> allTags() {
 			return TagManager.item().getAllTags();
+		}
+
+		/**
+		 * Get all tags defined for items as a List
+		 *
+		 * @return An unmodifiable list of all item tag names
+		 */
+		@Nonnull
+		public List<String> allTagsList() {
+			return TagManager.item().getAllTagsList();
 		}
 
 		/**
@@ -203,6 +232,22 @@ public final class TagHelper {
 		}
 
 		/**
+		 * Get all ItemStacks that have at least one tag
+		 *
+		 * @return An unmodifiable set of all tagged ItemStacks
+		 */
+		@Nonnull
+		public Set<ItemStack> allKeys() {
+			var keys = TagManager.item().getAllKeys();
+			Set<ItemStack> stacks = new ObjectOpenHashSet<>();
+
+			for (var key : keys) {
+				stacks.add(key.toStack());
+			}
+			return stacks;
+		}
+
+		/**
 		 * Get all ItemStacks that have at least one tag as a List
 		 *
 		 * @return An unmodifiable list of all tagged ItemStacks
@@ -222,22 +267,6 @@ public final class TagHelper {
 		}
 
 		/**
-		 * Get all ItemStacks that have at least one tag
-		 *
-		 * @return An unmodifiable set of all tagged ItemStacks
-		 */
-		@Nonnull
-		public Set<ItemStack> allKeys() {
-			var keys = TagManager.item().getAllKeys();
-			Set<ItemStack> stacks = new ObjectOpenHashSet<>();
-
-			for (var key : keys) {
-				stacks.add(key.toStack());
-			}
-			return stacks;
-		}
-
-		/**
 		 * Get all item tag entries with their associated ItemStacks
 		 *
 		 * @return An unmodifiable map of tag name to immutable set of ItemStacks
@@ -248,6 +277,23 @@ public final class TagHelper {
 
 			return keyMap.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
 					entry -> entry.getValue().stream().map(ItemKey::toStack).collect(Collectors.toSet())));
+		}
+
+		/**
+		 * Check if the specified Item has the given tag
+		 *
+		 * @param item
+		 *            The Item to check, can be null
+		 * @param tagName
+		 *            The tag name to check for, can be null
+		 * @return true if item is not null, tagName is valid, and item has the tag
+		 */
+		public boolean hasTag(@Nullable Item item, @Nullable String tagName) {
+			if (item == null || tagInvalid(tagName)) {
+				return false;
+			}
+			var key = ItemKey.of(item);
+			return TagManager.item().hasTag(key, tagName);
 		}
 
 		/**
@@ -269,6 +315,24 @@ public final class TagHelper {
 		}
 
 		/**
+		 * Check if the specified Item has any of the given tags
+		 *
+		 * @param item
+		 *            The Item to check, can be null
+		 * @param tagNames
+		 *            The tag names to check for, can be null or empty
+		 * @return true if item is not null, tagNames are valid, and item has any of
+		 *         the tags
+		 */
+		public boolean hasAnyTag(@Nullable Item item, @Nullable String... tagNames) {
+			if (item == null || tagInvalid(tagNames)) {
+				return false;
+			}
+			var key = ItemKey.of(item);
+			return TagManager.item().hasAnyTag(key, tagNames);
+		}
+
+		/**
 		 * Check if the specified ItemStack has any of the given tags
 		 *
 		 * @param stack
@@ -287,6 +351,23 @@ public final class TagHelper {
 		}
 
 		/**
+		 * Check if the specified Item has all the given tags
+		 *
+		 * @param item
+		 *            The Item to check, can be null
+		 * @param tagNames
+		 *            The tag names to check for, can be null or empty
+		 * @return true if item is not null, tagNames are valid, and item has all the
+		 *         tags
+		 */
+		public boolean hasAllTags(@Nullable Item item, @Nullable String... tagNames) {
+			if (item == null || tagInvalid(tagNames)) {
+				return false;
+			}
+			return TagManager.item().hasAllTags(ItemKey.of(item), tagNames);
+		}
+
+		/**
 		 * Check if the specified ItemStack has all the given tags
 		 *
 		 * @param stack
@@ -301,6 +382,20 @@ public final class TagHelper {
 				return false;
 			}
 			return TagManager.item().hasAllTags(ItemKey.of(stack), tagNames);
+		}
+
+		/**
+		 * Check if the specified Item is tagged
+		 *
+		 * @param item
+		 *            The Item to check, can be null
+		 * @return true if item is not null and is tagged
+		 */
+		public boolean isTagged(@Nullable Item item) {
+			if (item == null) {
+				return false;
+			}
+			return TagManager.item().isTagged(ItemKey.of(item));
 		}
 
 		/**
@@ -685,18 +780,6 @@ public final class TagHelper {
 		}
 
 		/**
-		 * Get all tags associated with the specified Block as a List
-		 *
-		 * @param block
-		 *            The Block to query, can be null
-		 * @return An unmodifiable list of tag names, empty if block is null
-		 */
-		@Nonnull
-		public List<String> tagsList(@Nullable Block block) {
-			return block == null ? Collections.emptyList() : TagManager.block().getTagsList(block);
-		}
-
-		/**
 		 * Get all tags associated with the specified Block
 		 *
 		 * @param block
@@ -706,20 +789,6 @@ public final class TagHelper {
 		@Nonnull
 		public Set<String> tags(@Nullable Block block) {
 			return block == null ? Collections.emptySet() : TagManager.block().getTags(block);
-		}
-
-		/**
-		 * Get all tags associated with the specified TileEntity as a List
-		 *
-		 * @param blockEntity
-		 *            The TileEntity to query, can be null
-		 * @return An unmodifiable list of tag names, empty if blockEntity is null
-		 */
-		@Nonnull
-		public List<String> tagsList(@Nullable TileEntity blockEntity) {
-			return blockEntity == null
-					? Collections.emptyList()
-					: TagManager.block().getTagsList(blockEntity.getBlockType());
 		}
 
 		/**
@@ -737,13 +806,29 @@ public final class TagHelper {
 		}
 
 		/**
-		 * Get all tags defined for blocks as a List
+		 * Get all tags associated with the specified Block as a List
 		 *
-		 * @return An unmodifiable list of all block tag names
+		 * @param block
+		 *            The Block to query, can be null
+		 * @return An unmodifiable list of tag names, empty if block is null
 		 */
 		@Nonnull
-		public List<String> allTagsList() {
-			return TagManager.block().getAllTagsList();
+		public List<String> tagsList(@Nullable Block block) {
+			return block == null ? Collections.emptyList() : TagManager.block().getTagsList(block);
+		}
+
+		/**
+		 * Get all tags associated with the specified TileEntity as a List
+		 *
+		 * @param blockEntity
+		 *            The TileEntity to query, can be null
+		 * @return An unmodifiable list of tag names, empty if blockEntity is null
+		 */
+		@Nonnull
+		public List<String> tagsList(@Nullable TileEntity blockEntity) {
+			return blockEntity == null
+					? Collections.emptyList()
+					: TagManager.block().getTagsList(blockEntity.getBlockType());
 		}
 
 		/**
@@ -757,18 +842,13 @@ public final class TagHelper {
 		}
 
 		/**
-		 * Get all Blocks associated with the specified tag name as a List
+		 * Get all tags defined for blocks as a List
 		 *
-		 * @param tagName
-		 *            The tag name to query, can be null
-		 * @return An unmodifiable list of Blocks, empty if tagName is null or empty
+		 * @return An unmodifiable list of all block tag names
 		 */
 		@Nonnull
-		public List<Block> keysList(@Nullable String tagName) {
-			if (tagInvalid(tagName)) {
-				return Collections.emptyList();
-			}
-			return TagManager.block().getKeysList(tagName);
+		public List<String> allTagsList() {
+			return TagManager.block().getAllTagsList();
 		}
 
 		/**
@@ -787,13 +867,18 @@ public final class TagHelper {
 		}
 
 		/**
-		 * Get all Blocks that have at least one tag as a List
+		 * Get all Blocks associated with the specified tag name as a List
 		 *
-		 * @return An unmodifiable list of all tagged Blocks
+		 * @param tagName
+		 *            The tag name to query, can be null
+		 * @return An unmodifiable list of Blocks, empty if tagName is null or empty
 		 */
 		@Nonnull
-		public List<Block> allKeysList() {
-			return TagManager.block().getAllKeysList();
+		public List<Block> keysList(@Nullable String tagName) {
+			if (tagInvalid(tagName)) {
+				return Collections.emptyList();
+			}
+			return TagManager.block().getKeysList(tagName);
 		}
 
 		/**
@@ -804,6 +889,16 @@ public final class TagHelper {
 		@Nonnull
 		public Set<Block> allKeys() {
 			return TagManager.block().getAllKeys();
+		}
+
+		/**
+		 * Get all Blocks that have at least one tag as a List
+		 *
+		 * @return An unmodifiable list of all tagged Blocks
+		 */
+		@Nonnull
+		public List<Block> allKeysList() {
+			return TagManager.block().getAllKeysList();
 		}
 
 		/**

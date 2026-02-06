@@ -16,6 +16,12 @@ record ItemKey(Item item, int metadata) {
 	}
 
 	@Nonnull
+	public static ItemKey of(@Nonnull Item item) {
+		return new ItemKey(item, 0);
+	}
+
+
+	@Nonnull
 	public static ItemKey of(@Nonnull ItemStack stack) {
 		return new ItemKey(stack.getItem(), stack.getHasSubtypes() ? stack.getMetadata() : 0);
 	}
