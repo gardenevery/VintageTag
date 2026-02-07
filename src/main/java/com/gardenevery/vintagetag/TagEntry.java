@@ -78,6 +78,11 @@ interface TagEntry {
 	}
 
 	interface ItemEntry extends TagEntry {
+		@Nullable
+		default ItemKey toKey() {
+			return null;
+		}
+
 		@Desugar
 		record ItemKey(Item item, int metadata) implements ItemEntry {
 			public ItemKey {
@@ -112,6 +117,11 @@ interface TagEntry {
 			public ItemStack toStack() {
 				return new ItemStack(item, 1, metadata);
 			}
+
+			@Override
+			public ItemKey toKey() {
+				return this;
+			}
 		}
 
 		@Desugar
@@ -140,6 +150,11 @@ interface TagEntry {
 	}
 
 	interface FluidEntry extends TagEntry {
+		@Nullable
+		default FluidKey toKey() {
+			return null;
+		}
+
 		@Desugar
 		record FluidKey(Fluid fluid) implements FluidEntry {
 			public FluidKey {
@@ -156,6 +171,11 @@ interface TagEntry {
 
 			public static FluidKey of(FluidStack stack) {
 				return new FluidKey(stack.getFluid());
+			}
+
+			@Override
+			public FluidKey toKey() {
+				return this;
 			}
 		}
 
@@ -185,6 +205,11 @@ interface TagEntry {
 	}
 
 	interface BlockEntry extends TagEntry {
+		@Nullable
+		default BlockKey toKey() {
+			return null;
+		}
+
 		@Desugar
 		record BlockKey(Block block) implements BlockEntry {
 			public BlockKey {
@@ -202,6 +227,11 @@ interface TagEntry {
 
 			public static BlockKey of(TileEntity blockEntity) {
 				return new BlockKey(blockEntity.getBlockType());
+			}
+
+			@Override
+			public BlockKey toKey() {
+				return this;
 			}
 		}
 

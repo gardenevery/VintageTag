@@ -2,6 +2,8 @@ package com.gardenevery.vintagetag;
 
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
+import com.gardenevery.vintagetag.TagEntry.ItemEntry;
+
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -35,7 +37,7 @@ final class OreDictSync {
 
 	private static int syncSingleOreDictionaryTag(String oreName) {
 		var ores = OreDictionary.getOres(oreName, false);
-		ObjectOpenHashSet<ItemKey> keys = new ObjectOpenHashSet<>();
+		ObjectOpenHashSet<ItemEntry> entries = new ObjectOpenHashSet<>();
 
 		for (var stack : ores) {
 			if (stack == null || stack.isEmpty()) {
@@ -43,40 +45,40 @@ final class OreDictSync {
 			}
 
 			try {
-				processItemStack(stack, keys);
+				processItemStack(stack, entries);
 			} catch (Exception e) {
 				//
 			}
 		}
 
-		if (!keys.isEmpty()) {
-			TagManager.registerItem(keys, oreName);
-			return keys.size();
+		if (!entries.isEmpty()) {
+			TagManager.registerItem(entries, oreName);
+			return entries.size();
 		}
 
 		return 0;
 	}
 
-	private static void processItemStack(ItemStack stack, ObjectOpenHashSet<ItemKey> keys) {
+	private static void processItemStack(ItemStack stack, ObjectOpenHashSet<ItemEntry> entries) {
 		if (stack.getMetadata() == OreDictionary.WILDCARD_VALUE && stack.getItem().getHasSubtypes()) {
-			var wildcardKeys = syncWildcardEntry(stack.getItem());
-			keys.addAll(wildcardKeys);
+			var wildcardEntries = syncWildcardEntry(stack.getItem());
+			entries.addAll(wildcardEntries);
 		} else {
-			var key = ItemKey.of(stack);
-			keys.add(key);
+			var entry = ItemEntry.ItemKey.of(stack);
+			entries.add(entry);
 		}
 	}
 
-	private static ObjectOpenHashSet<ItemKey> syncWildcardEntry(Item item) {
+	private static ObjectOpenHashSet<ItemEntry> syncWildcardEntry(Item item) {
 		NonNullList<ItemStack> stacks = NonNullList.create();
 		item.getSubItems(CreativeTabs.SEARCH, stacks);
 
-		ObjectOpenHashSet<ItemKey> keys = new ObjectOpenHashSet<>(stacks.size());
+		ObjectOpenHashSet<ItemEntry> entries = new ObjectOpenHashSet<>(stacks.size());
 
 		for (var stack : stacks) {
-			keys.add(ItemKey.of(stack));
+			entries.add(ItemEntry.ItemKey.of(stack));
 		}
 
-		return keys;
+		return entries;
 	}
 }

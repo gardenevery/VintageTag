@@ -8,7 +8,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -16,18 +15,17 @@ import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
+import com.gardenevery.vintagetag.TagEntry.BlockEntry;
+import com.gardenevery.vintagetag.TagEntry.FluidEntry;
+import com.gardenevery.vintagetag.TagEntry.ItemEntry;
 import com.github.bsideup.jabel.Desugar;
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
-import net.minecraft.block.Block;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.fluids.Fluid;
-import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fml.common.Loader;
-import net.minecraftforge.fml.common.registry.ForgeRegistries;
 
 import org.apache.commons.io.IOUtils;
 
@@ -253,190 +251,120 @@ final class TagLoader {
 	}
 
 	private static void processItemTag(String tagName, Operation operation, JsonObject jsonObject) {
-		var parseResult = parseItemEntries(jsonObject);
-		var itemKeys = createItemKeys(parseResult.directEntries());
+		var valuesArray = jsonObject.getAsJsonArray("values");
+		if (valuesArray == null) {
+			return;
+		}
 
-		var tagReferences = parseResult.tagReferences();
+		Set<ItemEntry> entries = new HashSet<>();
+
+		for (var element : valuesArray) {
+			var entry = parseItemEntry(element);
+			if (entry != null) {
+				entries.add(entry);
+			}
+		}
 
 		if (operation == Operation.ADD) {
-			TagManager.registerItem(itemKeys, tagName, tagReferences);
+			TagManager.registerItem(entries, tagName);
 		} else {
-			TagManager.replaceItem(itemKeys, tagName, tagReferences);
+			TagManager.replaceItem(entries, tagName);
 		}
 	}
 
 	private static void processFluidTag(String tagName, Operation operation, JsonObject jsonObject) {
-		var parseResult = parseFluidEntries(jsonObject);
-		var fluids = createFluids(parseResult.directEntries());
+		var valuesArray = jsonObject.getAsJsonArray("values");
+		if (valuesArray == null) {
+			return;
+		}
 
-		var tagReferences = parseResult.tagReferences();
+		Set<FluidEntry> entries = new HashSet<>();
+
+		for (var element : valuesArray) {
+			var entry = parseFluidEntry(element);
+			if (entry != null) {
+				entries.add(entry);
+			}
+		}
 
 		if (operation == Operation.ADD) {
-			TagManager.registerFluid(fluids, tagName, tagReferences);
+			TagManager.registerFluid(entries, tagName);
 		} else {
-			TagManager.replaceFluid(fluids, tagName, tagReferences);
+			TagManager.replaceFluid(entries, tagName);
 		}
 	}
 
 	private static void processBlockTag(String tagName, Operation operation, JsonObject jsonObject) {
-		var parseResult = parseBlockEntries(jsonObject);
-		var blocks = createBlocks(parseResult.directEntries());
+		var valuesArray = jsonObject.getAsJsonArray("values");
+		if (valuesArray == null) {
+			return;
+		}
 
-		var tagReferences = parseResult.tagReferences();
+		Set<BlockEntry> entries = new HashSet<>();
+
+		for (var element : valuesArray) {
+			var entry = parseBlockEntry(element);
+			if (entry != null) {
+				entries.add(entry);
+			}
+		}
 
 		if (operation == Operation.ADD) {
-			TagManager.registerBlock(blocks, tagName, tagReferences);
+			TagManager.registerBlock(entries, tagName);
 		} else {
-			TagManager.replaceBlock(blocks, tagName, tagReferences);
+			TagManager.replaceBlock(entries, tagName);
 		}
 	}
 
-	private static ItemParseResult parseItemEntries(JsonObject jsonObject) {
-		var valuesArray = jsonObject.getAsJsonArray("values");
-		if (valuesArray == null) {
-			return new ItemParseResult(Collections.emptySet(), Collections.emptySet());
-		}
-
-		Set<ItemEntry> directEntries = new HashSet<>();
-		Set<String> tagReferences = new HashSet<>();
-
-		for (var element : valuesArray) {
-			try {
-				if (element.isJsonObject()) {
-					var itemObj = element.getAsJsonObject();
-					if (!itemObj.has("id") || !itemObj.get("id").isJsonPrimitive()) {
-						continue;
-					}
-
-					var id = itemObj.get("id").getAsString();
-
-					if (id.startsWith("#")) {
-						tagReferences.add(id.substring(1));
-						continue;
-					}
-
-					int metadata = itemObj.has("metadata") && itemObj.get("metadata").isJsonPrimitive()
-							? itemObj.get("metadata").getAsInt()
-							: 0;
-
-					directEntries.add(new ItemEntry(id, metadata));
-				} else if (element.isJsonPrimitive()) {
-					var value = element.getAsString();
-
-					if (value.startsWith("#")) {
-						tagReferences.add(value.substring(1));
-					} else {
-						directEntries.add(new ItemEntry(value, 0));
-					}
+	@Nullable
+	private static ItemEntry parseItemEntry(JsonElement element) {
+		try {
+			if (element.isJsonObject()) {
+				var itemObj = element.getAsJsonObject();
+				if (!itemObj.has("id") || !itemObj.get("id").isJsonPrimitive()) {
+					return null;
 				}
-			} catch (Exception e) {
-				//
-			}
-		}
 
-		return new ItemParseResult(directEntries, tagReferences);
+				var id = itemObj.get("id").getAsString();
+				int metadata = itemObj.has("metadata") && itemObj.get("metadata").isJsonPrimitive()
+						? itemObj.get("metadata").getAsInt()
+						: 0;
+
+				return TagEntry.item(id, metadata);
+			} else if (element.isJsonPrimitive()) {
+				var value = element.getAsString();
+				return TagEntry.item(value);
+			}
+		} catch (Exception e) {
+			TagLog.info("Failed to parse item entry: {}", element, e);
+		}
+		return null;
 	}
 
-	private static FluidParseResult parseFluidEntries(JsonObject jsonObject) {
-		var valuesArray = jsonObject.getAsJsonArray("values");
-		if (valuesArray == null) {
-			return new FluidParseResult(Collections.emptySet(), Collections.emptySet());
-		}
-
-		Set<String> directEntries = new HashSet<>();
-		Set<String> tagReferences = new HashSet<>();
-
-		for (var element : valuesArray) {
+	@Nullable
+	private static FluidEntry parseFluidEntry(JsonElement element) {
+		try {
 			if (element.isJsonPrimitive()) {
 				var value = element.getAsString();
-
-				if (value.startsWith("#")) {
-					tagReferences.add(value.substring(1));
-				} else {
-					directEntries.add(value);
-				}
+				return TagEntry.fluid(value);
 			}
+		} catch (Exception e) {
+			TagLog.info("Failed to parse fluid entry: {}", element, e);
 		}
-
-		return new FluidParseResult(directEntries, tagReferences);
+		return null;
 	}
 
-	private static BlockParseResult parseBlockEntries(JsonObject jsonObject) {
-		var valuesArray = jsonObject.getAsJsonArray("values");
-		if (valuesArray == null) {
-			return new BlockParseResult(Collections.emptySet(), Collections.emptySet());
-		}
-
-		Set<String> directEntries = new HashSet<>();
-		Set<String> tagReferences = new HashSet<>();
-
-		for (var element : valuesArray) {
+	@Nullable
+	private static BlockEntry parseBlockEntry(JsonElement element) {
+		try {
 			if (element.isJsonPrimitive()) {
 				var value = element.getAsString();
-
-				if (value.startsWith("#")) {
-					tagReferences.add(value.substring(1));
-				} else {
-					directEntries.add(value);
-				}
+				return TagEntry.block(value);
 			}
+		} catch (Exception e) {
+			TagLog.info("Failed to parse block entry: {}", element, e);
 		}
-
-		return new BlockParseResult(directEntries, tagReferences);
-	}
-
-	private static Set<ItemKey> createItemKeys(Set<ItemEntry> itemEntries) {
-		Set<ItemKey> result = new HashSet<>(itemEntries.size());
-
-		for (var entry : itemEntries) {
-			var resourceLocation = new ResourceLocation(entry.id());
-			var item = ForgeRegistries.ITEMS.getValue(resourceLocation);
-
-			if (item == null) {
-				continue;
-			}
-
-			if (entry.metadata() < 0) {
-				continue;
-			}
-
-			var stack = new ItemStack(item, 1, entry.metadata());
-			if (stack.isEmpty()) {
-				continue;
-			}
-
-			result.add(ItemKey.of(stack));
-		}
-
-		return result;
-	}
-
-	private static Set<Fluid> createFluids(Set<String> fluidNames) {
-		Set<Fluid> result = new HashSet<>(fluidNames.size());
-
-		for (var name : fluidNames) {
-			var fluid = FluidRegistry.getFluid(name);
-			if (fluid != null) {
-				result.add(fluid);
-			}
-		}
-
-		return result;
-	}
-
-	private static Set<Block> createBlocks(Set<String> blockNames) {
-		Set<Block> result = new HashSet<>(blockNames.size());
-
-		for (var name : blockNames) {
-			var resourceLocation = new ResourceLocation(name);
-			var block = ForgeRegistries.BLOCKS.getValue(resourceLocation);
-
-			if (block != null) {
-				result.add(block);
-			}
-		}
-
-		return result;
+		return null;
 	}
 
 	@Nonnull
@@ -476,22 +404,6 @@ final class TagLoader {
 	}
 
 	@Desugar
-	private record ItemEntry(String id, int metadata) {
-	}
-
-	@Desugar
 	private record JarTagData(String tagName, TagType type, JsonObject jsonObject) {
-	}
-
-	@Desugar
-	private record ItemParseResult(Set<ItemEntry> directEntries, Set<String> tagReferences) {
-	}
-
-	@Desugar
-	private record FluidParseResult(Set<String> directEntries, Set<String> tagReferences) {
-	}
-
-	@Desugar
-	private record BlockParseResult(Set<String> directEntries, Set<String> tagReferences) {
 	}
 }

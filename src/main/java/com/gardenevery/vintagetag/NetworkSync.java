@@ -3,11 +3,13 @@ package com.gardenevery.vintagetag;
 import java.nio.charset.StandardCharsets;
 import javax.annotation.Nullable;
 
+import com.gardenevery.vintagetag.TagEntry.BlockEntry;
+import com.gardenevery.vintagetag.TagEntry.FluidEntry;
+import com.gardenevery.vintagetag.TagEntry.ItemEntry;
 import com.github.bsideup.jabel.Desugar;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -27,7 +29,7 @@ import net.minecraftforge.fml.relauncher.Side;
 final class NetworkSync {
 	public static SimpleNetworkWrapper NETWORK;
 	private static final int MAX_PACKET_SIZE = 2 * 1024 * 1024;
-	private static final int INVALID_ID = -1;
+	private static final int TYPE_TAG = -1;
 
 	public enum SyncType {
 		NONE, FULL
@@ -60,28 +62,21 @@ final class NetworkSync {
 		return new TagData(collectItemTags(), collectFluidTags(), collectBlockTags());
 	}
 
-	private static Object2ObjectMap<String, IntArrayList> collectItemTags() {
+	private static Object2ObjectMap<String, ObjectArrayList<ItemEntry>> collectItemTags() {
 		var allEntries = TagManager.item().getAllEntries();
 		if (allEntries.isEmpty()) {
 			return new Object2ObjectOpenHashMap<>();
 		}
 
-		var itemTags = new Object2ObjectOpenHashMap<String, IntArrayList>(allEntries.size());
+		var itemTags = new Object2ObjectOpenHashMap<String, ObjectArrayList<ItemEntry>>(allEntries.size());
 
 		for (var entry : allEntries.entrySet()) {
 			var tagName = entry.getKey();
 			var keys = entry.getValue();
 
 			if (!keys.isEmpty()) {
-				var entries = new IntArrayList(keys.size() * 2);
-
-				for (var key : keys) {
-					int id = getItemId(key.item());
-					if (id != INVALID_ID) {
-						entries.add(id);
-						entries.add(key.metadata());
-					}
-				}
+				var entries = new ObjectArrayList<ItemEntry>(keys.size());
+				entries.addAll(keys);
 
 				if (!entries.isEmpty()) {
 					itemTags.put(tagName, entries);
@@ -92,30 +87,24 @@ final class NetworkSync {
 		return itemTags;
 	}
 
-	private static Object2ObjectMap<String, ObjectArrayList<String>> collectFluidTags() {
+	private static Object2ObjectMap<String, ObjectArrayList<FluidEntry>> collectFluidTags() {
 		var allEntries = TagManager.fluid().getAllEntries();
 		if (allEntries.isEmpty()) {
 			return new Object2ObjectOpenHashMap<>();
 		}
 
-		var fluidTags = new Object2ObjectOpenHashMap<String, ObjectArrayList<String>>(allEntries.size());
+		var fluidTags = new Object2ObjectOpenHashMap<String, ObjectArrayList<FluidEntry>>(allEntries.size());
 
 		for (var entry : allEntries.entrySet()) {
 			var tagName = entry.getKey();
 			var fluids = entry.getValue();
 
 			if (!fluids.isEmpty()) {
-				var fluidNames = new ObjectArrayList<String>(fluids.size());
+				var fluidEntries = new ObjectArrayList<FluidEntry>(fluids.size());
+				fluidEntries.addAll(fluids);
 
-				for (var fluid : fluids) {
-					var fluidName = FluidRegistry.getFluidName(fluid);
-					if (fluidName != null) {
-						fluidNames.add(fluidName);
-					}
-				}
-
-				if (!fluidNames.isEmpty()) {
-					fluidTags.put(tagName, fluidNames);
+				if (!fluidEntries.isEmpty()) {
+					fluidTags.put(tagName, fluidEntries);
 				}
 			}
 		}
@@ -123,30 +112,24 @@ final class NetworkSync {
 		return fluidTags;
 	}
 
-	private static Object2ObjectMap<String, IntArrayList> collectBlockTags() {
+	private static Object2ObjectMap<String, ObjectArrayList<BlockEntry>> collectBlockTags() {
 		var allEntries = TagManager.block().getAllEntries();
 		if (allEntries.isEmpty()) {
 			return new Object2ObjectOpenHashMap<>();
 		}
 
-		var blockTags = new Object2ObjectOpenHashMap<String, IntArrayList>(allEntries.size());
+		var blockTags = new Object2ObjectOpenHashMap<String, ObjectArrayList<BlockEntry>>(allEntries.size());
 
 		for (var entry : allEntries.entrySet()) {
 			var tagName = entry.getKey();
 			var blocks = entry.getValue();
 
 			if (!blocks.isEmpty()) {
-				var blockIds = new IntArrayList(blocks.size());
+				var blockEntries = new ObjectArrayList<BlockEntry>(blocks.size());
+				blockEntries.addAll(blocks);
 
-				for (var block : blocks) {
-					int id = getBlockId(block);
-					if (id != INVALID_ID) {
-						blockIds.add(id);
-					}
-				}
-
-				if (!blockIds.isEmpty()) {
-					blockTags.put(tagName, blockIds);
+				if (!blockEntries.isEmpty()) {
+					blockTags.put(tagName, blockEntries);
 				}
 			}
 		}
@@ -154,26 +137,7 @@ final class NetworkSync {
 		return blockTags;
 	}
 
-	private static int getItemId(Item item) {
-		if (item == null) {
-			return INVALID_ID;
-		}
-
-		int id = Item.getIdFromItem(item);
-		return id >= 0 ? id : INVALID_ID;
-	}
-
-	private static int getBlockId(Block block) {
-		if (block == null) {
-			return INVALID_ID;
-		}
-
-		int id = Block.getIdFromBlock(block);
-		return id >= 0 ? id : INVALID_ID;
-	}
-
 	public static class EventHandler {
-
 		@SubscribeEvent
 		public void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
 			if (event.player instanceof EntityPlayerMP player) {
@@ -183,7 +147,6 @@ final class NetworkSync {
 	}
 
 	public static class TagDataSyncMessage implements IMessage {
-
 		public SyncType type;
 		public TagData tagData;
 
@@ -202,9 +165,9 @@ final class NetworkSync {
 			int st = buf.readUnsignedByte();
 			type = readSyncType(st);
 
-			Object2ObjectMap<String, IntArrayList> itemTags = readOptionalItemTags(buf);
-			Object2ObjectMap<String, ObjectArrayList<String>> fluidTags = readOptionalFluidTags(buf);
-			Object2ObjectMap<String, IntArrayList> blockTags = readOptionalBlockTags(buf);
+			Object2ObjectMap<String, ObjectArrayList<ItemEntry>> itemTags = readItemTags(buf);
+			Object2ObjectMap<String, ObjectArrayList<FluidEntry>> fluidTags = readFluidTags(buf);
+			Object2ObjectMap<String, ObjectArrayList<BlockEntry>> blockTags = readBlockTags(buf);
 
 			tagData = new TagData(itemTags, fluidTags, blockTags);
 		}
@@ -215,9 +178,9 @@ final class NetworkSync {
 
 			try {
 				tempBuf.writeByte(type.ordinal());
-				writeOptionalItemTags(tempBuf, tagData.itemTags());
-				writeOptionalFluidTags(tempBuf, tagData.fluidTags());
-				writeOptionalBlockTags(tempBuf, tagData.blockTags());
+				writeItemTags(tempBuf, tagData.itemTags());
+				writeFluidTags(tempBuf, tagData.fluidTags());
+				writeBlockTags(tempBuf, tagData.blockTags());
 
 				int totalSize = tempBuf.readableBytes();
 				validateSize(totalSize);
@@ -237,7 +200,7 @@ final class NetworkSync {
 			}
 		}
 
-		private Object2ObjectMap<String, IntArrayList> readOptionalItemTags(ByteBuf buf) {
+		private Object2ObjectMap<String, ObjectArrayList<ItemEntry>> readItemTags(ByteBuf buf) {
 			if (!buf.readBoolean()) {
 				return new Object2ObjectOpenHashMap<>(0);
 			}
@@ -245,19 +208,19 @@ final class NetworkSync {
 			int tagCount = buf.readInt();
 			validateCount(tagCount);
 
-			var map = new Object2ObjectOpenHashMap<String, IntArrayList>(tagCount);
+			var map = new Object2ObjectOpenHashMap<String, ObjectArrayList<ItemEntry>>(tagCount);
 
 			for (int i = 0; i < tagCount; i++) {
 				var tagName = readStringSafe(buf);
 				int entryCount = buf.readInt();
 				validateCount(entryCount);
 
-				var entries = new IntArrayList(entryCount * 2);
+				var entries = new ObjectArrayList<ItemEntry>(entryCount);
 				for (int j = 0; j < entryCount; j++) {
-					int itemId = buf.readInt();
-					int metadata = buf.readInt();
-					entries.add(itemId);
-					entries.add(metadata);
+					var entry = readItemEntry(buf);
+					if (entry != null) {
+						entries.add(entry);
+					}
 				}
 
 				map.put(tagName, entries);
@@ -266,7 +229,7 @@ final class NetworkSync {
 			return map;
 		}
 
-		private Object2ObjectMap<String, ObjectArrayList<String>> readOptionalFluidTags(ByteBuf buf) {
+		private Object2ObjectMap<String, ObjectArrayList<FluidEntry>> readFluidTags(ByteBuf buf) {
 			if (!buf.readBoolean()) {
 				return new Object2ObjectOpenHashMap<>(0);
 			}
@@ -274,26 +237,28 @@ final class NetworkSync {
 			int tagCount = buf.readInt();
 			validateCount(tagCount);
 
-			var map = new Object2ObjectOpenHashMap<String, ObjectArrayList<String>>(tagCount);
+			var map = new Object2ObjectOpenHashMap<String, ObjectArrayList<FluidEntry>>(tagCount);
 
 			for (int i = 0; i < tagCount; i++) {
 				var tagName = readStringSafe(buf);
 				int entryCount = buf.readInt();
 				validateCount(entryCount);
 
-				var fluidNames = new ObjectArrayList<String>(entryCount);
+				var entries = new ObjectArrayList<FluidEntry>(entryCount);
 				for (int j = 0; j < entryCount; j++) {
-					var fluidName = readStringSafe(buf);
-					fluidNames.add(fluidName);
+					var entry = readFluidEntry(buf);
+					if (entry != null) {
+						entries.add(entry);
+					}
 				}
 
-				map.put(tagName, fluidNames);
+				map.put(tagName, entries);
 			}
 
 			return map;
 		}
 
-		private Object2ObjectMap<String, IntArrayList> readOptionalBlockTags(ByteBuf buf) {
+		private Object2ObjectMap<String, ObjectArrayList<BlockEntry>> readBlockTags(ByteBuf buf) {
 			if (!buf.readBoolean()) {
 				return new Object2ObjectOpenHashMap<>(0);
 			}
@@ -301,26 +266,77 @@ final class NetworkSync {
 			int tagCount = buf.readInt();
 			validateCount(tagCount);
 
-			var map = new Object2ObjectOpenHashMap<String, IntArrayList>(tagCount);
+			var map = new Object2ObjectOpenHashMap<String, ObjectArrayList<BlockEntry>>(tagCount);
 
 			for (int i = 0; i < tagCount; i++) {
 				var tagName = readStringSafe(buf);
 				int entryCount = buf.readInt();
 				validateCount(entryCount);
 
-				var blockIds = new IntArrayList(entryCount);
+				var entries = new ObjectArrayList<BlockEntry>(entryCount);
 				for (int j = 0; j < entryCount; j++) {
-					int blockId = buf.readInt();
-					blockIds.add(blockId);
+					var entry = readBlockEntry(buf);
+					if (entry != null) {
+						entries.add(entry);
+					}
 				}
 
-				map.put(tagName, blockIds);
+				map.put(tagName, entries);
 			}
 
 			return map;
 		}
 
-		private void writeOptionalItemTags(ByteBuf buf, Object2ObjectMap<String, IntArrayList> map) {
+		private ItemEntry readItemEntry(ByteBuf buf) {
+			int typeMarker = buf.readInt();
+
+			if (typeMarker == TYPE_TAG) {
+				var tagName = readStringSafe(buf);
+				return ItemEntry.ItemTag.of(tagName);
+			} else {
+				if (typeMarker < 0) {
+					return null;
+				}
+
+				int metadata = buf.readInt();
+				var item = Item.getItemById(typeMarker);
+				return ItemEntry.ItemKey.of(item, metadata);
+			}
+		}
+
+		private FluidEntry readFluidEntry(ByteBuf buf) {
+			int typeMarker = buf.readInt();
+
+			if (typeMarker == TYPE_TAG) {
+				var tagName = readStringSafe(buf);
+				return FluidEntry.FluidTag.of(tagName);
+			} else {
+				var fluidName = readStringSafe(buf);
+				var fluid = FluidRegistry.getFluid(fluidName);
+				if (fluid == null) {
+					return null;
+				}
+				return FluidEntry.FluidKey.of(fluid);
+			}
+		}
+
+		private BlockEntry readBlockEntry(ByteBuf buf) {
+			int typeMarker = buf.readInt();
+
+			if (typeMarker == TYPE_TAG) {
+				var tagName = readStringSafe(buf);
+				return BlockEntry.BlockTag.of(tagName);
+			} else {
+				if (typeMarker < 0) {
+					return null;
+				}
+
+				var block = Block.getBlockById(typeMarker);
+				return BlockEntry.BlockKey.of(block);
+			}
+		}
+
+		private void writeItemTags(ByteBuf buf, Object2ObjectMap<String, ObjectArrayList<ItemEntry>> map) {
 			boolean hasMap = map != null && !map.isEmpty();
 			buf.writeBoolean(hasMap);
 
@@ -330,20 +346,16 @@ final class NetworkSync {
 				for (var entry : map.object2ObjectEntrySet()) {
 					writeStringSafe(buf, entry.getKey());
 					var itemEntries = entry.getValue();
-					int pairCount = itemEntries.size() / 2;
-					buf.writeInt(pairCount);
+					buf.writeInt(itemEntries.size());
 
-					for (int i = 0; i < pairCount; i++) {
-						int itemId = itemEntries.getInt(i * 2);
-						int metadata = itemEntries.getInt(i * 2 + 1);
-						buf.writeInt(itemId);
-						buf.writeInt(metadata);
+					for (var itemEntry : itemEntries) {
+						writeItemEntry(buf, itemEntry);
 					}
 				}
 			}
 		}
 
-		private void writeOptionalFluidTags(ByteBuf buf, Object2ObjectMap<String, ObjectArrayList<String>> map) {
+		private void writeFluidTags(ByteBuf buf, Object2ObjectMap<String, ObjectArrayList<FluidEntry>> map) {
 			boolean hasMap = map != null && !map.isEmpty();
 			buf.writeBoolean(hasMap);
 
@@ -352,17 +364,17 @@ final class NetworkSync {
 
 				for (var entry : map.object2ObjectEntrySet()) {
 					writeStringSafe(buf, entry.getKey());
-					var fluidNames = entry.getValue();
-					buf.writeInt(fluidNames.size());
+					var fluidEntries = entry.getValue();
+					buf.writeInt(fluidEntries.size());
 
-					for (var fluidName : fluidNames) {
-						writeStringSafe(buf, fluidName);
+					for (var fluidEntry : fluidEntries) {
+						writeFluidEntry(buf, fluidEntry);
 					}
 				}
 			}
 		}
 
-		private void writeOptionalBlockTags(ByteBuf buf, Object2ObjectMap<String, IntArrayList> map) {
+		private void writeBlockTags(ByteBuf buf, Object2ObjectMap<String, ObjectArrayList<BlockEntry>> map) {
 			boolean hasMap = map != null && !map.isEmpty();
 			buf.writeBoolean(hasMap);
 
@@ -371,13 +383,43 @@ final class NetworkSync {
 
 				for (var entry : map.object2ObjectEntrySet()) {
 					writeStringSafe(buf, entry.getKey());
-					var blockIds = entry.getValue();
-					buf.writeInt(blockIds.size());
+					var blockEntries = entry.getValue();
+					buf.writeInt(blockEntries.size());
 
-					for (int blockId : blockIds) {
-						buf.writeInt(blockId);
+					for (var blockEntry : blockEntries) {
+						writeBlockEntry(buf, blockEntry);
 					}
 				}
+			}
+		}
+
+		private void writeItemEntry(ByteBuf buf, ItemEntry entry) {
+			if (entry.isTag()) {
+				buf.writeInt(TYPE_TAG);
+				writeStringSafe(buf, entry.getTagName());
+			} else if (entry instanceof ItemEntry.ItemKey itemKey) {
+				buf.writeInt(Item.getIdFromItem(itemKey.item()));
+				buf.writeInt(itemKey.metadata());
+			}
+		}
+
+		private void writeFluidEntry(ByteBuf buf, FluidEntry entry) {
+			if (entry.isTag()) {
+				buf.writeInt(TYPE_TAG);
+				writeStringSafe(buf, entry.getTagName());
+			} else if (entry instanceof FluidEntry.FluidKey fluidKey) {
+				buf.writeInt(0);
+				var fluidName = FluidRegistry.getFluidName(fluidKey.fluid());
+				writeStringSafe(buf, fluidName != null ? fluidName : "");
+			}
+		}
+
+		private void writeBlockEntry(ByteBuf buf, BlockEntry entry) {
+			if (entry.isTag()) {
+				buf.writeInt(TYPE_TAG);
+				writeStringSafe(buf, entry.getTagName());
+			} else if (entry instanceof BlockEntry.BlockKey blockKey) {
+				buf.writeInt(Block.getIdFromBlock(blockKey.block()));
 			}
 		}
 
@@ -436,13 +478,12 @@ final class NetworkSync {
 	}
 
 	@Desugar
-	public record TagData(Object2ObjectMap<String, IntArrayList> itemTags,
-			Object2ObjectMap<String, ObjectArrayList<String>> fluidTags,
-			Object2ObjectMap<String, IntArrayList> blockTags) {
-
-		public TagData(Object2ObjectMap<String, IntArrayList> itemTags,
-				Object2ObjectMap<String, ObjectArrayList<String>> fluidTags,
-				Object2ObjectMap<String, IntArrayList> blockTags) {
+	public record TagData(Object2ObjectMap<String, ObjectArrayList<ItemEntry>> itemTags,
+			Object2ObjectMap<String, ObjectArrayList<FluidEntry>> fluidTags,
+			Object2ObjectMap<String, ObjectArrayList<BlockEntry>> blockTags) {
+		public TagData(Object2ObjectMap<String, ObjectArrayList<ItemEntry>> itemTags,
+				Object2ObjectMap<String, ObjectArrayList<FluidEntry>> fluidTags,
+				Object2ObjectMap<String, ObjectArrayList<BlockEntry>> blockTags) {
 			this.itemTags = itemTags != null ? itemTags : new Object2ObjectOpenHashMap<>(0);
 			this.fluidTags = fluidTags != null ? fluidTags : new Object2ObjectOpenHashMap<>(0);
 			this.blockTags = blockTags != null ? blockTags : new Object2ObjectOpenHashMap<>(0);
