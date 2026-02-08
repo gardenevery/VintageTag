@@ -292,7 +292,7 @@ final class NetworkSync {
 
 			if (typeMarker == TYPE_TAG) {
 				var tagName = readStringSafe(buf);
-				return ItemEntry.ItemTag.of(tagName);
+				return TagEntry.item(tagName);
 			} else {
 				if (typeMarker < 0) {
 					return null;
@@ -300,7 +300,7 @@ final class NetworkSync {
 
 				int metadata = buf.readInt();
 				var item = Item.getItemById(typeMarker);
-				return ItemEntry.ItemKey.of(item, metadata);
+				return TagEntry.item(item, metadata);
 			}
 		}
 
@@ -309,14 +309,14 @@ final class NetworkSync {
 
 			if (typeMarker == TYPE_TAG) {
 				var tagName = readStringSafe(buf);
-				return FluidEntry.FluidTag.of(tagName);
+				return TagEntry.fluid(tagName);
 			} else {
 				var fluidName = readStringSafe(buf);
 				var fluid = FluidRegistry.getFluid(fluidName);
 				if (fluid == null) {
 					return null;
 				}
-				return FluidEntry.FluidKey.of(fluid);
+				return TagEntry.fluid(fluid);
 			}
 		}
 
@@ -325,14 +325,14 @@ final class NetworkSync {
 
 			if (typeMarker == TYPE_TAG) {
 				var tagName = readStringSafe(buf);
-				return BlockEntry.BlockTag.of(tagName);
+				return TagEntry.block(tagName);
 			} else {
 				if (typeMarker < 0) {
 					return null;
 				}
 
 				var block = Block.getBlockById(typeMarker);
-				return BlockEntry.BlockKey.of(block);
+				return TagEntry.block(block);
 			}
 		}
 

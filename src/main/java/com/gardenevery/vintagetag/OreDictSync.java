@@ -64,7 +64,7 @@ final class OreDictSync {
 			var wildcardEntries = syncWildcardEntry(stack.getItem());
 			entries.addAll(wildcardEntries);
 		} else {
-			var entry = ItemEntry.ItemKey.of(stack);
+			var entry = TagEntry.item(stack);
 			entries.add(entry);
 		}
 	}
@@ -76,7 +76,7 @@ final class OreDictSync {
 		ObjectOpenHashSet<ItemEntry> entries = new ObjectOpenHashSet<>(stacks.size());
 
 		for (var stack : stacks) {
-			entries.add(ItemEntry.ItemKey.of(stack));
+			entries.add(TagEntry.item(stack));
 		}
 
 		return entries;

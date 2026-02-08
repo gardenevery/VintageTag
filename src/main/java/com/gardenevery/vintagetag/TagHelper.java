@@ -125,7 +125,7 @@ public final class TagHelper {
 		 */
 		@Nonnull
 		public Set<String> tags(@Nullable Item item) {
-			return (item == null) ? Collections.emptySet() : TagManager.item().getTags(ItemKey.of(item));
+			return (item == null) ? Collections.emptySet() : TagManager.item().getTags(TagEntry.item(item));
 		}
 
 		/**
@@ -139,7 +139,7 @@ public final class TagHelper {
 		public Set<String> tags(@Nullable ItemStack stack) {
 			return (stack == null || stack.isEmpty())
 					? Collections.emptySet()
-					: TagManager.item().getTags(ItemKey.of(stack));
+					: TagManager.item().getTags(TagEntry.item(stack));
 		}
 
 		/**
@@ -151,7 +151,7 @@ public final class TagHelper {
 		 */
 		@Nonnull
 		public List<String> tagsList(@Nullable Item item) {
-			return (item == null) ? Collections.emptyList() : TagManager.item().getTagsList(ItemKey.of(item));
+			return (item == null) ? Collections.emptyList() : TagManager.item().getTagsList(TagEntry.item(item));
 		}
 
 		/**
@@ -165,7 +165,7 @@ public final class TagHelper {
 		public List<String> tagsList(@Nullable ItemStack stack) {
 			return (stack == null || stack.isEmpty())
 					? Collections.emptyList()
-					: TagManager.item().getTagsList(ItemKey.of(stack));
+					: TagManager.item().getTagsList(TagEntry.item(stack));
 		}
 
 		/**
@@ -309,7 +309,7 @@ public final class TagHelper {
 			if (item == null || tagInvalid(tagName)) {
 				return false;
 			}
-			var key = ItemKey.of(item);
+			var key = TagEntry.item(item);
 			return TagManager.item().hasTag(key, tagName);
 		}
 
@@ -327,7 +327,7 @@ public final class TagHelper {
 			if (stack == null || stack.isEmpty() || tagInvalid(tagName)) {
 				return false;
 			}
-			var key = ItemKey.of(stack);
+			var key = TagEntry.item(stack);
 			return TagManager.item().hasTag(key, tagName);
 		}
 
@@ -345,7 +345,7 @@ public final class TagHelper {
 			if (item == null || tagInvalid(tagNames)) {
 				return false;
 			}
-			var key = ItemKey.of(item);
+			var key = TagEntry.item(item);
 			return TagManager.item().hasAnyTag(key, tagNames);
 		}
 
@@ -363,7 +363,7 @@ public final class TagHelper {
 			if (stack == null || stack.isEmpty() || tagInvalid(tagNames)) {
 				return false;
 			}
-			var key = ItemKey.of(stack);
+			var key = TagEntry.item(stack);
 			return TagManager.item().hasAnyTag(key, tagNames);
 		}
 
@@ -381,7 +381,7 @@ public final class TagHelper {
 			if (item == null || tagInvalid(tagNames)) {
 				return false;
 			}
-			return TagManager.item().hasAllTags(ItemKey.of(item), tagNames);
+			return TagManager.item().hasAllTags(TagEntry.item(item), tagNames);
 		}
 
 		/**
@@ -398,7 +398,7 @@ public final class TagHelper {
 			if (stack == null || stack.isEmpty() || tagInvalid(tagNames)) {
 				return false;
 			}
-			return TagManager.item().hasAllTags(ItemKey.of(stack), tagNames);
+			return TagManager.item().hasAllTags(TagEntry.item(stack), tagNames);
 		}
 
 		/**
@@ -412,7 +412,7 @@ public final class TagHelper {
 			if (item == null) {
 				return false;
 			}
-			return TagManager.item().isTagged(ItemKey.of(item));
+			return TagManager.item().isTagged(TagEntry.item(item));
 		}
 
 		/**
@@ -426,7 +426,7 @@ public final class TagHelper {
 			if (stack == null || stack.isEmpty()) {
 				return false;
 			}
-			return TagManager.item().isTagged(ItemKey.of(stack));
+			return TagManager.item().isTagged(TagEntry.item(stack));
 		}
 
 		/**
@@ -490,7 +490,7 @@ public final class TagHelper {
 		 */
 		@Nonnull
 		public Set<String> tags(@Nullable Fluid fluid) {
-			return (fluid == null) ? Collections.emptySet() : TagManager.fluid().getTags(FluidKey.of(fluid));
+			return (fluid == null) ? Collections.emptySet() : TagManager.fluid().getTags(TagEntry.fluid(fluid));
 		}
 
 		/**
@@ -505,7 +505,7 @@ public final class TagHelper {
 		public Set<String> tags(@Nullable FluidStack stack) {
 			return (stack == null || stack.getFluid() == null)
 					? Collections.emptySet()
-					: TagManager.fluid().getTags(FluidKey.of(stack));
+					: TagManager.fluid().getTags(TagEntry.fluid(stack));
 		}
 
 		/**
@@ -517,7 +517,7 @@ public final class TagHelper {
 		 */
 		@Nonnull
 		public List<String> tagsList(@Nullable Fluid fluid) {
-			return (fluid == null) ? Collections.emptyList() : TagManager.fluid().getTagsList(FluidKey.of(fluid));
+			return (fluid == null) ? Collections.emptyList() : TagManager.fluid().getTagsList(TagEntry.fluid(fluid));
 		}
 
 		/**
@@ -532,7 +532,7 @@ public final class TagHelper {
 		public List<String> tagsList(@Nullable FluidStack stack) {
 			return (stack == null || stack.getFluid() == null)
 					? Collections.emptyList()
-					: TagManager.fluid().getTagsList(FluidKey.of(stack));
+					: TagManager.fluid().getTagsList(TagEntry.fluid(stack));
 		}
 
 		/**
@@ -640,7 +640,7 @@ public final class TagHelper {
 			if (fluid == null || tagInvalid(tagName)) {
 				return false;
 			}
-			return TagManager.fluid().hasTag(FluidKey.of(fluid), tagName);
+			return TagManager.fluid().hasTag(TagEntry.fluid(fluid), tagName);
 		}
 
 		/**
@@ -657,7 +657,7 @@ public final class TagHelper {
 			if (stack == null || stack.getFluid() == null || tagInvalid(tagName)) {
 				return false;
 			}
-			return TagManager.fluid().hasTag(FluidKey.of(stack), tagName);
+			return TagManager.fluid().hasTag(TagEntry.fluid(stack), tagName);
 		}
 
 		/**
@@ -674,7 +674,7 @@ public final class TagHelper {
 			if (fluid == null || tagInvalid(tagNames)) {
 				return false;
 			}
-			return TagManager.fluid().hasAnyTag(FluidKey.of(fluid), tagNames);
+			return TagManager.fluid().hasAnyTag(TagEntry.fluid(fluid), tagNames);
 		}
 
 		/**
@@ -691,7 +691,7 @@ public final class TagHelper {
 			if (stack == null || stack.getFluid() == null || tagInvalid(tagNames)) {
 				return false;
 			}
-			return TagManager.fluid().hasAnyTag(FluidKey.of(stack), tagNames);
+			return TagManager.fluid().hasAnyTag(TagEntry.fluid(stack), tagNames);
 		}
 
 		/**
@@ -708,7 +708,7 @@ public final class TagHelper {
 			if (fluid == null || tagInvalid(tagNames)) {
 				return false;
 			}
-			return TagManager.fluid().hasAllTags(FluidKey.of(fluid), tagNames);
+			return TagManager.fluid().hasAllTags(TagEntry.fluid(fluid), tagNames);
 		}
 
 		/**
@@ -725,7 +725,7 @@ public final class TagHelper {
 			if (stack == null || stack.getFluid() == null || tagInvalid(tagNames)) {
 				return false;
 			}
-			return TagManager.fluid().hasAllTags(FluidKey.of(stack), tagNames);
+			return TagManager.fluid().hasAllTags(TagEntry.fluid(stack), tagNames);
 		}
 
 		/**
@@ -739,7 +739,7 @@ public final class TagHelper {
 			if (fluid == null) {
 				return false;
 			}
-			return TagManager.fluid().isTagged(FluidKey.of(fluid));
+			return TagManager.fluid().isTagged(TagEntry.fluid(fluid));
 		}
 
 		/**
@@ -753,7 +753,7 @@ public final class TagHelper {
 			if (stack == null || stack.getFluid() == null) {
 				return false;
 			}
-			return TagManager.fluid().isTagged(FluidKey.of(stack));
+			return TagManager.fluid().isTagged(TagEntry.fluid(stack));
 		}
 
 		/**
@@ -817,7 +817,7 @@ public final class TagHelper {
 		 */
 		@Nonnull
 		public Set<String> tags(@Nullable Block block) {
-			return block == null ? Collections.emptySet() : TagManager.block().getTags(BlockKey.of(block));
+			return block == null ? Collections.emptySet() : TagManager.block().getTags(TagEntry.block(block));
 		}
 
 		/**
@@ -829,7 +829,9 @@ public final class TagHelper {
 		 */
 		@Nonnull
 		public Set<String> tags(@Nullable TileEntity blockEntity) {
-			return blockEntity == null ? Collections.emptySet() : TagManager.block().getTags(BlockKey.of(blockEntity));
+			return blockEntity == null
+					? Collections.emptySet()
+					: TagManager.block().getTags(TagEntry.block(blockEntity));
 		}
 
 		/**
@@ -841,7 +843,7 @@ public final class TagHelper {
 		 */
 		@Nonnull
 		public List<String> tagsList(@Nullable Block block) {
-			return block == null ? Collections.emptyList() : TagManager.block().getTagsList(BlockKey.of(block));
+			return block == null ? Collections.emptyList() : TagManager.block().getTagsList(TagEntry.block(block));
 		}
 
 		/**
@@ -855,7 +857,7 @@ public final class TagHelper {
 		public List<String> tagsList(@Nullable TileEntity blockEntity) {
 			return blockEntity == null
 					? Collections.emptyList()
-					: TagManager.block().getTagsList(BlockKey.of(blockEntity));
+					: TagManager.block().getTagsList(TagEntry.block(blockEntity));
 		}
 
 		/**
@@ -963,7 +965,7 @@ public final class TagHelper {
 			if (block == null || tagInvalid(tagName)) {
 				return false;
 			}
-			return TagManager.block().hasTag(BlockKey.of(block), tagName);
+			return TagManager.block().hasTag(TagEntry.block(block), tagName);
 		}
 
 		/**
@@ -980,7 +982,7 @@ public final class TagHelper {
 			if (blockEntity == null || tagInvalid(tagName)) {
 				return false;
 			}
-			return TagManager.block().hasTag(BlockKey.of(blockEntity), tagName);
+			return TagManager.block().hasTag(TagEntry.block(blockEntity), tagName);
 		}
 
 		/**
@@ -997,7 +999,7 @@ public final class TagHelper {
 			if (block == null || tagInvalid(tagNames)) {
 				return false;
 			}
-			return TagManager.block().hasAnyTag(BlockKey.of(block), tagNames);
+			return TagManager.block().hasAnyTag(TagEntry.block(block), tagNames);
 		}
 
 		/**
@@ -1014,7 +1016,7 @@ public final class TagHelper {
 			if (blockEntity == null || tagInvalid(tagNames)) {
 				return false;
 			}
-			return TagManager.block().hasAnyTag(BlockKey.of(blockEntity), tagNames);
+			return TagManager.block().hasAnyTag(TagEntry.block(blockEntity), tagNames);
 		}
 
 		/**
@@ -1031,7 +1033,7 @@ public final class TagHelper {
 			if (block == null || tagInvalid(tagNames)) {
 				return false;
 			}
-			return TagManager.block().hasAllTags(BlockKey.of(block), tagNames);
+			return TagManager.block().hasAllTags(TagEntry.block(block), tagNames);
 		}
 
 		/**
@@ -1048,7 +1050,7 @@ public final class TagHelper {
 			if (blockEntity == null || tagInvalid(tagNames)) {
 				return false;
 			}
-			return TagManager.block().hasAllTags(BlockKey.of(blockEntity), tagNames);
+			return TagManager.block().hasAllTags(TagEntry.block(blockEntity), tagNames);
 		}
 
 		/**
@@ -1062,7 +1064,7 @@ public final class TagHelper {
 			if (block == null) {
 				return false;
 			}
-			return TagManager.block().isTagged(BlockKey.of(block));
+			return TagManager.block().isTagged(TagEntry.block(block));
 		}
 
 		/**
@@ -1076,7 +1078,7 @@ public final class TagHelper {
 			if (blockEntity == null) {
 				return false;
 			}
-			return TagManager.block().isTagged(BlockKey.of(blockEntity));
+			return TagManager.block().isTagged(TagEntry.block(blockEntity));
 		}
 
 		/**

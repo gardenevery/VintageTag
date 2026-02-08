@@ -1,6 +1,6 @@
 package com.gardenevery.vintagetag;
 
-import java.util.Objects;
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import com.github.bsideup.jabel.Desugar;
@@ -16,6 +16,10 @@ import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
 
 interface TagEntry {
+	default boolean isEmpty() {
+		return false;
+	}
+
 	default boolean isTag() {
 		return false;
 	}
@@ -26,58 +30,156 @@ interface TagEntry {
 	}
 
 	@Nullable
-	default String getRawTagName() {
-		return "#" + getTagName();
+	default String getDisplayTagName() {
+		return getTagName() != null ? "#" + getTagName() : null;
 	}
 
-	@Nullable
-	static ItemEntry item(String name) {
+	@Nonnull
+	static ItemEntry item(@Nullable String name) {
 		if (name == null || name.trim().isEmpty()) {
-			return null;
+			return ItemEntry.EMPTY;
 		}
 
 		if (name.startsWith("#")) {
-			return ItemEntry.ItemTag.of(name.substring(1));
+			var tagName = name.substring(1);
+			if (tagName.trim().isEmpty()) {
+				return ItemEntry.EMPTY;
+			}
+			return new ItemEntry.ItemTag(tagName);
 		} else {
-			return ItemEntry.ItemKey.of(name);
+			var resourceLocation = new ResourceLocation(name);
+			var item = ForgeRegistries.ITEMS.getValue(resourceLocation);
+			if (item == null) {
+				return ItemEntry.EMPTY;
+			} else {
+				return new ItemEntry.ItemKey(item, 0);
+			}
 		}
 	}
 
-	@Nullable
-	static ItemEntry item(String name, int metadata) {
+	@Nonnull
+	static ItemEntry item(@Nullable String name, int metadata) {
 		if (name == null || name.trim().isEmpty() || metadata < 0 || name.startsWith("#")) {
-			return null;
-		}
-		return ItemEntry.ItemKey.of(name, metadata);
-	}
-
-	@Nullable
-	static FluidEntry fluid(String name) {
-		if (name == null || name.trim().isEmpty()) {
-			return null;
+			return ItemEntry.EMPTY;
 		}
 
-		if (name.startsWith("#")) {
-			return FluidEntry.FluidTag.of(name.substring(1));
+		var resourceLocation = new ResourceLocation(name);
+		var item = ForgeRegistries.ITEMS.getValue(resourceLocation);
+		if (item == null) {
+			return ItemEntry.EMPTY;
 		} else {
-			return FluidEntry.FluidKey.of(name);
+			return new ItemEntry.ItemKey(item, item.getHasSubtypes() ? metadata : 0);
 		}
 	}
 
-	@Nullable
-	static BlockEntry block(String name) {
+	@Nonnull
+	static ItemEntry item(@Nullable Item item) {
+		if (item == null) {
+			return ItemEntry.EMPTY;
+		}
+		return new ItemEntry.ItemKey(item, 0);
+	}
+
+	@Nonnull
+	static ItemEntry item(@Nullable Item item, int metadata) {
+		if (item == null || metadata < 0) {
+			return ItemEntry.EMPTY;
+		}
+		return new ItemEntry.ItemKey(item, item.getHasSubtypes() ? metadata : 0);
+	}
+
+	@Nonnull
+	static ItemEntry item(@Nullable ItemStack stack) {
+		if (stack == null || stack.isEmpty()) {
+			return ItemEntry.EMPTY;
+		}
+		return new ItemEntry.ItemKey(stack.getItem(), stack.getHasSubtypes() ? stack.getMetadata() : 0);
+	}
+
+	@Nonnull
+	static FluidEntry fluid(@Nullable String name) {
 		if (name == null || name.trim().isEmpty()) {
-			return null;
+			return FluidEntry.EMPTY;
 		}
 
 		if (name.startsWith("#")) {
-			return BlockEntry.BlockTag.of(name.substring(1));
+			var tagName = name.substring(1);
+			if (tagName.trim().isEmpty()) {
+				return FluidEntry.EMPTY;
+			}
+			return new FluidEntry.FluidTag(tagName);
 		} else {
-			return BlockEntry.BlockKey.of(name);
+			var fluid = FluidRegistry.getFluid(name);
+			if (fluid == null) {
+				return FluidEntry.EMPTY;
+			} else {
+				return new FluidEntry.FluidKey(fluid);
+			}
 		}
+	}
+
+	@Nonnull
+	static FluidEntry fluid(@Nullable Fluid fluid) {
+		if (fluid == null) {
+			return FluidEntry.EMPTY;
+		}
+		return new FluidEntry.FluidKey(fluid);
+	}
+
+	@Nonnull
+	static FluidEntry fluid(@Nullable FluidStack stack) {
+		if (stack == null || stack.getFluid() == null) {
+			return FluidEntry.EMPTY;
+		}
+		return new FluidEntry.FluidKey(stack.getFluid());
+	}
+
+	@Nonnull
+	static BlockEntry block(@Nullable String name) {
+		if (name == null || name.trim().isEmpty()) {
+			return BlockEntry.EMPTY;
+		}
+
+		if (name.startsWith("#")) {
+			var tagName = name.substring(1);
+			if (tagName.trim().isEmpty()) {
+				return BlockEntry.EMPTY;
+			}
+			return new BlockEntry.BlockTag(tagName);
+		} else {
+			var resourceLocation = new ResourceLocation(name);
+			var block = ForgeRegistries.BLOCKS.getValue(resourceLocation);
+			if (block == null) {
+				return BlockEntry.EMPTY;
+			}
+			return new BlockEntry.BlockKey(block);
+		}
+	}
+
+	@Nonnull
+	static BlockEntry block(@Nullable Block block) {
+		if (block == null) {
+			return BlockEntry.EMPTY;
+		}
+		return new BlockEntry.BlockKey(block);
+	}
+
+	@Nonnull
+	static BlockEntry block(@Nullable TileEntity blockEntity) {
+		if (blockEntity == null) {
+			return BlockEntry.EMPTY;
+		}
+		return new BlockEntry.BlockKey(blockEntity.getBlockType());
 	}
 
 	interface ItemEntry extends TagEntry {
+		ItemEntry EMPTY = new ItemEntry() {
+			@Override
+			public boolean isEmpty() {
+				return true;
+			}
+		};
+
 		@Nullable
 		default ItemKey toKey() {
 			return null;
@@ -85,35 +187,6 @@ interface TagEntry {
 
 		@Desugar
 		record ItemKey(Item item, int metadata) implements ItemEntry {
-			public ItemKey {
-				Objects.requireNonNull(item, "Item cannot be null");
-				if (metadata < 0) {
-					throw new IllegalArgumentException("Metadata cannot be negative");
-				}
-			}
-
-			public static ItemKey of(String name) {
-				var resourceLocation = new ResourceLocation(name);
-				return new ItemKey(ForgeRegistries.ITEMS.getValue(resourceLocation), 0);
-			}
-
-			public static ItemKey of(String name, int metadata) {
-				var resourceLocation = new ResourceLocation(name);
-				return new ItemKey(ForgeRegistries.ITEMS.getValue(resourceLocation), metadata);
-			}
-
-			public static ItemKey of(Item item) {
-				return new ItemKey(item, 0);
-			}
-
-			public static ItemKey of(Item item, int metadata) {
-				return new ItemKey(item, metadata);
-			}
-
-			public static ItemKey of(ItemStack stack) {
-				return new ItemKey(stack.getItem(), stack.getHasSubtypes() ? stack.getMetadata() : 0);
-			}
-
 			public ItemStack toStack() {
 				return new ItemStack(item, 1, metadata);
 			}
@@ -126,17 +199,6 @@ interface TagEntry {
 
 		@Desugar
 		record ItemTag(String tagName) implements ItemEntry {
-			public ItemTag {
-				Objects.requireNonNull(tagName, "Tag name cannot be null");
-				if (tagName.trim().isEmpty()) {
-					throw new IllegalArgumentException("Tag name cannot be empty");
-				}
-			}
-
-			public static ItemTag of(String tagName) {
-				return new ItemTag(tagName);
-			}
-
 			@Override
 			public boolean isTag() {
 				return true;
@@ -150,6 +212,13 @@ interface TagEntry {
 	}
 
 	interface FluidEntry extends TagEntry {
+		FluidEntry EMPTY = new FluidEntry() {
+			@Override
+			public boolean isEmpty() {
+				return true;
+			}
+		};
+
 		@Nullable
 		default FluidKey toKey() {
 			return null;
@@ -157,20 +226,8 @@ interface TagEntry {
 
 		@Desugar
 		record FluidKey(Fluid fluid) implements FluidEntry {
-			public FluidKey {
-				Objects.requireNonNull(fluid, "Fluid cannot be null");
-			}
-
-			public static FluidKey of(String name) {
-				return new FluidKey(FluidRegistry.getFluid(name));
-			}
-
-			public static FluidKey of(Fluid fluid) {
-				return new FluidKey(fluid);
-			}
-
-			public static FluidKey of(FluidStack stack) {
-				return new FluidKey(stack.getFluid());
+			public FluidStack toStack() {
+				return new FluidStack(fluid, 1000);
 			}
 
 			@Override
@@ -181,17 +238,6 @@ interface TagEntry {
 
 		@Desugar
 		record FluidTag(String tagName) implements FluidEntry {
-			public FluidTag {
-				Objects.requireNonNull(tagName, "Tag name cannot be null");
-				if (tagName.trim().isEmpty()) {
-					throw new IllegalArgumentException("Tag name cannot be empty");
-				}
-			}
-
-			public static FluidTag of(String tagName) {
-				return new FluidTag(tagName);
-			}
-
 			@Override
 			public boolean isTag() {
 				return true;
@@ -205,6 +251,13 @@ interface TagEntry {
 	}
 
 	interface BlockEntry extends TagEntry {
+		BlockEntry EMPTY = new BlockEntry() {
+			@Override
+			public boolean isEmpty() {
+				return true;
+			}
+		};
+
 		@Nullable
 		default BlockKey toKey() {
 			return null;
@@ -212,23 +265,6 @@ interface TagEntry {
 
 		@Desugar
 		record BlockKey(Block block) implements BlockEntry {
-			public BlockKey {
-				Objects.requireNonNull(block, "Block cannot be null");
-			}
-
-			public static BlockKey of(String name) {
-				var resourceLocation = new ResourceLocation(name);
-				return new BlockKey(ForgeRegistries.BLOCKS.getValue(resourceLocation));
-			}
-
-			public static BlockKey of(Block block) {
-				return new BlockKey(block);
-			}
-
-			public static BlockKey of(TileEntity blockEntity) {
-				return new BlockKey(blockEntity.getBlockType());
-			}
-
 			@Override
 			public BlockKey toKey() {
 				return this;
@@ -237,17 +273,6 @@ interface TagEntry {
 
 		@Desugar
 		record BlockTag(String tagName) implements BlockEntry {
-			public BlockTag {
-				Objects.requireNonNull(tagName, "Tag name cannot be null");
-				if (tagName.trim().isEmpty()) {
-					throw new IllegalArgumentException("Tag name cannot be empty");
-				}
-			}
-
-			public static BlockTag of(String tagName) {
-				return new BlockTag(tagName);
-			}
-
 			@Override
 			public boolean isTag() {
 				return true;
