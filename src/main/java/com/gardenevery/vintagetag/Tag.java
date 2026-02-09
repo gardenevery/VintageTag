@@ -1,9 +1,6 @@
 package com.gardenevery.vintagetag;
 
-import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import javax.annotation.Nonnull;
 
@@ -16,47 +13,43 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 final class Tag<T extends TagEntry> {
 	private final ImmutableMap<String, ImmutableSet<T>> tagToEntries;
-	private final ImmutableMap<T, ImmutableSet<String>> entryToDirectTags;
+	private final ImmutableMap<T, ImmutableSet<String>> entryToTags;
 	private final ImmutableSet<String> tags;
-
-	private final Map<String, ImmutableSet<T>> expansionCache = new ConcurrentHashMap<>();
-	private final ThreadLocal<Set<String>> expansionStack = ThreadLocal.withInitial(HashSet::new);
+	private Integer associationCount = null;
 
 	public Tag() {
 		this.tagToEntries = ImmutableMap.of();
-		this.entryToDirectTags = ImmutableMap.of();
+		this.entryToTags = ImmutableMap.of();
 		this.tags = ImmutableSet.of();
 	}
 
-	private Tag(ImmutableMap<String, ImmutableSet<T>> tagToEntries,
-			ImmutableMap<T, ImmutableSet<String>> entryToDirectTags, ImmutableSet<String> tags) {
+	private Tag(ImmutableMap<String, ImmutableSet<T>> tagToEntries, ImmutableMap<T, ImmutableSet<String>> entryToTags,
+			ImmutableSet<String> tags) {
 		this.tagToEntries = tagToEntries;
-		this.entryToDirectTags = entryToDirectTags;
+		this.entryToTags = entryToTags;
 		this.tags = tags;
 	}
 
 	@Nonnull
-	public ImmutableSet<T> getKeys(@Nonnull String tagName) {
-		if (!exists(tagName)) {
-			return ImmutableSet.of();
-		}
-		return expansionCache.computeIfAbsent(tagName, this::expandTag);
-	}
-
-	@Nonnull
-	public ImmutableList<T> getKeysList(@Nonnull String tagName) {
-		return getKeys(tagName).asList();
-	}
-
-	@Nonnull
 	public ImmutableSet<String> getTags(@Nonnull T entry) {
-		var tags = entryToDirectTags.get(entry);
+		var tags = entryToTags.get(entry);
 		return tags == null ? ImmutableSet.of() : tags;
 	}
 
 	@Nonnull
 	public ImmutableList<String> getTagsList(@Nonnull T entry) {
 		return getTags(entry).asList();
+	}
+
+	@Nonnull
+	public ImmutableSet<T> getKeys(@Nonnull String tagName) {
+		var keys = tagToEntries.get(tagName);
+		return keys == null ? ImmutableSet.of() : keys;
+	}
+
+	@Nonnull
+	public ImmutableList<T> getKeysList(@Nonnull String tagName) {
+		return getKeys(tagName).asList();
 	}
 
 	@Nonnull
@@ -71,12 +64,12 @@ final class Tag<T extends TagEntry> {
 
 	@Nonnull
 	public ImmutableSet<T> getAllKeys() {
-		return entryToDirectTags.keySet();
+		return entryToTags.keySet();
 	}
 
 	@Nonnull
 	public ImmutableList<T> getAllKeysList() {
-		return ImmutableList.copyOf(entryToDirectTags.keySet());
+		return ImmutableList.copyOf(entryToTags.keySet());
 	}
 
 	@Nonnull
@@ -85,7 +78,7 @@ final class Tag<T extends TagEntry> {
 	}
 
 	public boolean hasTag(@Nonnull T entry, @Nonnull String tagName) {
-		var directTags = entryToDirectTags.get(entry);
+		var directTags = entryToTags.get(entry);
 		if (directTags != null && directTags.contains(tagName)) {
 			return true;
 		}
@@ -93,7 +86,7 @@ final class Tag<T extends TagEntry> {
 	}
 
 	public boolean hasAnyTag(@Nonnull T entry, @Nonnull String... tagNames) {
-		var directTags = entryToDirectTags.get(entry);
+		var directTags = entryToTags.get(entry);
 		if (directTags != null) {
 			for (var tagName : tagNames) {
 				if (directTags.contains(tagName) || getKeys(tagName).contains(entry)) {
@@ -120,7 +113,7 @@ final class Tag<T extends TagEntry> {
 	}
 
 	public boolean isTagged(@Nonnull T entry) {
-		var tags = entryToDirectTags.get(entry);
+		var tags = entryToTags.get(entry);
 		return tags != null && !tags.isEmpty();
 	}
 
@@ -133,65 +126,28 @@ final class Tag<T extends TagEntry> {
 	}
 
 	public int getKeyCount() {
-		return entryToDirectTags.size();
+		return entryToTags.size();
 	}
 
 	public int getAssociationCount() {
-		int count = 0;
-		for (var entries : tagToEntries.values()) {
-			count += entries.size();
+		var count = this.associationCount;
+		if (count == null) {
+			count = 0;
+			for (var keys : tagToEntries.values()) {
+				count += keys.size();
+			}
+			this.associationCount = count;
 		}
 		return count;
 	}
 
-	@Nonnull
-	private ImmutableSet<T> expandTag(@Nonnull String tagName) {
-		ImmutableSet.Builder<T> result = ImmutableSet.builder();
-		var visited = expansionStack.get();
-
-		try {
-			if (visited.contains(tagName)) {
-				return ImmutableSet.of();
-			}
-
-			visited.add(tagName);
-			expandTagRecursive(tagName, result, visited);
-		} finally {
-			visited.remove(tagName);
-			if (visited.isEmpty()) {
-				expansionStack.remove();
-			}
-		}
-		return result.build();
-	}
-
-	private void expandTagRecursive(@Nonnull String tagName, ImmutableSet.Builder<T> result, Set<String> visited) {
-		var entries = tagToEntries.get(tagName);
-		if (entries == null) {
-			return;
-		}
-
-		for (T entry : entries) {
-			if (entry.isTag()) {
-				var referencedTag = entry.getTagName();
-				if (referencedTag != null && !visited.contains(referencedTag)) {
-					visited.add(referencedTag);
-					expandTagRecursive(referencedTag, result, visited);
-					visited.remove(referencedTag);
-				}
-			} else {
-				result.add(entry);
-			}
-		}
-	}
-
 	static final class MutableTagContainer<T extends TagEntry> {
 		private final Object2ObjectOpenHashMap<String, ObjectOpenHashSet<T>> tagToEntries;
-		private final Object2ObjectOpenHashMap<T, ObjectOpenHashSet<String>> entryToDirectTags;
+		private final Object2ObjectOpenHashMap<T, ObjectOpenHashSet<String>> entryToTags;
 
 		public MutableTagContainer() {
 			this.tagToEntries = new Object2ObjectOpenHashMap<>();
-			this.entryToDirectTags = new Object2ObjectOpenHashMap<>();
+			this.entryToTags = new Object2ObjectOpenHashMap<>();
 		}
 
 		public void register(@Nonnull Set<T> entries, @Nonnull String tagName) {
@@ -205,7 +161,7 @@ final class Tag<T extends TagEntry> {
 				entrySet.add(entry);
 
 				if (!entry.isTag()) {
-					entryToDirectTags.computeIfAbsent(entry, k -> new ObjectOpenHashSet<>(4)).add(tagName);
+					entryToTags.computeIfAbsent(entry, k -> new ObjectOpenHashSet<>(4)).add(tagName);
 				}
 			}
 		}
@@ -215,11 +171,11 @@ final class Tag<T extends TagEntry> {
 			if (existingEntries != null) {
 				for (T entry : existingEntries) {
 					if (!entry.isTag()) {
-						var tags = entryToDirectTags.get(entry);
+						var tags = entryToTags.get(entry);
 						if (tags != null) {
 							tags.remove(tagName);
 							if (tags.isEmpty()) {
-								entryToDirectTags.remove(entry);
+								entryToTags.remove(entry);
 							}
 						}
 					}
@@ -243,7 +199,7 @@ final class Tag<T extends TagEntry> {
 				}
 			}
 
-			for (var entry : entryToDirectTags.object2ObjectEntrySet()) {
+			for (var entry : entryToTags.object2ObjectEntrySet()) {
 				entryToTagsBuilder.put(entry.getKey(), ImmutableSet.copyOf(entry.getValue()));
 			}
 
@@ -263,12 +219,12 @@ final class Tag<T extends TagEntry> {
 
 		public void copyTo(MutableTagContainer<T> other) {
 			copyMap(this.tagToEntries, other.tagToEntries, set -> !set.isEmpty());
-			copyMap(this.entryToDirectTags, other.entryToDirectTags, set -> true);
+			copyMap(this.entryToTags, other.entryToTags, set -> true);
 		}
 
 		public void clear() {
 			tagToEntries.clear();
-			entryToDirectTags.clear();
+			entryToTags.clear();
 		}
 	}
 }

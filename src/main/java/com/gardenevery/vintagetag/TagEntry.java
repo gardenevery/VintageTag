@@ -36,145 +36,101 @@ interface TagEntry {
 
 	@Nonnull
 	static ItemEntry item(@Nullable String name) {
-		if (name == null || name.trim().isEmpty()) {
-			return ItemEntry.EMPTY;
-		}
-
-		if (name.startsWith("#")) {
-			var tagName = name.substring(1);
-			if (tagName.trim().isEmpty()) {
-				return ItemEntry.EMPTY;
-			}
-			return new ItemEntry.ItemTag(tagName);
-		} else {
-			var resourceLocation = new ResourceLocation(name);
-			var item = ForgeRegistries.ITEMS.getValue(resourceLocation);
-			if (item == null) {
-				return ItemEntry.EMPTY;
-			} else {
-				return new ItemEntry.ItemKey(item, 0);
-			}
-		}
+		return itemInternal(name, 0, true);
 	}
 
 	@Nonnull
 	static ItemEntry item(@Nullable String name, int metadata) {
-		if (name == null || name.trim().isEmpty() || metadata < 0 || name.startsWith("#")) {
-			return ItemEntry.EMPTY;
-		}
-
-		var resourceLocation = new ResourceLocation(name);
-		var item = ForgeRegistries.ITEMS.getValue(resourceLocation);
-		if (item == null) {
-			return ItemEntry.EMPTY;
-		} else {
-			return new ItemEntry.ItemKey(item, item.getHasSubtypes() ? metadata : 0);
-		}
+		return itemInternal(name, metadata, false);
 	}
 
 	@Nonnull
 	static ItemEntry item(@Nullable Item item) {
-		if (item == null) {
-			return ItemEntry.EMPTY;
-		}
-		return new ItemEntry.ItemKey(item, 0);
+		return item == null ? ItemEntry.EMPTY : new ItemEntry.ItemKey(item, 0);
 	}
 
 	@Nonnull
 	static ItemEntry item(@Nullable Item item, int metadata) {
-		if (item == null || metadata < 0) {
-			return ItemEntry.EMPTY;
-		}
-		return new ItemEntry.ItemKey(item, item.getHasSubtypes() ? metadata : 0);
+		return item == null || metadata < 0
+				? ItemEntry.EMPTY
+				: new ItemEntry.ItemKey(item, item.getHasSubtypes() ? metadata : 0);
 	}
 
 	@Nonnull
 	static ItemEntry item(@Nullable ItemStack stack) {
-		if (stack == null || stack.isEmpty()) {
+		return (stack == null || stack.isEmpty())
+				? ItemEntry.EMPTY
+				: new ItemEntry.ItemKey(stack.getItem(), stack.getHasSubtypes() ? stack.getMetadata() : 0);
+	}
+
+	static ItemEntry itemInternal(String name, int metadata, boolean useZeroForMeta) {
+		if (name == null || name.trim().isEmpty())
 			return ItemEntry.EMPTY;
+		if (name.startsWith("#")) {
+			var tagName = extractTagName(name);
+			return tagName == null ? ItemEntry.EMPTY : new ItemEntry.ItemTag(tagName);
 		}
-		return new ItemEntry.ItemKey(stack.getItem(), stack.getHasSubtypes() ? stack.getMetadata() : 0);
+		var item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(name));
+		if (item == null)
+			return ItemEntry.EMPTY;
+		int meta = useZeroForMeta ? 0 : (item.getHasSubtypes() ? metadata : 0);
+		return new ItemEntry.ItemKey(item, meta);
 	}
 
 	@Nonnull
 	static FluidEntry fluid(@Nullable String name) {
-		if (name == null || name.trim().isEmpty()) {
+		if (name == null || name.trim().isEmpty())
 			return FluidEntry.EMPTY;
-		}
-
 		if (name.startsWith("#")) {
-			var tagName = name.substring(1);
-			if (tagName.trim().isEmpty()) {
-				return FluidEntry.EMPTY;
-			}
-			return new FluidEntry.FluidTag(tagName);
-		} else {
-			var fluid = FluidRegistry.getFluid(name);
-			if (fluid == null) {
-				return FluidEntry.EMPTY;
-			} else {
-				return new FluidEntry.FluidKey(fluid);
-			}
+			var tagName = extractTagName(name);
+			return tagName == null ? FluidEntry.EMPTY : new FluidEntry.FluidTag(tagName);
 		}
+		var fluid = FluidRegistry.getFluid(name);
+		return (fluid == null) ? FluidEntry.EMPTY : new FluidEntry.FluidKey(fluid);
 	}
 
 	@Nonnull
 	static FluidEntry fluid(@Nullable Fluid fluid) {
-		if (fluid == null) {
-			return FluidEntry.EMPTY;
-		}
-		return new FluidEntry.FluidKey(fluid);
+		return fluid == null ? FluidEntry.EMPTY : new FluidEntry.FluidKey(fluid);
 	}
 
 	@Nonnull
 	static FluidEntry fluid(@Nullable FluidStack stack) {
-		if (stack == null || stack.getFluid() == null) {
-			return FluidEntry.EMPTY;
-		}
-		return new FluidEntry.FluidKey(stack.getFluid());
+		return (stack == null || stack.getFluid() == null)
+				? FluidEntry.EMPTY
+				: new FluidEntry.FluidKey(stack.getFluid());
 	}
 
 	@Nonnull
 	static BlockEntry block(@Nullable String name) {
-		if (name == null || name.trim().isEmpty()) {
+		if (name == null || name.trim().isEmpty())
 			return BlockEntry.EMPTY;
-		}
-
 		if (name.startsWith("#")) {
-			var tagName = name.substring(1);
-			if (tagName.trim().isEmpty()) {
-				return BlockEntry.EMPTY;
-			}
-			return new BlockEntry.BlockTag(tagName);
-		} else {
-			var resourceLocation = new ResourceLocation(name);
-			var block = ForgeRegistries.BLOCKS.getValue(resourceLocation);
-			if (block == null) {
-				return BlockEntry.EMPTY;
-			}
-			return new BlockEntry.BlockKey(block);
+			var tagName = extractTagName(name);
+			return tagName == null ? BlockEntry.EMPTY : new BlockEntry.BlockTag(tagName);
 		}
+		var block = ForgeRegistries.BLOCKS.getValue(new ResourceLocation(name));
+		return block == null ? BlockEntry.EMPTY : new BlockEntry.BlockKey(block);
 	}
 
 	@Nonnull
 	static BlockEntry block(@Nullable Block block) {
-		if (block == null) {
-			return BlockEntry.EMPTY;
-		}
-		return new BlockEntry.BlockKey(block);
+		return block == null ? BlockEntry.EMPTY : new BlockEntry.BlockKey(block);
 	}
 
 	@Nonnull
 	static BlockEntry block(@Nullable TileEntity blockEntity) {
-		if (blockEntity == null) {
-			return BlockEntry.EMPTY;
-		}
-		return new BlockEntry.BlockKey(blockEntity.getBlockType());
+		return blockEntity == null ? BlockEntry.EMPTY : new BlockEntry.BlockKey(blockEntity.getBlockType());
+	}
+
+	@Nullable
+	static String extractTagName(@Nonnull String name) {
+		var tagName = name.substring(1).trim();
+		return tagName.isEmpty() ? null : tagName;
 	}
 
 	interface ItemEntry extends TagEntry {
 		ItemEntry EMPTY = new ItemEntry() {
-			@Override
 			public boolean isEmpty() {
 				return true;
 			}
@@ -182,6 +138,11 @@ interface TagEntry {
 
 		@Nullable
 		default ItemKey toKey() {
+			return null;
+		}
+
+		@Nullable
+		default ItemTag toTag() {
 			return null;
 		}
 
@@ -203,17 +164,19 @@ interface TagEntry {
 			public boolean isTag() {
 				return true;
 			}
-
 			@Override
 			public String getTagName() {
 				return tagName;
+			}
+			@Override
+			public ItemTag toTag() {
+				return this;
 			}
 		}
 	}
 
 	interface FluidEntry extends TagEntry {
 		FluidEntry EMPTY = new FluidEntry() {
-			@Override
 			public boolean isEmpty() {
 				return true;
 			}
@@ -221,6 +184,11 @@ interface TagEntry {
 
 		@Nullable
 		default FluidKey toKey() {
+			return null;
+		}
+
+		@Nullable
+		default FluidTag toTag() {
 			return null;
 		}
 
@@ -247,12 +215,16 @@ interface TagEntry {
 			public String getTagName() {
 				return tagName;
 			}
+
+			@Override
+			public FluidTag toTag() {
+				return this;
+			}
 		}
 	}
 
 	interface BlockEntry extends TagEntry {
 		BlockEntry EMPTY = new BlockEntry() {
-			@Override
 			public boolean isEmpty() {
 				return true;
 			}
@@ -260,6 +232,11 @@ interface TagEntry {
 
 		@Nullable
 		default BlockKey toKey() {
+			return null;
+		}
+
+		@Nullable
+		default BlockTag toTag() {
 			return null;
 		}
 
@@ -281,6 +258,11 @@ interface TagEntry {
 			@Override
 			public String getTagName() {
 				return tagName;
+			}
+
+			@Override
+			public BlockTag toTag() {
+				return this;
 			}
 		}
 	}
