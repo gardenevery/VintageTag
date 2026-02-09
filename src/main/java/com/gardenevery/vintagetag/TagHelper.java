@@ -207,7 +207,7 @@ public final class TagHelper {
 			for (var entry : entries) {
 				var itemKey = entry.toKey();
 				if (itemKey != null) {
-					stacks.add(itemKey.toStack());
+					stacks.add(itemKey.getElement());
 				}
 			}
 			return stacks;
@@ -235,7 +235,7 @@ public final class TagHelper {
 			for (var entry : entries) {
 				var itemKey = entry.toKey();
 				if (itemKey != null) {
-					stacks.add(itemKey.toStack());
+					stacks.add(itemKey.getElement());
 				}
 			}
 			return Collections.unmodifiableList(stacks);
@@ -254,7 +254,7 @@ public final class TagHelper {
 			for (var entry : entries) {
 				var itemKey = entry.toKey();
 				if (itemKey != null) {
-					stacks.add(itemKey.toStack());
+					stacks.add(itemKey.getElement());
 				}
 			}
 			return stacks;
@@ -276,7 +276,7 @@ public final class TagHelper {
 			for (var entry : entries) {
 				var itemKey = entry.toKey();
 				if (itemKey != null) {
-					stacks.add(itemKey.toStack());
+					stacks.add(itemKey.getElement());
 				}
 			}
 			return Collections.unmodifiableList(stacks);
@@ -293,7 +293,7 @@ public final class TagHelper {
 
 			return entryMap.entrySet().stream().collect(
 					Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().stream().map(ItemEntry::toKey)
-							.filter(Objects::nonNull).map(ItemKey::toStack).collect(Collectors.toSet())));
+							.filter(Objects::nonNull).map(ItemKey::getElement).collect(Collectors.toSet())));
 		}
 
 		/**
