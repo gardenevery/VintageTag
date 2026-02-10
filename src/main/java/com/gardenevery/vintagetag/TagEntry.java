@@ -6,6 +6,8 @@ import javax.annotation.Nullable;
 import com.github.bsideup.jabel.Desugar;
 
 import net.minecraft.block.Block;
+import net.minecraft.init.Blocks;
+import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
@@ -17,28 +19,65 @@ import net.minecraftforge.fml.common.registry.ForgeRegistries;
 
 interface TagEntry {
 
-	enum TagEntryType {
-		ITEM_KEY, ITEM_TAG_INCLUDE, FLUID_KEY, FLUID_TAG_INCLUDE, BLOCK_KEY, BLOCK_TAG_INCLUDE, EMPTY
-	}
-
 	boolean isEmpty();
 
-	default TagEntryType getType() {
-		return TagEntryType.EMPTY;
-	}
-
-	default boolean isTag() {
+	default boolean isKey() {
 		return false;
 	}
 
-	@Nullable
+	@Nonnull
 	default String getTagName() {
-		return null;
+		return "";
+	}
+
+	@Nonnull
+	default String getDisplayTagName() {
+		var tagName = getTagName();
+		return !tagName.trim().isEmpty() ? "#" + tagName : "";
 	}
 
 	@Nullable
-	default String getDisplayTagName() {
-		return getTagName() != null ? "#" + getTagName() : null;
+	default TagKey asTagKey() {
+		return this instanceof TagKey ? (TagKey) this : null;
+	}
+
+	@Nullable
+	default TagInclude asTagInclude() {
+		return this instanceof TagInclude ? (TagInclude) this : null;
+	}
+
+	default boolean isTagKey() {
+		return asTagKey() != null;
+	}
+
+	default boolean isTagInclude() {
+		return asTagInclude() != null;
+	}
+
+	@Nonnull
+	static ItemEntry item(int id) {
+		if (id < 0) {
+			return ItemEntry.EMPTY;
+		}
+
+		var item = Item.getItemById(id);
+		if (item == null || item == Items.AIR) {
+			return ItemEntry.EMPTY;
+		}
+		return new ItemEntry.ItemKey(item, 0);
+	}
+
+	@Nonnull
+	static ItemEntry item(int id, int metadata) {
+		if (id < 0 || metadata < 0) {
+			return ItemEntry.EMPTY;
+		}
+
+		var item = Item.getItemById(id);
+		if (item == null || item == Items.AIR) {
+			return ItemEntry.EMPTY;
+		}
+		return new ItemEntry.ItemKey(item, item.getHasSubtypes() ? metadata : 0);
 	}
 
 	@Nonnull
@@ -52,6 +91,26 @@ interface TagEntry {
 			return ItemEntry.EMPTY;
 		}
 		return itemInternal(name, metadata, false);
+	}
+
+	@Nonnull
+	static ItemEntry item(@Nullable ResourceLocation name) {
+		if (name == null) {
+			return ItemEntry.EMPTY;
+		}
+
+		var item = ForgeRegistries.ITEMS.getValue(name);
+		return item == null ? ItemEntry.EMPTY : new ItemEntry.ItemKey(item, 0);
+	}
+
+	@Nonnull
+	static ItemEntry item(@Nullable ResourceLocation name, int metadata) {
+		if (name == null || metadata < 0) {
+			return ItemEntry.EMPTY;
+		}
+
+		var item = ForgeRegistries.ITEMS.getValue(name);
+		return item == null ? ItemEntry.EMPTY : new ItemEntry.ItemKey(item, item.getHasSubtypes() ? metadata : 0);
 	}
 
 	@Nonnull
@@ -71,25 +130,6 @@ interface TagEntry {
 		return (stack == null || stack.isEmpty())
 				? ItemEntry.EMPTY
 				: new ItemEntry.ItemKey(stack.getItem(), stack.getHasSubtypes() ? stack.getMetadata() : 0);
-	}
-
-	static ItemEntry itemInternal(@Nullable String name, int metadata, boolean useZeroForMeta) {
-		if (name == null || name.trim().isEmpty()) {
-			return ItemEntry.EMPTY;
-		}
-
-		if (name.startsWith("#")) {
-			var tagName = extractTagName(name);
-			return tagName == null ? ItemEntry.EMPTY : new ItemEntry.ItemTagInclude(tagName);
-		}
-
-		var item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(name));
-		if (item == null) {
-			return ItemEntry.EMPTY;
-		}
-
-		int meta = useZeroForMeta ? 0 : (item.getHasSubtypes() ? metadata : 0);
-		return new ItemEntry.ItemKey(item, meta);
 	}
 
 	@Nonnull
@@ -119,6 +159,19 @@ interface TagEntry {
 	}
 
 	@Nonnull
+	static BlockEntry block(int id) {
+		if (id < 0) {
+			return BlockEntry.EMPTY;
+		}
+
+		var block = Block.getBlockById(id);
+		if (block == null || block == Blocks.AIR) {
+			return BlockEntry.EMPTY;
+		}
+		return new BlockEntry.BlockKey(block);
+	}
+
+	@Nonnull
 	static BlockEntry block(@Nullable String name) {
 		if (name == null || name.trim().isEmpty()) {
 			return BlockEntry.EMPTY;
@@ -129,6 +182,15 @@ interface TagEntry {
 			return tagName == null ? BlockEntry.EMPTY : new BlockEntry.BlockTagInclude(tagName);
 		}
 		var block = ForgeRegistries.BLOCKS.getValue(new ResourceLocation(name));
+		return block == null ? BlockEntry.EMPTY : new BlockEntry.BlockKey(block);
+	}
+
+	@Nonnull
+	static BlockEntry block(@Nullable ResourceLocation name) {
+		if (name == null) {
+			return BlockEntry.EMPTY;
+		}
+		var block = ForgeRegistries.BLOCKS.getValue(name);
 		return block == null ? BlockEntry.EMPTY : new BlockEntry.BlockKey(block);
 	}
 
@@ -145,32 +207,50 @@ interface TagEntry {
 
 	@Nullable
 	static String extractTagName(@Nonnull String name) {
+		if (name.length() <= 1) {
+			return null;
+		}
+
 		var tagName = name.substring(1).trim();
 		return tagName.isEmpty() ? null : tagName;
 	}
 
-	interface TagKey<V, E> extends TagEntry {
+	@Nonnull
+	static ItemEntry itemInternal(@Nullable String name, int metadata, boolean useZeroForMeta) {
+		if (name == null || name.trim().isEmpty()) {
+			return ItemEntry.EMPTY;
+		}
+
+		if (name.startsWith("#")) {
+			var tagName = extractTagName(name);
+			return tagName == null ? ItemEntry.EMPTY : new ItemEntry.ItemTagInclude(tagName);
+		}
+
+		var item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(name));
+		if (item == null) {
+			return ItemEntry.EMPTY;
+		}
+
+		int meta = useZeroForMeta ? 0 : (item.getHasSubtypes() ? metadata : 0);
+		return new ItemEntry.ItemKey(item, meta);
+	}
+
+	interface TagKey extends TagEntry {
 		@Override
 		default boolean isEmpty() {
 			return false;
 		}
 
-		@Nonnull
-		V getValue();
-
-		@Nonnull
-		E getElement();
+		@Override
+		default boolean isKey() {
+			return true;
+		}
 	}
 
 	interface TagInclude extends TagEntry {
 		@Override
 		default boolean isEmpty() {
 			return false;
-		}
-
-		@Override
-		default boolean isTag() {
-			return true;
 		}
 
 		@Nonnull
@@ -185,40 +265,55 @@ interface TagEntry {
 	}
 
 	interface ItemEntry extends TagEntry {
-		ItemEntry EMPTY = () -> true;
+		ItemEntry EMPTY = new ItemEntry() {
+			@Nullable
+			@Override
+			public ItemKey asTagKey() {
+				return null;
+			}
+			@Nullable
+			@Override
+			public ItemTagInclude asTagInclude() {
+				return null;
+			}
+
+			@Override
+			public boolean isEmpty() {
+				return true;
+			}
+		};
 
 		@Nullable
-		default ItemKey toKey() {
-			return null;
+		default ItemKey asTagKey() {
+			return this instanceof ItemKey ? (ItemKey) this : null;
 		}
 
 		@Nullable
-		default ItemTagInclude toTag() {
-			return null;
+		default ItemTagInclude asTagInclude() {
+			return this instanceof ItemTagInclude ? (ItemTagInclude) this : null;
 		}
 
 		@Desugar
-		record ItemKey(Item item, int metadata) implements TagKey<Item, ItemStack>, ItemEntry {
+		record ItemKey(Item item, int metadata) implements TagKey, ItemEntry {
 			@Nonnull
 			@Override
-			public ItemKey toKey() {
+			public ItemKey asTagKey() {
 				return this;
 			}
 
+			@Nullable
 			@Override
-			public TagEntryType getType() {
-				return TagEntryType.ITEM_KEY;
+			public ItemTagInclude asTagInclude() {
+				return null;
 			}
 
 			@Nonnull
-			@Override
-			public Item getValue() {
+			public Item getItem() {
 				return item;
 			}
 
 			@Nonnull
-			@Override
-			public ItemStack getElement() {
+			public ItemStack getStack() {
 				return new ItemStack(item, 1, metadata);
 			}
 		}
@@ -231,135 +326,163 @@ interface TagEntry {
 				return tagName;
 			}
 
+			@Nullable
 			@Override
-			public TagEntryType getType() {
-				return TagEntryType.ITEM_TAG_INCLUDE;
+			public ItemKey asTagKey() {
+				return null;
 			}
 
 			@Nonnull
 			@Override
-			public ItemTagInclude toTag() {
+			public ItemTagInclude asTagInclude() {
 				return this;
 			}
 		}
 	}
 
 	interface FluidEntry extends TagEntry {
-		FluidEntry EMPTY = () -> true;
+		FluidEntry EMPTY = new FluidEntry() {
+			@Nullable
+			@Override
+			public FluidKey asTagKey() {
+				return null;
+			}
+			@Nullable
+			@Override
+			public FluidTagInclude asTagInclude() {
+				return null;
+			}
+
+			@Override
+			public boolean isEmpty() {
+				return true;
+			}
+		};
 
 		@Nullable
-		default FluidKey toKey() {
-			return null;
+		default FluidKey asTagKey() {
+			return this instanceof FluidKey ? (FluidKey) this : null;
 		}
 
 		@Nullable
-		default FluidTagInclude toTag() {
-			return null;
+		default FluidTagInclude asTagInclude() {
+			return this instanceof FluidTagInclude ? (FluidTagInclude) this : null;
 		}
 
 		@Desugar
-		record FluidKey(Fluid fluid) implements TagKey<Fluid, FluidStack>, FluidEntry {
+		record FluidKey(Fluid fluid) implements TagKey, FluidEntry {
 			@Nonnull
 			@Override
-			public FluidKey toKey() {
+			public FluidKey asTagKey() {
 				return this;
 			}
 
+			@Nullable
 			@Override
-			public TagEntryType getType() {
-				return TagEntryType.FLUID_KEY;
+			public FluidTagInclude asTagInclude() {
+				return null;
 			}
 
 			@Nonnull
-			@Override
-			public Fluid getValue() {
+			public Fluid getFluid() {
 				return fluid;
 			}
 
 			@Nonnull
-			@Override
-			public FluidStack getElement() {
+			public FluidStack getStack() {
 				return new FluidStack(fluid, 1000);
 			}
 		}
 
 		@Desugar
 		record FluidTagInclude(String tagName) implements TagInclude, FluidEntry {
+			@Nullable
+			@Override
+			public FluidKey asTagKey() {
+				return null;
+			}
+
+			@Nonnull
+			@Override
+			public FluidTagInclude asTagInclude() {
+				return this;
+			}
+
 			@Nonnull
 			@Override
 			public String getTagName() {
 				return tagName;
 			}
-
-			@Override
-			public TagEntryType getType() {
-				return TagEntryType.FLUID_TAG_INCLUDE;
-			}
-
-			@Nonnull
-			@Override
-			public FluidTagInclude toTag() {
-				return this;
-			}
 		}
 	}
 
 	interface BlockEntry extends TagEntry {
-		BlockEntry EMPTY = () -> true;
+		BlockEntry EMPTY = new BlockEntry() {
+			@Nullable
+			@Override
+			public BlockKey asTagKey() {
+				return null;
+			}
+			@Nullable
+			@Override
+			public BlockTagInclude asTagInclude() {
+				return null;
+			}
+
+			@Override
+			public boolean isEmpty() {
+				return true;
+			}
+		};
 
 		@Nullable
-		default BlockKey toKey() {
-			return null;
+		default BlockKey asTagKey() {
+			return this instanceof BlockKey ? (BlockKey) this : null;
 		}
 
 		@Nullable
-		default BlockTagInclude toTag() {
-			return null;
+		default BlockTagInclude asTagInclude() {
+			return this instanceof BlockTagInclude ? (BlockTagInclude) this : null;
 		}
 
 		@Desugar
-		record BlockKey(Block block) implements TagKey<Block, Block>, BlockEntry {
+		record BlockKey(Block block) implements TagKey, BlockEntry {
 			@Nonnull
 			@Override
-			public BlockKey toKey() {
+			public BlockKey asTagKey() {
 				return this;
 			}
 
+			@Nullable
 			@Override
-			public TagEntryType getType() {
-				return TagEntryType.BLOCK_KEY;
+			public BlockTagInclude asTagInclude() {
+				return null;
 			}
 
 			@Nonnull
-			@Override
-			public Block getValue() {
-				return block;
-			}
-
-			@Nonnull
-			@Override
-			public Block getElement() {
+			public Block getBlock() {
 				return block;
 			}
 		}
 
 		@Desugar
 		record BlockTagInclude(String tagName) implements TagInclude, BlockEntry {
+			@Nullable
+			@Override
+			public BlockKey asTagKey() {
+				return null;
+			}
+
+			@Nonnull
+			@Override
+			public BlockTagInclude asTagInclude() {
+				return this;
+			}
+
 			@Nonnull
 			@Override
 			public String getTagName() {
 				return tagName;
-			}
-
-			@Override
-			public TagEntryType getType() {
-				return TagEntryType.BLOCK_TAG_INCLUDE;
-			}
-
-			@Nonnull
-			@Override
-			public BlockTagInclude toTag() {
-				return this;
 			}
 		}
 	}

@@ -394,7 +394,7 @@ final class NetworkSync {
 		}
 
 		private void writeItemEntry(ByteBuf buf, ItemEntry entry) {
-			if (entry.isTag()) {
+			if (!entry.isKey()) {
 				buf.writeInt(TYPE_TAG);
 				writeStringSafe(buf, entry.getTagName());
 			} else if (entry instanceof ItemEntry.ItemKey itemKey) {
@@ -404,7 +404,7 @@ final class NetworkSync {
 		}
 
 		private void writeFluidEntry(ByteBuf buf, FluidEntry entry) {
-			if (entry.isTag()) {
+			if (!entry.isKey()) {
 				buf.writeInt(TYPE_TAG);
 				writeStringSafe(buf, entry.getTagName());
 			} else if (entry instanceof FluidEntry.FluidKey fluidKey) {
@@ -415,7 +415,7 @@ final class NetworkSync {
 		}
 
 		private void writeBlockEntry(ByteBuf buf, BlockEntry entry) {
-			if (entry.isTag()) {
+			if (!entry.isKey()) {
 				buf.writeInt(TYPE_TAG);
 				writeStringSafe(buf, entry.getTagName());
 			} else if (entry instanceof BlockEntry.BlockKey blockKey) {

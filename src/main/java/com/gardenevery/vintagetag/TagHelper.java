@@ -205,9 +205,9 @@ public final class TagHelper {
 			Set<ItemStack> stacks = new ObjectOpenHashSet<>();
 
 			for (var entry : entries) {
-				var itemKey = entry.toKey();
+				var itemKey = entry.asTagKey();
 				if (itemKey != null) {
-					stacks.add(itemKey.getElement());
+					stacks.add(itemKey.getStack());
 				}
 			}
 			return stacks;
@@ -233,9 +233,9 @@ public final class TagHelper {
 
 			List<ItemStack> stacks = new ObjectArrayList<>(entries.size());
 			for (var entry : entries) {
-				var itemKey = entry.toKey();
+				var itemKey = entry.asTagKey();
 				if (itemKey != null) {
-					stacks.add(itemKey.getElement());
+					stacks.add(itemKey.getStack());
 				}
 			}
 			return Collections.unmodifiableList(stacks);
@@ -252,9 +252,9 @@ public final class TagHelper {
 			Set<ItemStack> stacks = new ObjectOpenHashSet<>();
 
 			for (var entry : entries) {
-				var itemKey = entry.toKey();
+				var itemKey = entry.asTagKey();
 				if (itemKey != null) {
-					stacks.add(itemKey.getElement());
+					stacks.add(itemKey.getStack());
 				}
 			}
 			return stacks;
@@ -274,9 +274,9 @@ public final class TagHelper {
 
 			List<ItemStack> stacks = new ObjectArrayList<>(entries.size());
 			for (var entry : entries) {
-				var itemKey = entry.toKey();
+				var itemKey = entry.asTagKey();
 				if (itemKey != null) {
-					stacks.add(itemKey.getElement());
+					stacks.add(itemKey.getStack());
 				}
 			}
 			return Collections.unmodifiableList(stacks);
@@ -292,8 +292,8 @@ public final class TagHelper {
 			var entryMap = TagManager.item().getAllEntries();
 
 			return entryMap.entrySet().stream().collect(
-					Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().stream().map(ItemEntry::toKey)
-							.filter(Objects::nonNull).map(ItemKey::getElement).collect(Collectors.toSet())));
+					Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().stream().map(ItemEntry::asTagKey)
+							.filter(Objects::nonNull).map(ItemKey::getStack).collect(Collectors.toSet())));
 		}
 
 		/**
@@ -568,7 +568,7 @@ public final class TagHelper {
 				return Collections.emptySet();
 			}
 			var entries = TagManager.fluid().getKeys(tagName);
-			return entries.stream().map(FluidEntry::toKey).filter(Objects::nonNull).map(FluidKey::fluid)
+			return entries.stream().map(FluidEntry::asTagKey).filter(Objects::nonNull).map(FluidKey::fluid)
 					.collect(Collectors.toSet());
 		}
 
@@ -585,7 +585,7 @@ public final class TagHelper {
 				return Collections.emptyList();
 			}
 			var entries = TagManager.fluid().getKeysList(tagName);
-			return entries.stream().map(FluidEntry::toKey).filter(Objects::nonNull).map(FluidKey::fluid)
+			return entries.stream().map(FluidEntry::asTagKey).filter(Objects::nonNull).map(FluidKey::fluid)
 					.collect(Collectors.toList());
 		}
 
@@ -597,7 +597,7 @@ public final class TagHelper {
 		@Nonnull
 		public Set<Fluid> allKeys() {
 			var entries = TagManager.fluid().getAllKeys();
-			return entries.stream().map(FluidEntry::toKey).filter(Objects::nonNull).map(FluidKey::fluid)
+			return entries.stream().map(FluidEntry::asTagKey).filter(Objects::nonNull).map(FluidKey::fluid)
 					.collect(Collectors.toSet());
 		}
 
@@ -609,7 +609,7 @@ public final class TagHelper {
 		@Nonnull
 		public List<Fluid> allKeysList() {
 			var entries = TagManager.fluid().getAllKeysList();
-			return entries.stream().map(FluidEntry::toKey).filter(Objects::nonNull).map(FluidKey::fluid)
+			return entries.stream().map(FluidEntry::asTagKey).filter(Objects::nonNull).map(FluidKey::fluid)
 					.collect(Collectors.toList());
 		}
 
@@ -623,7 +623,7 @@ public final class TagHelper {
 			var entryMap = TagManager.fluid().getAllEntries();
 
 			return entryMap.entrySet().stream().collect(
-					Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().stream().map(FluidEntry::toKey)
+					Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().stream().map(FluidEntry::asTagKey)
 							.filter(Objects::nonNull).map(FluidKey::fluid).collect(Collectors.toSet())));
 		}
 
@@ -893,7 +893,7 @@ public final class TagHelper {
 				return Collections.emptySet();
 			}
 			var entries = TagManager.block().getKeys(tagName);
-			return entries.stream().map(BlockEntry::toKey).filter(Objects::nonNull).map(BlockKey::block)
+			return entries.stream().map(BlockEntry::asTagKey).filter(Objects::nonNull).map(BlockKey::block)
 					.collect(Collectors.toSet());
 		}
 
@@ -910,7 +910,7 @@ public final class TagHelper {
 				return Collections.emptyList();
 			}
 			var entries = TagManager.block().getKeysList(tagName);
-			return entries.stream().map(BlockEntry::toKey).filter(Objects::nonNull).map(BlockKey::block)
+			return entries.stream().map(BlockEntry::asTagKey).filter(Objects::nonNull).map(BlockKey::block)
 					.collect(Collectors.toList());
 		}
 
@@ -922,7 +922,7 @@ public final class TagHelper {
 		@Nonnull
 		public Set<Block> allKeys() {
 			var entries = TagManager.block().getAllKeys();
-			return entries.stream().map(BlockEntry::toKey).filter(Objects::nonNull).map(BlockKey::block)
+			return entries.stream().map(BlockEntry::asTagKey).filter(Objects::nonNull).map(BlockKey::block)
 					.collect(Collectors.toSet());
 		}
 
@@ -934,7 +934,7 @@ public final class TagHelper {
 		@Nonnull
 		public List<Block> allKeysList() {
 			var entries = TagManager.block().getAllKeysList();
-			return entries.stream().map(BlockEntry::toKey).filter(Objects::nonNull).map(BlockKey::block)
+			return entries.stream().map(BlockEntry::asTagKey).filter(Objects::nonNull).map(BlockKey::block)
 					.collect(Collectors.toList());
 		}
 
@@ -948,7 +948,7 @@ public final class TagHelper {
 			var entryMap = TagManager.block().getAllEntries();
 
 			return entryMap.entrySet().stream().collect(
-					Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().stream().map(BlockEntry::toKey)
+					Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().stream().map(BlockEntry::asTagKey)
 							.filter(Objects::nonNull).map(BlockKey::block).collect(Collectors.toSet())));
 		}
 
