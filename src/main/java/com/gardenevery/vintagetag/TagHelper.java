@@ -65,16 +65,6 @@ public final class TagHelper {
 	}
 
 	/**
-	 * Get the total number of tag associations
-	 *
-	 * @return The total number of tag associations
-	 */
-	public static int associationCount() {
-		return TagManager.item().getAssociationCount() + TagManager.fluid().getAssociationCount()
-				+ TagManager.block().getAssociationCount();
-	}
-
-	/**
 	 * Get the total number of tag keys
 	 *
 	 * @return The total number of tag keys
@@ -448,15 +438,6 @@ public final class TagHelper {
 		}
 
 		/**
-		 * Get the total number of item-tag associations
-		 *
-		 * @return The count of all item-tag pairs
-		 */
-		public int associationCount() {
-			return TagManager.item().getAssociationCount();
-		}
-
-		/**
 		 * Check if the specified tag name exists for items
 		 *
 		 * @param tagName
@@ -775,15 +756,6 @@ public final class TagHelper {
 		}
 
 		/**
-		 * Get the total number of fluid-tag associations
-		 *
-		 * @return The count of all fluid-tag pairs
-		 */
-		public int associationCount() {
-			return TagManager.fluid().getAssociationCount();
-		}
-
-		/**
 		 * Check if the specified tag name exists for fluids
 		 *
 		 * @param tagName
@@ -1097,15 +1069,6 @@ public final class TagHelper {
 		 */
 		public int keyCount() {
 			return TagManager.block().getKeyCount();
-		}
-
-		/**
-		 * Get the total number of block-tag associations
-		 *
-		 * @return The count of all block-tag pairs
-		 */
-		public int associationCount() {
-			return TagManager.block().getAssociationCount();
 		}
 
 		/**

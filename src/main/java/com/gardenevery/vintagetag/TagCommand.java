@@ -74,63 +74,31 @@ public class TagCommand extends CommandBase {
 		sender.sendMessage(new TextComponentTranslation("tag.command.statistics.title"));
 
 		sender.sendMessage(new TextComponentTranslation("tag.command.statistics.items", TagHelper.item().tagCount(),
-				TagHelper.item().associationCount(), TagHelper.item().keyCount()));
+				TagHelper.item().keyCount()));
 
 		sender.sendMessage(new TextComponentTranslation("tag.command.statistics.fluids", TagHelper.fluid().tagCount(),
-				TagHelper.fluid().associationCount(), TagHelper.fluid().keyCount()));
+				TagHelper.fluid().keyCount()));
 
 		sender.sendMessage(new TextComponentTranslation("tag.command.statistics.blocks", TagHelper.block().tagCount(),
-				TagHelper.block().associationCount(), TagHelper.block().keyCount()));
+				TagHelper.block().keyCount()));
 
 		sender.sendMessage(new TextComponentTranslation("tag.command.statistics.total", TagHelper.tagCount(),
-				TagHelper.associationCount(), TagHelper.keyCount()));
+				TagHelper.keyCount()));
 	}
 
 	public void executeReload(MinecraftServer server, ICommandSender sender, String[] args) {
 		long startTime = System.currentTimeMillis();
 
-		int tasks = 0;
-		if (TagConfig.enableOreSync)
-			tasks |= 1;
-		if (TagConfig.enableModScanner)
-			tasks |= 2;
-		if (TagConfig.enableConfigScanner)
-			tasks |= 4;
+		if (TagConfig.enableOreSync) {
+			OreDictSync.sync();
+		}
 
-		switch (tasks) {
-			case 0 :
-				break;
+		if (TagConfig.enableModScanner) {
+			TagLoader.scanModTags();
+		}
 
-			case 1 :
-				TagManager.applyOreTags();
-				break;
-
-			case 2 :
-				TagManager.applyModTags();
-				break;
-
-			case 3 :
-				TagManager.applyOreAndModTags();
-				break;
-
-			case 4 :
-				TagLoader.scanConfigTags();
-				break;
-
-			case 5 :
-				TagManager.applyOreTags();
-				TagLoader.scanConfigTags();
-				break;
-
-			case 6 :
-				TagManager.applyModTags();
-				TagLoader.scanConfigTags();
-				break;
-
-			case 7 :
-				TagManager.applyOreAndModTags();
-				TagLoader.scanConfigTags();
-				break;
+		if (TagConfig.enableConfigScanner) {
+			TagLoader.scanConfigTags();
 		}
 
 		TagManager.bake();

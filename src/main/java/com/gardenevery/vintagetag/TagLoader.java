@@ -25,6 +25,8 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
+import it.unimi.dsi.fastutil.objects.Object2ReferenceOpenHashMap;
+
 import net.minecraftforge.fml.common.Loader;
 
 import org.apache.commons.io.IOUtils;
@@ -103,23 +105,52 @@ final class TagLoader {
 	private static final Gson GSON = new Gson();
 	private static final Pattern VALID_FILENAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]+\\.json$",
 			Pattern.CASE_INSENSITIVE);
+	private static final Object2ReferenceOpenHashMap<File, String> CACHED_TAG_JARS = new Object2ReferenceOpenHashMap<>();
+	private static boolean TAG_JAR_SCAN_DONE = false;
 
 	private enum Operation {
 		ADD, REPLACE
 	}
 
 	public static void scanModTags() {
-		for (var mod : Loader.instance().getModList()) {
-			var source = mod.getSource();
-			if (source == null || !source.isFile() || !source.getName().endsWith(".jar")) {
-				continue;
+		if (!TAG_JAR_SCAN_DONE) {
+			for (var mod : Loader.instance().getModList()) {
+				var source = mod.getSource();
+				if (source == null) {
+					continue;
+				}
+				if (source.isFile() && source.getName().endsWith(".jar")) {
+					if (jarHasTagsDir(source)) {
+						CACHED_TAG_JARS.put(source, mod.getModId());
+					}
+				}
 			}
-			processJarTags(source);
+			TAG_JAR_SCAN_DONE = true;
+		}
+
+		for (var entry : CACHED_TAG_JARS.object2ReferenceEntrySet()) {
+			processJarTags(entry.getKey());
 		}
 	}
 
 	public static void scanConfigTags() {
 		scanConfigTagDirectory(Paths.get("config", "tags"));
+	}
+
+	private static boolean jarHasTagsDir(File jarFile) {
+		try (var zip = new ZipFile(jarFile)) {
+			var entries = zip.entries();
+			while (entries.hasMoreElements()) {
+				var entry = entries.nextElement();
+				var entryName = entry.getName();
+				if (entryName.equals("data/tags/") || (entryName.startsWith("data/tags/") && entry.isDirectory())) {
+					return true;
+				}
+			}
+		} catch (IOException e) {
+			//
+		}
+		return false;
 	}
 
 	private static void processJarTags(File jarFile) {

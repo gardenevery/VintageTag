@@ -133,6 +133,11 @@ interface TagEntry {
 	}
 
 	@Nonnull
+	static ItemEntry itemTag(@Nullable String tagName) {
+		return tagName == null || tagName.trim().isEmpty() ? ItemEntry.EMPTY : new ItemEntry.ItemTagInclude(tagName);
+	}
+
+	@Nonnull
 	static FluidEntry fluid(@Nullable String name) {
 		if (name == null || name.trim().isEmpty()) {
 			return FluidEntry.EMPTY;
@@ -156,6 +161,11 @@ interface TagEntry {
 		return (stack == null || stack.getFluid() == null)
 				? FluidEntry.EMPTY
 				: new FluidEntry.FluidKey(stack.getFluid());
+	}
+
+	@Nonnull
+	static FluidEntry fluidTag(@Nullable String tagName) {
+		return tagName == null || tagName.trim().isEmpty() ? FluidEntry.EMPTY : new FluidEntry.FluidTagInclude(tagName);
 	}
 
 	@Nonnull
@@ -199,10 +209,16 @@ interface TagEntry {
 		return block == null ? BlockEntry.EMPTY : new BlockEntry.BlockKey(block);
 	}
 
+	@Nonnull
 	static BlockEntry block(@Nullable TileEntity blockEntity) {
 		return (blockEntity == null || blockEntity.isInvalid())
 				? BlockEntry.EMPTY
 				: new BlockEntry.BlockKey(blockEntity.getBlockType());
+	}
+
+	@Nonnull
+	static BlockEntry blockTag(@Nullable String tagName) {
+		return tagName == null || tagName.trim().isEmpty() ? BlockEntry.EMPTY : new BlockEntry.BlockTagInclude(tagName);
 	}
 
 	@Nullable

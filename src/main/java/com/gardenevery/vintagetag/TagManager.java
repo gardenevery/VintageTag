@@ -19,12 +19,6 @@ final class TagManager {
 	private static final MutableTagContainer<FluidEntry> FLUID_TAG_CONTAINER = new MutableTagContainer<>();
 	private static final MutableTagContainer<BlockEntry> BLOCK_TAG_CONTAINER = new MutableTagContainer<>();
 
-	private static final MutableTagContainer<ItemEntry> ORE_DICT_TAG_CACHE = new MutableTagContainer<>();
-	private static final MutableTagContainer<ItemEntry> ORE_DICT_AND_MOD_TAG_CACHE = new MutableTagContainer<>();
-	private static final MutableTagContainer<ItemEntry> MOD_ITEM_TAG_CACHE = new MutableTagContainer<>();
-	private static final MutableTagContainer<FluidEntry> MOD_FLUID_TAG_CACHE = new MutableTagContainer<>();
-	private static final MutableTagContainer<BlockEntry> MOD_BLOCK_TAG_CACHE = new MutableTagContainer<>();
-
 	@Nonnull
 	public static Tag<ItemEntry> item() {
 		return ITEM_TAG_SNAPSHOT;
@@ -62,36 +56,6 @@ final class TagManager {
 
 	public static void replaceBlock(@Nonnull Set<BlockEntry> entry, @Nonnull String tagName) {
 		BLOCK_TAG_CONTAINER.replace(entry, tagName);
-	}
-
-	public static void saveOreTags() {
-		ITEM_TAG_CONTAINER.copyTo(ORE_DICT_TAG_CACHE);
-	}
-
-	public static void saveModTags() {
-		ITEM_TAG_CONTAINER.copyTo(MOD_ITEM_TAG_CACHE);
-		FLUID_TAG_CONTAINER.copyTo(MOD_FLUID_TAG_CACHE);
-		BLOCK_TAG_CONTAINER.copyTo(MOD_BLOCK_TAG_CACHE);
-	}
-
-	public static void saveOreAndModTags() {
-		ITEM_TAG_CONTAINER.copyTo(ORE_DICT_AND_MOD_TAG_CACHE);
-	}
-
-	public static void applyOreTags() {
-		ORE_DICT_TAG_CACHE.copyTo(ITEM_TAG_CONTAINER);
-	}
-
-	public static void applyModTags() {
-		MOD_ITEM_TAG_CACHE.copyTo(ITEM_TAG_CONTAINER);
-		MOD_FLUID_TAG_CACHE.copyTo(FLUID_TAG_CONTAINER);
-		MOD_BLOCK_TAG_CACHE.copyTo(BLOCK_TAG_CONTAINER);
-	}
-
-	public static void applyOreAndModTags() {
-		ORE_DICT_AND_MOD_TAG_CACHE.copyTo(ITEM_TAG_CONTAINER);
-		MOD_FLUID_TAG_CACHE.copyTo(FLUID_TAG_CONTAINER);
-		MOD_BLOCK_TAG_CACHE.copyTo(BLOCK_TAG_CONTAINER);
 	}
 
 	public static void clear() {

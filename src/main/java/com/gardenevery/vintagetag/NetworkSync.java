@@ -292,7 +292,7 @@ final class NetworkSync {
 
 			if (typeMarker == TYPE_TAG) {
 				var tagName = readStringSafe(buf);
-				return TagEntry.item(tagName);
+				return TagEntry.itemTag(tagName);
 			} else {
 				if (typeMarker < 0) {
 					return null;
@@ -309,7 +309,7 @@ final class NetworkSync {
 
 			if (typeMarker == TYPE_TAG) {
 				var tagName = readStringSafe(buf);
-				return TagEntry.fluid(tagName);
+				return TagEntry.fluidTag(tagName);
 			} else {
 				var fluidName = readStringSafe(buf);
 				var fluid = FluidRegistry.getFluid(fluidName);
@@ -325,7 +325,7 @@ final class NetworkSync {
 
 			if (typeMarker == TYPE_TAG) {
 				var tagName = readStringSafe(buf);
-				return TagEntry.block(tagName);
+				return TagEntry.blockTag(tagName);
 			} else {
 				if (typeMarker < 0) {
 					return null;
