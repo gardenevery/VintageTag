@@ -12,7 +12,6 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 
 @SideOnly(Side.CLIENT)
 final class ClientNetworkSync {
-
 	@SideOnly(Side.CLIENT)
 	public static void register() {
 		if (NetworkSync.NETWORK == null) {

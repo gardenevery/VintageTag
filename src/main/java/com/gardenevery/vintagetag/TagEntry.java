@@ -6,8 +6,6 @@ import javax.annotation.Nullable;
 import com.github.bsideup.jabel.Desugar;
 
 import net.minecraft.block.Block;
-import net.minecraft.init.Blocks;
-import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
@@ -18,7 +16,6 @@ import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
 
 interface TagEntry {
-
 	boolean isEmpty();
 
 	default boolean isKey() {
@@ -52,32 +49,6 @@ interface TagEntry {
 
 	default boolean isTagInclude() {
 		return asTagInclude() != null;
-	}
-
-	@Nonnull
-	static ItemEntry item(int id) {
-		if (id < 0) {
-			return ItemEntry.EMPTY;
-		}
-
-		var item = Item.getItemById(id);
-		if (item == null || item == Items.AIR) {
-			return ItemEntry.EMPTY;
-		}
-		return new ItemEntry.ItemKey(item, 0);
-	}
-
-	@Nonnull
-	static ItemEntry item(int id, int metadata) {
-		if (id < 0 || metadata < 0) {
-			return ItemEntry.EMPTY;
-		}
-
-		var item = Item.getItemById(id);
-		if (item == null || item == Items.AIR) {
-			return ItemEntry.EMPTY;
-		}
-		return new ItemEntry.ItemKey(item, item.getHasSubtypes() ? metadata : 0);
 	}
 
 	@Nonnull
@@ -166,19 +137,6 @@ interface TagEntry {
 	@Nonnull
 	static FluidEntry fluidTag(@Nullable String tagName) {
 		return tagName == null || tagName.trim().isEmpty() ? FluidEntry.EMPTY : new FluidEntry.FluidTagInclude(tagName);
-	}
-
-	@Nonnull
-	static BlockEntry block(int id) {
-		if (id < 0) {
-			return BlockEntry.EMPTY;
-		}
-
-		var block = Block.getBlockById(id);
-		if (block == null || block == Blocks.AIR) {
-			return BlockEntry.EMPTY;
-		}
-		return new BlockEntry.BlockKey(block);
 	}
 
 	@Nonnull

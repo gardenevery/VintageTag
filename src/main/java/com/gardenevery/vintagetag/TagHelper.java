@@ -27,7 +27,6 @@ import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
 
 public final class TagHelper {
-
 	private TagHelper() {
 	}
 
@@ -270,20 +269,6 @@ public final class TagHelper {
 				}
 			}
 			return Collections.unmodifiableList(stacks);
-		}
-
-		/**
-		 * Get all item tag entries with their associated ItemStacks
-		 *
-		 * @return An unmodifiable map of tag name to immutable set of ItemStacks
-		 */
-		@Nonnull
-		public Map<String, Set<ItemStack>> allEntries() {
-			var entryMap = TagManager.item().getAllEntries();
-
-			return entryMap.entrySet().stream().collect(
-					Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().stream().map(ItemEntry::asTagKey)
-							.filter(Objects::nonNull).map(ItemKey::getStack).collect(Collectors.toSet())));
 		}
 
 		/**
@@ -595,20 +580,6 @@ public final class TagHelper {
 		}
 
 		/**
-		 * Get all fluid tag entries with their associated Fluids
-		 *
-		 * @return An unmodifiable map of tag name to immutable set of Fluids
-		 */
-		@Nonnull
-		public Map<String, Set<Fluid>> allEntries() {
-			var entryMap = TagManager.fluid().getAllEntries();
-
-			return entryMap.entrySet().stream().collect(
-					Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().stream().map(FluidEntry::asTagKey)
-							.filter(Objects::nonNull).map(FluidKey::fluid).collect(Collectors.toSet())));
-		}
-
-		/**
 		 * Check if the specified Fluid has the given tag
 		 *
 		 * @param fluid
@@ -908,20 +879,6 @@ public final class TagHelper {
 			var entries = TagManager.block().getAllKeysList();
 			return entries.stream().map(BlockEntry::asTagKey).filter(Objects::nonNull).map(BlockKey::block)
 					.collect(Collectors.toList());
-		}
-
-		/**
-		 * Get all block tag entries with their associated Blocks
-		 *
-		 * @return An unmodifiable map of tag name to immutable set of Blocks
-		 */
-		@Nonnull
-		public Map<String, Set<Block>> allEntries() {
-			var entryMap = TagManager.block().getAllEntries();
-
-			return entryMap.entrySet().stream().collect(
-					Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().stream().map(BlockEntry::asTagKey)
-							.filter(Objects::nonNull).map(BlockKey::block).collect(Collectors.toSet())));
 		}
 
 		/**
