@@ -29,7 +29,6 @@ import net.minecraftforge.fml.relauncher.Side;
 final class NetworkSync {
 	public static SimpleNetworkWrapper NETWORK;
 	private static final int MAX_PACKET_SIZE = 2 * 1024 * 1024;
-	private static final int TYPE_TAG = -1;
 
 	public enum SyncType {
 		NONE, FULL
@@ -76,7 +75,11 @@ final class NetworkSync {
 
 			if (!keys.isEmpty()) {
 				var entries = new ObjectArrayList<ItemEntry>(keys.size());
-				entries.addAll(keys);
+				for (var key : keys) {
+					if (key.asTagKey() != null) {
+						entries.add(key);
+					}
+				}
 
 				if (!entries.isEmpty()) {
 					itemTags.put(tagName, entries);
@@ -101,7 +104,11 @@ final class NetworkSync {
 
 			if (!fluids.isEmpty()) {
 				var fluidEntries = new ObjectArrayList<FluidEntry>(fluids.size());
-				fluidEntries.addAll(fluids);
+				for (var fluid : fluids) {
+					if (fluid.asTagKey() != null) {
+						fluidEntries.add(fluid);
+					}
+				}
 
 				if (!fluidEntries.isEmpty()) {
 					fluidTags.put(tagName, fluidEntries);
@@ -126,7 +133,11 @@ final class NetworkSync {
 
 			if (!blocks.isEmpty()) {
 				var blockEntries = new ObjectArrayList<BlockEntry>(blocks.size());
-				blockEntries.addAll(blocks);
+				for (var block : blocks) {
+					if (block.asTagKey() != null) {
+						blockEntries.add(block);
+					}
+				}
 
 				if (!blockEntries.isEmpty()) {
 					blockTags.put(tagName, blockEntries);
@@ -288,52 +299,39 @@ final class NetworkSync {
 		}
 
 		private ItemEntry readItemEntry(ByteBuf buf) {
-			int typeMarker = buf.readInt();
+			int id = buf.readInt();
 
-			if (typeMarker == TYPE_TAG) {
-				var tagName = readStringSafe(buf);
-				return TagEntry.itemTag(tagName);
-			} else {
-				if (typeMarker < 0) {
-					return null;
-				}
-
-				int metadata = buf.readInt();
-				var item = Item.getItemById(typeMarker);
-				return TagEntry.item(item, metadata);
+			if (id < 0) {
+				return null;
 			}
+
+			int metadata = buf.readInt();
+			var item = Item.getItemById(id);
+			return TagEntry.item(item, metadata);
 		}
 
 		private FluidEntry readFluidEntry(ByteBuf buf) {
-			int typeMarker = buf.readInt();
-
-			if (typeMarker == TYPE_TAG) {
-				var tagName = readStringSafe(buf);
-				return TagEntry.fluidTag(tagName);
-			} else {
-				var fluidName = readStringSafe(buf);
-				var fluid = FluidRegistry.getFluid(fluidName);
-				if (fluid == null) {
-					return null;
-				}
-				return TagEntry.fluid(fluid);
+			var fluidName = readStringSafe(buf);
+			if (fluidName.isEmpty()) {
+				return null;
 			}
+
+			var fluid = FluidRegistry.getFluid(fluidName);
+			if (fluid == null) {
+				return null;
+			}
+			return TagEntry.fluid(fluid);
 		}
 
 		private BlockEntry readBlockEntry(ByteBuf buf) {
-			int typeMarker = buf.readInt();
+			int id = buf.readInt();
 
-			if (typeMarker == TYPE_TAG) {
-				var tagName = readStringSafe(buf);
-				return TagEntry.blockTag(tagName);
-			} else {
-				if (typeMarker < 0) {
-					return null;
-				}
-
-				var block = Block.getBlockById(typeMarker);
-				return TagEntry.block(block);
+			if (id < 0) {
+				return null;
 			}
+
+			var block = Block.getBlockById(id);
+			return TagEntry.block(block);
 		}
 
 		private void writeItemTags(ByteBuf buf, Object2ObjectMap<String, ObjectArrayList<ItemEntry>> map) {
@@ -394,32 +392,25 @@ final class NetworkSync {
 		}
 
 		private void writeItemEntry(ByteBuf buf, ItemEntry entry) {
-			if (!entry.isKey()) {
-				buf.writeInt(TYPE_TAG);
-				writeStringSafe(buf, entry.getTagName());
-			} else if (entry instanceof ItemEntry.ItemKey itemKey) {
-				buf.writeInt(Item.getIdFromItem(itemKey.item()));
-				buf.writeInt(itemKey.metadata());
+			var tagKey = entry.asTagKey();
+			if (tagKey != null) {
+				buf.writeInt(Item.getIdFromItem(tagKey.item()));
+				buf.writeInt(tagKey.metadata());
 			}
 		}
 
 		private void writeFluidEntry(ByteBuf buf, FluidEntry entry) {
-			if (!entry.isKey()) {
-				buf.writeInt(TYPE_TAG);
-				writeStringSafe(buf, entry.getTagName());
-			} else if (entry instanceof FluidEntry.FluidKey fluidKey) {
-				buf.writeInt(0);
-				var fluidName = FluidRegistry.getFluidName(fluidKey.fluid());
+			var tagKey = entry.asTagKey();
+			if (tagKey != null) {
+				var fluidName = FluidRegistry.getFluidName(tagKey.fluid());
 				writeStringSafe(buf, fluidName != null ? fluidName : "");
 			}
 		}
 
 		private void writeBlockEntry(ByteBuf buf, BlockEntry entry) {
-			if (!entry.isKey()) {
-				buf.writeInt(TYPE_TAG);
-				writeStringSafe(buf, entry.getTagName());
-			} else if (entry instanceof BlockEntry.BlockKey blockKey) {
-				buf.writeInt(Block.getIdFromBlock(blockKey.block()));
+			var tagKey = entry.asTagKey();
+			if (tagKey != null) {
+				buf.writeInt(Block.getIdFromBlock(tagKey.block()));
 			}
 		}
 

@@ -1,8 +1,6 @@
 package com.gardenevery.vintagetag;
 
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import javax.annotation.Nonnull;
 
 import com.google.common.collect.ImmutableList;
@@ -15,79 +13,26 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 final class Tag<T extends TagEntry> {
 	private final ImmutableMap<String, ImmutableSet<T>> tagToEntries;
 	private final ImmutableMap<T, ImmutableSet<String>> entryToTags;
-	private final ImmutableSet<String> tags;
-	private final ImmutableSet<T> keys;
-
-	private final Map<String, ImmutableSet<T>> expandedTagToEntries = new ConcurrentHashMap<>();
-	private final Map<T, ImmutableSet<String>> expandedEntryToTags = new ConcurrentHashMap<>();
-	private final Object lock = new Object();
 
 	public Tag() {
 		this.tagToEntries = ImmutableMap.of();
 		this.entryToTags = ImmutableMap.of();
-		this.tags = ImmutableSet.of();
-		this.keys = ImmutableSet.of();
 	}
 
-	private Tag(ImmutableMap<String, ImmutableSet<T>> tagToEntries, ImmutableMap<T, ImmutableSet<String>> entryToTags,
-			ImmutableSet<String> tags, ImmutableSet<T> keys) {
-		this.tagToEntries = tagToEntries;
-		this.entryToTags = entryToTags;
-		this.tags = tags;
-		this.keys = keys;
+	private Tag(ImmutableMap<String, ImmutableSet<T>> expandedTagToEntries,
+			ImmutableMap<T, ImmutableSet<String>> expandedEntryToTags) {
+		this.tagToEntries = expandedTagToEntries;
+		this.entryToTags = expandedEntryToTags;
 	}
 
 	@Nonnull
 	public ImmutableSet<String> getTags(@Nonnull T entry) {
-		if (!entry.isKey()) {
-			return ImmutableSet.of();
-		}
-
-		var cached = expandedEntryToTags.get(entry);
-		if (cached != null) {
-			return cached;
-		}
-
-		synchronized (lock) {
-			cached = expandedEntryToTags.get(entry);
-			if (cached == null) {
-				for (String tag : tags) {
-					getKeys(tag);
-				}
-				cached = expandedEntryToTags.get(entry);
-				if (cached == null) {
-					cached = ImmutableSet.of();
-				}
-			}
-		}
-		return cached;
+		return entryToTags.getOrDefault(entry, ImmutableSet.of());
 	}
 
 	@Nonnull
 	public ImmutableSet<T> getKeys(@Nonnull String tagName) {
-		var cached = expandedTagToEntries.get(tagName);
-		if (cached != null) {
-			return cached;
-		}
-
-		synchronized (lock) {
-			cached = expandedTagToEntries.get(tagName);
-			if (cached == null) {
-				Set<String> processing = new ObjectOpenHashSet<>();
-				var expanded = expandTag(tagName, processing);
-
-				expandedTagToEntries.put(tagName, expanded);
-
-				for (T key : expanded) {
-					if (key.isKey()) {
-						expandedEntryToTags.merge(key, ImmutableSet.of(tagName),
-								(old, add) -> ImmutableSet.<String>builder().addAll(old).addAll(add).build());
-					}
-				}
-				cached = expanded;
-			}
-		}
-		return cached;
+		return tagToEntries.getOrDefault(tagName, ImmutableSet.of());
 	}
 
 	@Nonnull
@@ -102,22 +47,22 @@ final class Tag<T extends TagEntry> {
 
 	@Nonnull
 	public ImmutableSet<String> getAllTags() {
-		return tags;
+		return tagToEntries.keySet();
 	}
 
 	@Nonnull
 	public ImmutableList<String> getAllTagsList() {
-		return tags.asList();
+		return getAllTags().asList();
 	}
 
 	@Nonnull
 	public ImmutableSet<T> getAllKeys() {
-		return keys;
+		return entryToTags.keySet();
 	}
 
 	@Nonnull
 	public ImmutableList<T> getAllKeysList() {
-		return keys.asList();
+		return getAllKeys().asList();
 	}
 
 	@Nonnull
@@ -154,39 +99,15 @@ final class Tag<T extends TagEntry> {
 	}
 
 	public boolean exists(@Nonnull String tagName) {
-		return tags.contains(tagName);
+		return tagToEntries.containsKey(tagName);
 	}
 
 	public int getTagCount() {
-		return tags.size();
+		return tagToEntries.size();
 	}
 
 	public int getKeyCount() {
-		return keys.size(); // 修改为keys字段的size
-	}
-
-	private ImmutableSet<T> expandTag(String tagName, Set<String> processing) {
-		if (!processing.add(tagName)) {
-			return ImmutableSet.of();
-		}
-
-		try {
-			ObjectOpenHashSet<T> result = new ObjectOpenHashSet<>();
-			var entries = tagToEntries.get(tagName);
-			if (entries != null) {
-				for (T entry : entries) {
-					var include = entry.asTagInclude();
-					if (include != null) {
-						result.addAll(expandTag(include.getTagName(), processing));
-					} else {
-						result.add(entry);
-					}
-				}
-			}
-			return ImmutableSet.copyOf(result);
-		} finally {
-			processing.remove(tagName);
-		}
+		return entryToTags.size();
 	}
 
 	static final class MutableTagContainer<T extends TagEntry> {
@@ -203,11 +124,13 @@ final class Tag<T extends TagEntry> {
 				return;
 			}
 
-			var entrySet = tagToEntries.computeIfAbsent(tagName, k -> new ObjectOpenHashSet<>(entries.size()));
+			var entrySet = tagToEntries.computeIfAbsent(tagName,
+					k -> new ObjectOpenHashSet<>(Math.max(entries.size(), 4)));
 
 			for (T entry : entries) {
-				entrySet.add(entry);
-				entryToTags.computeIfAbsent(entry, k -> new ObjectOpenHashSet<>(4)).add(tagName);
+				if (entrySet.add(entry)) {
+					entryToTags.computeIfAbsent(entry, k -> new ObjectOpenHashSet<>(4)).add(tagName);
+				}
 			}
 		}
 
@@ -224,39 +147,65 @@ final class Tag<T extends TagEntry> {
 					}
 				}
 			}
-
 			register(entries, tagName);
 		}
 
 		@Nonnull
 		public Tag<T> build() {
-			ImmutableMap.Builder<String, ImmutableSet<T>> tagToEntriesBuilder = ImmutableMap.builder();
-			ImmutableSet.Builder<String> allTagsBuilder = ImmutableSet.builder();
-			ImmutableSet.Builder<T> allKeysBuilder = ImmutableSet.builder();
+			var expandedCache = new Object2ObjectOpenHashMap<String, ImmutableSet<T>>();
+			var tempExpandedEntryToTags = new Object2ObjectOpenHashMap<T, ObjectOpenHashSet<String>>();
+			var processingSet = new ObjectOpenHashSet<String>();
 
-			for (var entry : tagToEntries.entrySet()) {
-				var entrySet = entry.getValue();
-				if (!entrySet.isEmpty()) {
-					tagToEntriesBuilder.put(entry.getKey(), ImmutableSet.copyOf(entrySet));
-					allTagsBuilder.add(entry.getKey());
-				}
-			}
+			var expandedTagToEntriesBuilder = ImmutableMap.<String, ImmutableSet<T>>builder();
 
-			ImmutableMap.Builder<T, ImmutableSet<String>> entryToTagsBuilder = ImmutableMap.builder();
+			for (var tagName : tagToEntries.keySet()) {
+				ImmutableSet<T> expandedKeys = expandTag(tagName, processingSet, expandedCache);
+				processingSet.clear();
+				expandedTagToEntriesBuilder.put(tagName, expandedKeys);
 
-			for (var entry : entryToTags.entrySet()) {
-				T key = entry.getKey();
-				if (key.isKey()) {
-					var tags = entry.getValue();
-					if (!tags.isEmpty()) {
-						entryToTagsBuilder.put(key, ImmutableSet.copyOf(tags));
-						allKeysBuilder.add(key);
+				for (T key : expandedKeys) {
+					if (key.asTagInclude() == null) {
+						tempExpandedEntryToTags.computeIfAbsent(key, k -> new ObjectOpenHashSet<>()).add(tagName);
 					}
 				}
 			}
 
-			return new Tag<>(tagToEntriesBuilder.build(), entryToTagsBuilder.build(), allTagsBuilder.build(),
-					allKeysBuilder.build());
+			var expandedEntryToTagsBuilder = ImmutableMap.<T, ImmutableSet<String>>builder();
+			for (var entry : tempExpandedEntryToTags.entrySet()) {
+				expandedEntryToTagsBuilder.put(entry.getKey(), ImmutableSet.copyOf(entry.getValue()));
+			}
+
+			return new Tag<>(expandedTagToEntriesBuilder.build(), expandedEntryToTagsBuilder.build());
+		}
+
+		private ImmutableSet<T> expandTag(String tagName, Set<String> processing,
+				Object2ObjectOpenHashMap<String, ImmutableSet<T>> cache) {
+			var cached = cache.get(tagName);
+			if (cached != null) {
+				return cached;
+			}
+			if (!processing.add(tagName)) {
+				return ImmutableSet.of();
+			}
+			try {
+				var result = new ObjectOpenHashSet<T>();
+				var entries = tagToEntries.get(tagName);
+				if (entries != null) {
+					for (T entry : entries) {
+						var include = entry.asTagInclude();
+						if (include != null) {
+							result.addAll(expandTag(include.getTagName(), processing, cache));
+						} else {
+							result.add(entry);
+						}
+					}
+				}
+				var expanded = ImmutableSet.copyOf(result);
+				cache.put(tagName, expanded);
+				return expanded;
+			} finally {
+				processing.remove(tagName);
+			}
 		}
 
 		public void clear() {
