@@ -16,10 +16,24 @@ import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
 
 interface TagEntry {
-	boolean isEmpty();
+	enum EntryType {
+		KEY, TAG, EMPTY
+	}
+
+	default EntryType getType() {
+		return EntryType.EMPTY;
+	}
+
+	default boolean isEmpty() {
+		return getType() == EntryType.EMPTY;
+	}
 
 	default boolean isKey() {
-		return false;
+		return getType() == EntryType.KEY;
+	}
+
+	default boolean isTag() {
+		return getType() == EntryType.TAG;
 	}
 
 	@Nonnull
@@ -31,24 +45,6 @@ interface TagEntry {
 	default String getDisplayTagName() {
 		var tagName = getTagName();
 		return !tagName.trim().isEmpty() ? "#" + tagName : "";
-	}
-
-	@Nullable
-	default TagKey asTagKey() {
-		return this instanceof TagKey ? (TagKey) this : null;
-	}
-
-	@Nullable
-	default TagInclude asTagInclude() {
-		return this instanceof TagInclude ? (TagInclude) this : null;
-	}
-
-	default boolean isTagKey() {
-		return asTagKey() != null;
-	}
-
-	default boolean isTagInclude() {
-		return asTagInclude() != null;
 	}
 
 	@Nonnull
@@ -211,20 +207,15 @@ interface TagEntry {
 
 	interface TagKey extends TagEntry {
 		@Override
-		default boolean isEmpty() {
-			return false;
-		}
-
-		@Override
-		default boolean isKey() {
-			return true;
+		default EntryType getType() {
+			return EntryType.KEY;
 		}
 	}
 
 	interface TagInclude extends TagEntry {
 		@Override
-		default boolean isEmpty() {
-			return false;
+		default EntryType getType() {
+			return EntryType.TAG;
 		}
 
 		@Nonnull
@@ -240,52 +231,10 @@ interface TagEntry {
 
 	interface ItemEntry extends TagEntry {
 		ItemEntry EMPTY = new ItemEntry() {
-			@Nullable
-			@Override
-			public ItemKey asTagKey() {
-				return null;
-			}
-			@Nullable
-			@Override
-			public ItemTagInclude asTagInclude() {
-				return null;
-			}
-
-			@Override
-			public boolean isEmpty() {
-				return true;
-			}
 		};
-
-		@Nullable
-		default ItemKey asTagKey() {
-			return this instanceof ItemKey ? (ItemKey) this : null;
-		}
-
-		@Nullable
-		default ItemTagInclude asTagInclude() {
-			return this instanceof ItemTagInclude ? (ItemTagInclude) this : null;
-		}
 
 		@Desugar
 		record ItemKey(Item item, int metadata) implements TagKey, ItemEntry {
-			@Nonnull
-			@Override
-			public ItemKey asTagKey() {
-				return this;
-			}
-
-			@Nullable
-			@Override
-			public ItemTagInclude asTagInclude() {
-				return null;
-			}
-
-			@Nonnull
-			public Item getItem() {
-				return item;
-			}
-
 			@Nonnull
 			public ItemStack getStack() {
 				return new ItemStack(item, 1, metadata);
@@ -299,69 +248,15 @@ interface TagEntry {
 			public String getTagName() {
 				return tagName;
 			}
-
-			@Nullable
-			@Override
-			public ItemKey asTagKey() {
-				return null;
-			}
-
-			@Nonnull
-			@Override
-			public ItemTagInclude asTagInclude() {
-				return this;
-			}
 		}
 	}
 
 	interface FluidEntry extends TagEntry {
 		FluidEntry EMPTY = new FluidEntry() {
-			@Nullable
-			@Override
-			public FluidKey asTagKey() {
-				return null;
-			}
-			@Nullable
-			@Override
-			public FluidTagInclude asTagInclude() {
-				return null;
-			}
-
-			@Override
-			public boolean isEmpty() {
-				return true;
-			}
 		};
-
-		@Nullable
-		default FluidKey asTagKey() {
-			return this instanceof FluidKey ? (FluidKey) this : null;
-		}
-
-		@Nullable
-		default FluidTagInclude asTagInclude() {
-			return this instanceof FluidTagInclude ? (FluidTagInclude) this : null;
-		}
 
 		@Desugar
 		record FluidKey(Fluid fluid) implements TagKey, FluidEntry {
-			@Nonnull
-			@Override
-			public FluidKey asTagKey() {
-				return this;
-			}
-
-			@Nullable
-			@Override
-			public FluidTagInclude asTagInclude() {
-				return null;
-			}
-
-			@Nonnull
-			public Fluid getFluid() {
-				return fluid;
-			}
-
 			@Nonnull
 			public FluidStack getStack() {
 				return new FluidStack(fluid, 1000);
@@ -370,18 +265,6 @@ interface TagEntry {
 
 		@Desugar
 		record FluidTagInclude(String tagName) implements TagInclude, FluidEntry {
-			@Nullable
-			@Override
-			public FluidKey asTagKey() {
-				return null;
-			}
-
-			@Nonnull
-			@Override
-			public FluidTagInclude asTagInclude() {
-				return this;
-			}
-
 			@Nonnull
 			@Override
 			public String getTagName() {
@@ -392,67 +275,14 @@ interface TagEntry {
 
 	interface BlockEntry extends TagEntry {
 		BlockEntry EMPTY = new BlockEntry() {
-			@Nullable
-			@Override
-			public BlockKey asTagKey() {
-				return null;
-			}
-			@Nullable
-			@Override
-			public BlockTagInclude asTagInclude() {
-				return null;
-			}
-
-			@Override
-			public boolean isEmpty() {
-				return true;
-			}
 		};
-
-		@Nullable
-		default BlockKey asTagKey() {
-			return this instanceof BlockKey ? (BlockKey) this : null;
-		}
-
-		@Nullable
-		default BlockTagInclude asTagInclude() {
-			return this instanceof BlockTagInclude ? (BlockTagInclude) this : null;
-		}
 
 		@Desugar
 		record BlockKey(Block block) implements TagKey, BlockEntry {
-			@Nonnull
-			@Override
-			public BlockKey asTagKey() {
-				return this;
-			}
-
-			@Nullable
-			@Override
-			public BlockTagInclude asTagInclude() {
-				return null;
-			}
-
-			@Nonnull
-			public Block getBlock() {
-				return block;
-			}
 		}
 
 		@Desugar
 		record BlockTagInclude(String tagName) implements TagInclude, BlockEntry {
-			@Nullable
-			@Override
-			public BlockKey asTagKey() {
-				return null;
-			}
-
-			@Nonnull
-			@Override
-			public BlockTagInclude asTagInclude() {
-				return this;
-			}
-
 			@Nonnull
 			@Override
 			public String getTagName() {

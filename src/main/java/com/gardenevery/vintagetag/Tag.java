@@ -19,10 +19,9 @@ final class Tag<T extends TagEntry> {
 		this.entryToTags = ImmutableMap.of();
 	}
 
-	private Tag(ImmutableMap<String, ImmutableSet<T>> expandedTagToEntries,
-			ImmutableMap<T, ImmutableSet<String>> expandedEntryToTags) {
-		this.tagToEntries = expandedTagToEntries;
-		this.entryToTags = expandedEntryToTags;
+	private Tag(ImmutableMap<String, ImmutableSet<T>> tagToEntries, ImmutableMap<T, ImmutableSet<String>> entryToTags) {
+		this.tagToEntries = tagToEntries;
+		this.entryToTags = entryToTags;
 	}
 
 	@Nonnull
@@ -128,6 +127,10 @@ final class Tag<T extends TagEntry> {
 					k -> new ObjectOpenHashSet<>(Math.max(entries.size(), 4)));
 
 			for (T entry : entries) {
+				if (entry.isEmpty()) {
+					continue;
+				}
+
 				if (entrySet.add(entry)) {
 					entryToTags.computeIfAbsent(entry, k -> new ObjectOpenHashSet<>(4)).add(tagName);
 				}
@@ -164,7 +167,7 @@ final class Tag<T extends TagEntry> {
 				expandedTagToEntriesBuilder.put(tagName, expandedKeys);
 
 				for (T key : expandedKeys) {
-					if (key.asTagInclude() == null) {
+					if (!key.isTag()) {
 						tempExpandedEntryToTags.computeIfAbsent(key, k -> new ObjectOpenHashSet<>()).add(tagName);
 					}
 				}
@@ -184,17 +187,22 @@ final class Tag<T extends TagEntry> {
 			if (cached != null) {
 				return cached;
 			}
+
 			if (!processing.add(tagName)) {
 				return ImmutableSet.of();
 			}
+
 			try {
 				var result = new ObjectOpenHashSet<T>();
 				var entries = tagToEntries.get(tagName);
 				if (entries != null) {
 					for (T entry : entries) {
-						var include = entry.asTagInclude();
-						if (include != null) {
-							result.addAll(expandTag(include.getTagName(), processing, cache));
+						if (entry.isEmpty()){
+							continue;
+						}
+
+						if (entry.isTag()) {
+							result.addAll(expandTag(entry.getTagName(), processing, cache));
 						} else {
 							result.add(entry);
 						}

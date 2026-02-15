@@ -4,8 +4,11 @@ import java.nio.charset.StandardCharsets;
 import javax.annotation.Nullable;
 
 import com.gardenevery.vintagetag.TagEntry.BlockEntry;
+import com.gardenevery.vintagetag.TagEntry.BlockEntry.BlockKey;
 import com.gardenevery.vintagetag.TagEntry.FluidEntry;
+import com.gardenevery.vintagetag.TagEntry.FluidEntry.FluidKey;
 import com.gardenevery.vintagetag.TagEntry.ItemEntry;
+import com.gardenevery.vintagetag.TagEntry.ItemEntry.ItemKey;
 import com.github.bsideup.jabel.Desugar;
 
 import io.netty.buffer.ByteBuf;
@@ -76,7 +79,7 @@ final class NetworkSync {
 			if (!keys.isEmpty()) {
 				var entries = new ObjectArrayList<ItemEntry>(keys.size());
 				for (var key : keys) {
-					if (key.asTagKey() != null) {
+					if (key.isKey()) {
 						entries.add(key);
 					}
 				}
@@ -105,7 +108,7 @@ final class NetworkSync {
 			if (!fluids.isEmpty()) {
 				var fluidEntries = new ObjectArrayList<FluidEntry>(fluids.size());
 				for (var fluid : fluids) {
-					if (fluid.asTagKey() != null) {
+					if (fluid.isKey()) {
 						fluidEntries.add(fluid);
 					}
 				}
@@ -134,7 +137,7 @@ final class NetworkSync {
 			if (!blocks.isEmpty()) {
 				var blockEntries = new ObjectArrayList<BlockEntry>(blocks.size());
 				for (var block : blocks) {
-					if (block.asTagKey() != null) {
+					if (block.isKey()) {
 						blockEntries.add(block);
 					}
 				}
@@ -392,25 +395,22 @@ final class NetworkSync {
 		}
 
 		private void writeItemEntry(ByteBuf buf, ItemEntry entry) {
-			var tagKey = entry.asTagKey();
-			if (tagKey != null) {
-				buf.writeInt(Item.getIdFromItem(tagKey.item()));
-				buf.writeInt(tagKey.metadata());
+			if (entry instanceof ItemKey key) {
+				buf.writeInt(Item.getIdFromItem(key.item()));
+				buf.writeInt(key.metadata());
 			}
 		}
 
 		private void writeFluidEntry(ByteBuf buf, FluidEntry entry) {
-			var tagKey = entry.asTagKey();
-			if (tagKey != null) {
-				var fluidName = FluidRegistry.getFluidName(tagKey.fluid());
+			if (entry instanceof FluidKey key) {
+				var fluidName = FluidRegistry.getFluidName(key.fluid());
 				writeStringSafe(buf, fluidName != null ? fluidName : "");
 			}
 		}
 
 		private void writeBlockEntry(ByteBuf buf, BlockEntry entry) {
-			var tagKey = entry.asTagKey();
-			if (tagKey != null) {
-				buf.writeInt(Block.getIdFromBlock(tagKey.block()));
+			if (entry instanceof BlockKey key) {
+				buf.writeInt(Block.getIdFromBlock(key.block()));
 			}
 		}
 

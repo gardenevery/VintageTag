@@ -2,18 +2,12 @@ package com.gardenevery.vintagetag;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import com.gardenevery.vintagetag.TagEntry.ItemEntry;
 import com.gardenevery.vintagetag.TagEntry.ItemEntry.ItemKey;
-import com.gardenevery.vintagetag.TagEntry.FluidEntry;
 import com.gardenevery.vintagetag.TagEntry.FluidEntry.FluidKey;
-import com.gardenevery.vintagetag.TagEntry.BlockEntry;
 import com.gardenevery.vintagetag.TagEntry.BlockEntry.BlockKey;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -194,9 +188,8 @@ public final class TagHelper {
 			Set<ItemStack> stacks = new ObjectOpenHashSet<>();
 
 			for (var entry : entries) {
-				var itemKey = entry.asTagKey();
-				if (itemKey != null) {
-					stacks.add(itemKey.getStack());
+				if (entry instanceof ItemKey key) {
+					stacks.add(key.getStack());
 				}
 			}
 			return stacks;
@@ -222,9 +215,8 @@ public final class TagHelper {
 
 			List<ItemStack> stacks = new ObjectArrayList<>(entries.size());
 			for (var entry : entries) {
-				var itemKey = entry.asTagKey();
-				if (itemKey != null) {
-					stacks.add(itemKey.getStack());
+				if (entry instanceof ItemKey key) {
+					stacks.add(key.getStack());
 				}
 			}
 			return Collections.unmodifiableList(stacks);
@@ -241,9 +233,8 @@ public final class TagHelper {
 			Set<ItemStack> stacks = new ObjectOpenHashSet<>();
 
 			for (var entry : entries) {
-				var itemKey = entry.asTagKey();
-				if (itemKey != null) {
-					stacks.add(itemKey.getStack());
+				if (entry instanceof ItemKey key) {
+					stacks.add(key.getStack());
 				}
 			}
 			return stacks;
@@ -263,8 +254,7 @@ public final class TagHelper {
 
 			List<ItemStack> stacks = new ObjectArrayList<>(entries.size());
 			for (var entry : entries) {
-				var itemKey = entry.asTagKey();
-				if (itemKey != null) {
+				if (entry instanceof ItemKey itemKey) {
 					stacks.add(itemKey.getStack());
 				}
 			}
@@ -534,8 +524,13 @@ public final class TagHelper {
 				return Collections.emptySet();
 			}
 			var entries = TagManager.fluid().getKeys(tagName);
-			return entries.stream().map(FluidEntry::asTagKey).filter(Objects::nonNull).map(FluidKey::fluid)
-					.collect(Collectors.toSet());
+			Set<Fluid> fluids = new ObjectOpenHashSet<>();
+			for (var entry : entries) {
+				if (entry instanceof FluidKey key) {
+					fluids.add(key.fluid());
+				}
+			}
+			return fluids;
 		}
 
 		/**
@@ -551,8 +546,16 @@ public final class TagHelper {
 				return Collections.emptyList();
 			}
 			var entries = TagManager.fluid().getKeysList(tagName);
-			return entries.stream().map(FluidEntry::asTagKey).filter(Objects::nonNull).map(FluidKey::fluid)
-					.collect(Collectors.toList());
+			if (entries.isEmpty()) {
+				return Collections.emptyList();
+			}
+			List<Fluid> fluids = new ObjectArrayList<>(entries.size());
+			for (var entry : entries) {
+				if (entry instanceof FluidKey key) {
+					fluids.add(key.fluid());
+				}
+			}
+			return Collections.unmodifiableList(fluids);
 		}
 
 		/**
@@ -563,8 +566,13 @@ public final class TagHelper {
 		@Nonnull
 		public Set<Fluid> allKeys() {
 			var entries = TagManager.fluid().getAllKeys();
-			return entries.stream().map(FluidEntry::asTagKey).filter(Objects::nonNull).map(FluidKey::fluid)
-					.collect(Collectors.toSet());
+			Set<Fluid> fluids = new ObjectOpenHashSet<>();
+			for (var entry : entries) {
+				if (entry instanceof FluidKey key) {
+					fluids.add(key.fluid());
+				}
+			}
+			return fluids;
 		}
 
 		/**
@@ -575,8 +583,16 @@ public final class TagHelper {
 		@Nonnull
 		public List<Fluid> allKeysList() {
 			var entries = TagManager.fluid().getAllKeysList();
-			return entries.stream().map(FluidEntry::asTagKey).filter(Objects::nonNull).map(FluidKey::fluid)
-					.collect(Collectors.toList());
+			if (entries.isEmpty()) {
+				return Collections.emptyList();
+			}
+			List<Fluid> fluids = new ObjectArrayList<>(entries.size());
+			for (var entry : entries) {
+				if (entry instanceof FluidKey key) {
+					fluids.add(key.fluid());
+				}
+			}
+			return Collections.unmodifiableList(fluids);
 		}
 
 		/**
@@ -836,8 +852,13 @@ public final class TagHelper {
 				return Collections.emptySet();
 			}
 			var entries = TagManager.block().getKeys(tagName);
-			return entries.stream().map(BlockEntry::asTagKey).filter(Objects::nonNull).map(BlockKey::block)
-					.collect(Collectors.toSet());
+			Set<Block> blocks = new ObjectOpenHashSet<>();
+			for (var entry : entries) {
+				if (entry instanceof BlockKey key) {
+					blocks.add(key.block());
+				}
+			}
+			return blocks;
 		}
 
 		/**
@@ -853,8 +874,16 @@ public final class TagHelper {
 				return Collections.emptyList();
 			}
 			var entries = TagManager.block().getKeysList(tagName);
-			return entries.stream().map(BlockEntry::asTagKey).filter(Objects::nonNull).map(BlockKey::block)
-					.collect(Collectors.toList());
+			if (entries.isEmpty()) {
+				return Collections.emptyList();
+			}
+			List<Block> blocks = new ObjectArrayList<>(entries.size());
+			for (var entry : entries) {
+				if (entry instanceof BlockKey key) {
+					blocks.add(key.block());
+				}
+			}
+			return Collections.unmodifiableList(blocks);
 		}
 
 		/**
@@ -865,8 +894,13 @@ public final class TagHelper {
 		@Nonnull
 		public Set<Block> allKeys() {
 			var entries = TagManager.block().getAllKeys();
-			return entries.stream().map(BlockEntry::asTagKey).filter(Objects::nonNull).map(BlockKey::block)
-					.collect(Collectors.toSet());
+			Set<Block> blocks = new ObjectOpenHashSet<>();
+			for (var entry : entries) {
+				if (entry instanceof BlockKey key) {
+					blocks.add(key.block());
+				}
+			}
+			return blocks;
 		}
 
 		/**
@@ -877,8 +911,16 @@ public final class TagHelper {
 		@Nonnull
 		public List<Block> allKeysList() {
 			var entries = TagManager.block().getAllKeysList();
-			return entries.stream().map(BlockEntry::asTagKey).filter(Objects::nonNull).map(BlockKey::block)
-					.collect(Collectors.toList());
+			if (entries.isEmpty()) {
+				return Collections.emptyList();
+			}
+			List<Block> blocks = new ObjectArrayList<>(entries.size());
+			for (var entry : entries) {
+				if (entry instanceof BlockKey key) {
+					blocks.add(key.block());
+				}
+			}
+			return Collections.unmodifiableList(blocks);
 		}
 
 		/**
