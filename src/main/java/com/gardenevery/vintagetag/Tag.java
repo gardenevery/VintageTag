@@ -197,7 +197,7 @@ final class Tag<T extends TagEntry> {
 				var entries = tagToEntries.get(tagName);
 				if (entries != null) {
 					for (T entry : entries) {
-						if (entry.isEmpty()){
+						if (entry.isEmpty()) {
 							continue;
 						}
 
