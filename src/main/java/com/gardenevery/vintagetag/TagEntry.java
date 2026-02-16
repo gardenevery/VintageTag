@@ -101,7 +101,7 @@ interface TagEntry {
 
 	@Nonnull
 	static ItemEntry itemTag(@Nullable String tagName) {
-		return tagName == null || tagName.trim().isEmpty() ? ItemEntry.EMPTY : new ItemEntry.ItemTagInclude(tagName);
+		return tagName == null || tagName.trim().isEmpty() ? ItemEntry.EMPTY : new TagInclude(tagName);
 	}
 
 	@Nonnull
@@ -112,7 +112,7 @@ interface TagEntry {
 
 		if (name.startsWith("#")) {
 			var tagName = extractTagName(name);
-			return tagName == null ? FluidEntry.EMPTY : new FluidEntry.FluidTagInclude(tagName);
+			return tagName == null ? FluidEntry.EMPTY : new TagInclude(tagName);
 		}
 		var fluid = FluidRegistry.getFluid(name);
 		return (fluid == null) ? FluidEntry.EMPTY : new FluidEntry.FluidKey(fluid);
@@ -132,7 +132,7 @@ interface TagEntry {
 
 	@Nonnull
 	static FluidEntry fluidTag(@Nullable String tagName) {
-		return tagName == null || tagName.trim().isEmpty() ? FluidEntry.EMPTY : new FluidEntry.FluidTagInclude(tagName);
+		return tagName == null || tagName.trim().isEmpty() ? FluidEntry.EMPTY : new TagInclude(tagName);
 	}
 
 	@Nonnull
@@ -143,7 +143,7 @@ interface TagEntry {
 
 		if (name.startsWith("#")) {
 			var tagName = extractTagName(name);
-			return tagName == null ? BlockEntry.EMPTY : new BlockEntry.BlockTagInclude(tagName);
+			return tagName == null ? BlockEntry.EMPTY : new TagInclude(tagName);
 		}
 		var block = ForgeRegistries.BLOCKS.getValue(new ResourceLocation(name));
 		return block == null ? BlockEntry.EMPTY : new BlockEntry.BlockKey(block);
@@ -172,7 +172,7 @@ interface TagEntry {
 
 	@Nonnull
 	static BlockEntry blockTag(@Nullable String tagName) {
-		return tagName == null || tagName.trim().isEmpty() ? BlockEntry.EMPTY : new BlockEntry.BlockTagInclude(tagName);
+		return tagName == null || tagName.trim().isEmpty() ? BlockEntry.EMPTY : new TagInclude(tagName);
 	}
 
 	@Nullable
@@ -193,7 +193,7 @@ interface TagEntry {
 
 		if (name.startsWith("#")) {
 			var tagName = extractTagName(name);
-			return tagName == null ? ItemEntry.EMPTY : new ItemEntry.ItemTagInclude(tagName);
+			return tagName == null ? ItemEntry.EMPTY : new TagInclude(tagName);
 		}
 
 		var item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(name));
@@ -212,23 +212,6 @@ interface TagEntry {
 		}
 	}
 
-	interface TagInclude extends TagEntry {
-		@Override
-		default EntryType getType() {
-			return EntryType.TAG;
-		}
-
-		@Nonnull
-		@Override
-		String getTagName();
-
-		@Nonnull
-		@Override
-		default String getDisplayTagName() {
-			return "#" + getTagName();
-		}
-	}
-
 	interface ItemEntry extends TagEntry {
 		ItemEntry EMPTY = new ItemEntry() {
 		};
@@ -238,15 +221,6 @@ interface TagEntry {
 			@Nonnull
 			public ItemStack getStack() {
 				return new ItemStack(item, 1, metadata);
-			}
-		}
-
-		@Desugar
-		record ItemTagInclude(String tagName) implements TagInclude, ItemEntry {
-			@Nonnull
-			@Override
-			public String getTagName() {
-				return tagName;
 			}
 		}
 	}
@@ -262,15 +236,6 @@ interface TagEntry {
 				return new FluidStack(fluid, 1000);
 			}
 		}
-
-		@Desugar
-		record FluidTagInclude(String tagName) implements TagInclude, FluidEntry {
-			@Nonnull
-			@Override
-			public String getTagName() {
-				return tagName;
-			}
-		}
 	}
 
 	interface BlockEntry extends TagEntry {
@@ -280,14 +245,25 @@ interface TagEntry {
 		@Desugar
 		record BlockKey(Block block) implements TagKey, BlockEntry {
 		}
+	}
 
-		@Desugar
-		record BlockTagInclude(String tagName) implements TagInclude, BlockEntry {
-			@Nonnull
-			@Override
-			public String getTagName() {
-				return tagName;
-			}
+	@Desugar
+	record TagInclude(String tagName) implements ItemEntry, FluidEntry, BlockEntry {
+		@Override
+		public EntryType getType() {
+			return EntryType.TAG;
+		}
+
+		@Nonnull
+		@Override
+		public String getTagName() {
+			return tagName;
+		}
+
+		@Nonnull
+		@Override
+		public String getDisplayTagName() {
+			return "#" + getTagName();
 		}
 	}
 }
